@@ -1,1 +1,0 @@
-![That's all Folks!](https://github.com/UM-EECS-441/labs/blob/master/docs/img/thatsallfolks.jpg)
