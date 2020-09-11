@@ -1,14 +1,16 @@
 package umich.argraphics
 
+import android.hardware.display.DisplayManager
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import umich.argraphics.JniInterface.onResume
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 
-class MainActivity : AppCompatActivity(),  GLSurfaceView.Renderer {
+class MainActivity : AppCompatActivity(),  GLSurfaceView.Renderer, DisplayManager.DisplayListener {
     private var surfaceView: GLSurfaceView? = null
     private var nativeApplication: Long = 0 // Pointer to native instance
     private var viewportChanged: Boolean = false
@@ -77,6 +79,14 @@ class MainActivity : AppCompatActivity(),  GLSurfaceView.Renderer {
         viewportChanged = true
     }
 
+    override fun onDisplayAdded(displayId: Int) {}
+
+    override fun onDisplayRemoved(displayId: Int) {}
+
+    override fun onDisplayChanged(displayId: Int) {
+        viewportChanged = true
+    }
+
     override fun onDrawFrame(gl: GL10) {
         // Synchronized to avoid racing onDestroy.
         synchronized(this) {
@@ -94,6 +104,36 @@ class MainActivity : AppCompatActivity(),  GLSurfaceView.Renderer {
                 nativeApplication)
 
         }
+    }
+    override fun onResume() {
+        super.onResume()
+        // ARCore requires camera permissions to operate. If we did not yet obtain runtime
+        // permission on Android M and above, now is a good time to ask the user for it.
+        if (!CameraPermissionHelper.hasCameraPermission(this)) {
+            CameraPermissionHelper.requestCameraPermission(this)
+            return
+        }
+
+        onResume(nativeApplication, applicationContext, this)
+        surfaceView!!.onResume()
+//        loadingMessageSnackbar = Snackbar.make(
+//            this@HelloArActivity.findViewById(android.R.id.content),
+//            "Searching for surfaces...",
+//            Snackbar.LENGTH_INDEFINITE
+//        )
+        // Set the snackbar background to light transparent black color.
+//        loadingMessageSnackbar.getView().setBackgroundColor(-0x40cdcdce)
+//        loadingMessageSnackbar.show()
+//        planeStatusCheckingHandler.postDelayed(
+//            planeStatusCheckingRunnable, SNACKBAR_UPDATE_INTERVAL_MILLIS
+//        )
+
+        // Listen to display changed events to detect 180° rotation, which does not cause a config
+        // change or view resize.
+        getSystemService(DisplayManager::class.java).registerDisplayListener(
+            this,
+            null
+        )
     }
 }
 

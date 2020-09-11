@@ -47,13 +47,13 @@ object JniInterface {
     external fun onTouched(nativeApplication: Long, x: Float, y: Float)
 
     /** Get plane count in current session. Used to disable the "searching for surfaces" snackbar.  */
-    external fun hasDetectedPlanes(nativeApplication: Long): Boolean
-
-    external fun isDepthSupported(nativeApplication: Long): Boolean
-
-    external fun onSettingsChange(
-        nativeApplication: Long, isInstantPlacementEnabled: Boolean
-    )
+//    external fun hasDetectedPlanes(nativeApplication: Long): Boolean
+//
+//    external fun isDepthSupported(nativeApplication: Long): Boolean
+//
+//    external fun onSettingsChange(
+//        nativeApplication: Long, isInstantPlacementEnabled: Boolean
+//    )
 
     fun loadImage(imageName: String): Bitmap? {
 
