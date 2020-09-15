@@ -1,0 +1,48 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.2"
+    clean
+    defaultConfig {
+        applicationId "com.eecs487.jniteapot"
+        minSdkVersion 21 // Note: gles 3.1 requires sdk 21+, gles 3.2/vulkan 1.0 requires 24+, vulkan 1.1 requires 28+, egl 1.5 implemented in 29
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_TOOLCHAIN=clang",
+                          "-DANDROID_STL=c++_static",
+//                          "-DCMAKE_BUILD_TYPE=Release"
+                          "-DCMAKE_BUILD_TYPE=Debug"
+            }
+        }
+
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+}
