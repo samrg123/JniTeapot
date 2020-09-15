@@ -120,6 +120,8 @@ void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
 
     background_renderer_.Draw(ar_session_, ar_frame_,
                               false);
+//    background_renderer_.Draw(ar_session_, ar_frame_,
+//                              true);
 
 }
 

@@ -811,7 +811,6 @@ class GlText {
                 glBufferSubData(GL_SHADER_STORAGE_BUFFER, uscIndex*sizeof(StringAttrib), uploadCount * sizeof(StringAttrib), stringAttribData + uscIndex);
             }
             
-            
             if(vertexAttributeBufferBytes < pushedBytes) BindAndAllocateVertexAttributeBufferBytes(pushedBytes);
             else                                         glBindBuffer(GL_ARRAY_BUFFER, vertexAttributeBuffer);
             

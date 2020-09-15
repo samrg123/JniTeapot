@@ -8,7 +8,7 @@
 #include "util.h"
 #include "customAssert.h"
 
-#define ENABLE_STATS 1
+#define ENABLE_MEMORY_STATS 1
 
 class Memory {
 		
@@ -22,7 +22,7 @@ class Memory {
             uint32 bytes;
             uint32 position;
    
-			#if ENABLE_STATS
+			#if ENABLE_MEMORY_STATS
                 uint32 padBytes;
 			#endif
 
@@ -30,18 +30,19 @@ class Memory {
         };
 
         static inline Block emptyBlock = {};
-	
-		#if ENABLE_STATS
-			static uint32 memoryBytes;
-			static uint32 memoryPadBytes;
-			static uint32 memoryUnusedBytes;
-			static uint32 memoryBlockReservedBytes;
-			
-			static uint memoryBlockCount;
-			static uint memoryBlockReserveCount;
-		#endif
     
     public:
+		
+		#if ENABLE_MEMORY_STATS
+			static inline uint32 memoryBytes;
+			static inline uint32 memoryPadBytes;
+			static inline uint32 memoryUnusedBytes;
+			static inline uint32 memoryBlockReservedBytes;
+			
+			static inline uint memoryBlockCount;
+			static inline uint memoryBlockReserveCount;
+		#endif
+
 		class Arena;
 		
 		class Region {
@@ -59,7 +60,7 @@ class Memory {
 	            Block* currentBlock;
 	            Block* reservedBlock;
 	
-				#if ENABLE_STATS
+				#if ENABLE_MEMORY_STATS
 	                uint32 arenaBytes;
 	                uint32 arenaPadBytes;
 	                uint32 arenaUnusedBytes; //bytes at end of blocks - includes reserve block
@@ -67,7 +68,7 @@ class Memory {
 				#endif
 				
 				Arena(Block* currentBlock): currentBlock(currentBlock), reservedBlock(nullptr) {
-                    #if ENABLE_STATS
+                    #if ENABLE_MEMORY_STATS
                         arenaBytes = 0;
                         arenaPadBytes = 0;
                         arenaUnusedBytes = 0;
@@ -99,7 +100,7 @@ class Memory {
 			        block->position = sizeof(Block);
 			        block->previousBlock = previousBlock;
 			        
-			        #if ENABLE_STATS
+			        #if ENABLE_MEMORY_STATS
 			            uint32 freeBytes = blockBytes - sizeof(Block);
 			        
 			            arenaBlockCount++;
@@ -116,7 +117,7 @@ class Memory {
 		
 				inline void FreeBlock(Block* block) {
 			
-			        #if ENABLE_STATS
+			        #if ENABLE_MEMORY_STATS
 			            RUNTIME_ASSERT(memoryBlockCount && arenaBlockCount,
 			                        	"Trying to free more blocks than allocated { arena: %p, memoryBlockCount: %d, arenaBlockCount: %d }",
 			                        	this, memoryBlockCount, arenaBlockCount);
@@ -151,7 +152,7 @@ class Memory {
 			
 					*tPtr = ByteOffset(newBlock, sizeof(Block)+alignmentOffset);
 			
-					#if ENABLE_STATS
+					#if ENABLE_MEMORY_STATS
 						newBlock->padBytes+= alignmentOffset;
 				
 						arenaPadBytes+= alignmentOffset;
@@ -176,7 +177,7 @@ class Memory {
 					tPos = ByteOffset(tPos, alignmentOffset);
 					block->position+= alignedBytes;
 			
-					#if ENABLE_STATS
+					#if ENABLE_MEMORY_STATS
 						block->padBytes+= alignmentOffset;
 				
 						arenaPadBytes+= alignmentOffset;
@@ -205,7 +206,7 @@ class Memory {
 
 							tPosition = ExtendBlockWithT(reservedBlock, bytes, alignment);
 							if(tPosition) {
-								#if ENABLE_STATS
+								#if ENABLE_MEMORY_STATS
 									memoryBlockReserveCount--;
 									memoryBlockReservedBytes-= reservedBlock->bytes;
 								#endif
@@ -267,7 +268,7 @@ class Memory {
 				        // TODO: make sure this gets optimized into 2 loops
 						if(!reservedBlock && currentBlock == region.block) {
 
-							#if ENABLE_STATS
+							#if ENABLE_MEMORY_STATS
 								arenaPadBytes-= popBlock->padBytes;
 								arenaUnusedBytes+= popBlock->position - sizeof(Block);
 							
@@ -315,7 +316,7 @@ class Memory {
 		        inline void Pack() {
 			        if(reservedBlock) {
 				
-				        #if ENABLE_STATS
+				        #if ENABLE_MEMORY_STATS
 			        	    memoryBlockReserveCount--;
 			        	    memoryBlockReservedBytes-= reservedBlock->bytes;
 						#endif
@@ -341,15 +342,3 @@ class Memory {
         	arena->Pack();
         }
 };
-
-
-#if ENABLE_STATS
-	uint32 Memory::memoryBytes;
-	uint32 Memory::memoryPadBytes;
-	uint32 Memory::memoryUnusedBytes;
-	uint32 Memory::memoryBlockReservedBytes;
-	uint Memory::memoryBlockCount;
-	uint Memory::memoryBlockReserveCount;
-#endif
-
-#undef ENABLE_STATS

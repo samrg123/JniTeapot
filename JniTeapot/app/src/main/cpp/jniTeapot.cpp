@@ -32,6 +32,79 @@ void InitGlesState() {
     glDepthFunc(GL_LESS);
 }
 
+void DrawStrings(GlText* glText, float renderTime, float frameTime) {
+    //print memory stats
+    constexpr Vec2 kLineAdvance(0.f, 50.f);
+    Vec2 textBaseline(50.f, 50.f);
+    
+    // print fps
+    if constexpr(true)
+    {
+        constexpr uint32 kAverageFrames = CeilFraction(500, kTargetMsFrameTime); //target ~500 ms
+        
+        struct FrameInfo {
+            float renderTime, frameTime,
+                realFPS, maxFPS;
+        };
+        
+        //Note frameinfo is a ring buffer
+        static uint32 frameIndex;
+        static FrameInfo frameInfo[kAverageFrames];
+        static FrameInfo cumulativeInfo;
+        
+        float realFPS = 1.f / frameTime,
+              maxFPS  = 1.f / renderTime;
+        
+        //remove the stale frame from the average
+        //TODO: think of way of mitigating floating point error - store cumulative time in the last frame and set that
+        //      YOU CAN TEST THE FLOATING ROUNDING ERROR by comenting out loopTimer.SleepLapMs in for loop and watching renderTime decay
+        cumulativeInfo.renderTime-= frameInfo[frameIndex].renderTime;
+        cumulativeInfo.frameTime-=  frameInfo[frameIndex].frameTime;
+        cumulativeInfo.realFPS-=    frameInfo[frameIndex].realFPS;
+        cumulativeInfo.maxFPS-=     frameInfo[frameIndex].maxFPS;
+        
+        //add our frame metrics to cumulative
+        cumulativeInfo.renderTime+= renderTime;
+        cumulativeInfo.frameTime+= frameTime;
+        cumulativeInfo.realFPS+= realFPS;
+        cumulativeInfo.maxFPS+= maxFPS;
+        
+        //cache frame info
+        frameInfo[frameIndex] = {
+            .renderTime = renderTime,
+            .frameTime  = frameTime,
+            .realFPS    = realFPS,
+            .maxFPS     = maxFPS,
+        };
+        
+        //increment/wrap the index
+        frameIndex = (frameIndex < kAverageFrames-1) ? frameIndex+1 : 0;
+        
+        //compute average - TODO: correct for initial buffer being filled with zeros and artificially low average
+        constexpr float avgNormalizer = 1.f/kAverageFrames;
+        float avgRenderTime     = avgNormalizer * cumulativeInfo.renderTime,
+              avgFrameTime      = avgNormalizer * cumulativeInfo.frameTime,
+              avgMaxFPS         = avgNormalizer * cumulativeInfo.maxFPS,
+              avgRealFPS        = avgNormalizer * cumulativeInfo.realFPS;
+        
+        //Log("renderTime: %f | maxFPS: %f | realFPS: %f | avgRenderTime: %f | avgMaxFPS: %f | avgRealFPS: %f", renderTime, maxFPS, realFPS, avgRenderTime, avgMaxFPS, avgRealFPS);
+        glText->PushString(textBaseline,  "frameTime: %03.3fms | renderTime: %03.3fms | FPS: %03.3f | maxFPS: %03.3f", 1E3f*avgFrameTime, 1E3f*avgRenderTime, avgRealFPS, avgMaxFPS);
+        textBaseline+= kLineAdvance;
+    }
+    
+    #ifdef ENABLE_MEMORY_STATS && 1
+        glText->PushString(textBaseline, "Memory Bytes: %u | Blocks: %u | Reserve Blocks: %u", Memory::memoryBytes, Memory::memoryBlockCount, Memory::memoryBlockReserveCount);
+        textBaseline+= kLineAdvance;
+    
+        glText->PushString(textBaseline, "Memory Unused Bytes: %u | Reserve Bytes: %u | Pad Bytes: %u", Memory::memoryUnusedBytes, Memory::memoryBlockReservedBytes,  Memory::memoryPadBytes);
+        textBaseline+= kLineAdvance;
+    
+    #endif
+    
+    glText->Draw();
+    glText->Clear();
+}
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 void* activityLoop(void* nativeWindow) {
@@ -47,9 +120,6 @@ void* activityLoop(void* nativeWindow) {
     
     InitGlesState();
 
-
-    Log("FtLib: %p", ftlib);
-
     for(Timer loopTimer(true), fpsTimer(true) ;; loopTimer.SleepLapMs(kTargetMsFrameTime) ) {
 
         // TODO: POLL ANDROID MESSAGE LOOP
@@ -58,67 +128,8 @@ void* activityLoop(void* nativeWindow) {
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         //glContext.Draw();
         
-        // print fps
-        if constexpr(true)
-        {
-            constexpr uint32 kAverageFrames = CeilFraction(500, kTargetMsFrameTime); //target ~500 ms
-            
-            struct FrameInfo {
-                float renderTime, frameTime,
-                      realFPS, maxFPS;
-            };
-    
-            //Note frameinfo is a ring buffer
-            static uint32 frameIndex;
-            static FrameInfo frameInfo[kAverageFrames];
-            static FrameInfo cumulativeInfo;
+        DrawStrings(&glText, loopTimer.ElapsedSec(), fpsTimer.LapSec());
         
-            //compute frame metrics
-            float renderTime = loopTimer.ElapsedSec(), //time from start of frame to now
-                  frameTime = fpsTimer.LapSec();       //time from last frame to now
-    
-            float realFPS = 1.f / frameTime,
-                  maxFPS  = 1.f / renderTime;
-            
-            //remove the stale frame from the average
-            //TODO: think of way of mitigating floating point error - store cumulative time in the last frame and set that
-            //      YOU CAN TEST THE FLOATING ROUNDING ERROR by comenting out loopTimer.SleepLapMs in for loop and watching renderTime decay
-            cumulativeInfo.renderTime-= frameInfo[frameIndex].renderTime;
-            cumulativeInfo.frameTime-=  frameInfo[frameIndex].frameTime;
-            cumulativeInfo.realFPS-=    frameInfo[frameIndex].realFPS;
-            cumulativeInfo.maxFPS-=     frameInfo[frameIndex].maxFPS;
-            
-            //add our frame metrics to cumulative
-            cumulativeInfo.renderTime+= renderTime;
-            cumulativeInfo.frameTime+= frameTime;
-            cumulativeInfo.realFPS+= realFPS;
-            cumulativeInfo.maxFPS+= maxFPS;
-    
-            //cache frame info
-            frameInfo[frameIndex] = {
-                .renderTime = renderTime,
-                .frameTime  = frameTime,
-                .realFPS    = realFPS,
-                .maxFPS     = maxFPS,
-            };
-    
-            //increment/wrap the index
-            frameIndex = (frameIndex < kAverageFrames-1) ? frameIndex+1 : 0;
-            
-            //compute average - TODO: correct for initial buffer being filled with zeros and artificially low average
-            constexpr float avgNormalizer = 1.f/kAverageFrames;
-            float avgRenderTime     = avgNormalizer * cumulativeInfo.renderTime,
-                  avgFrameTime      = avgNormalizer * cumulativeInfo.frameTime,
-                  avgMaxFPS         = avgNormalizer * cumulativeInfo.maxFPS,
-                  avgRealFPS        = avgNormalizer * cumulativeInfo.realFPS;
-            
-            //Log("renderTime: %f | maxFPS: %f | realFPS: %f | avgRenderTime: %f | avgMaxFPS: %f | avgRealFPS: %f", renderTime, maxFPS, realFPS, avgRenderTime, avgMaxFPS, avgRealFPS);
-            glText.PushString(Vec2(50, 50),  "frameTime: %03.3fms | renderTime: %03.3fms | FPS: %03.3f | maxFPS: %03.3f", 1E3f*avgFrameTime, 1E3f*avgRenderTime, avgRealFPS, avgMaxFPS);
-            
-            glText.Draw();
-            glText.Clear();
-        }
-
         // present back buffer
         if(!glContext.SwapBuffers()) InitGlesState();
     }
