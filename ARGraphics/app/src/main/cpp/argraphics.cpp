@@ -114,6 +114,29 @@ void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
     if (ArSession_update(ar_session_, ar_frame_) != AR_SUCCESS) {
         LOGE("OnDrawFrame ArSession_update error");
     }
+    ArCamera* ar_camera;
+    ArFrame_acquireCamera(ar_session_, ar_frame_, &ar_camera);
+
+    ArPose* cameraPose;
+    float poseRaw[7];
+
+    ArPose_create(ar_session_, NULL, &cameraPose);
+    ArCamera_getPose(ar_session_, ar_camera, cameraPose);
+    ArPose_getPoseRaw(ar_session_, cameraPose, poseRaw);
+
+    glm::mat4 view_mat;
+    glm::mat4 projection_mat;
+    ArCamera_getViewMatrix(ar_session_, ar_camera, glm::value_ptr(view_mat));
+    ArCamera_getProjectionMatrix(ar_session_, ar_camera,
+            /*near=*/0.1f, /*far=*/100.f,
+                                 glm::value_ptr(projection_mat));
+
+    ArCamera_release(ar_camera);
+
+    LOGI("Camera position: (%f, %f, %f)\n", poseRaw[4], poseRaw[5], poseRaw[6]);
+
+
+
     if (IsDepthSupported()) {
         depth_texture_.UpdateWithDepthImageOnGlThread(*ar_session_, *ar_frame_);
     }
