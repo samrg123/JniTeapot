@@ -7,18 +7,18 @@
 
 
 #include <android/asset_manager.h>
+#include <jni.h>
 #include "include/arcore_c_api.h"
 #include "texture.h"
 #include "background_renderer.h"
 #include "util.h"
-
 
 class ARGraphicsApplication {
 public:
 
     //char * getDebugString();
     // Constructor and deconstructor.
-    explicit ARGraphicsApplication(AAssetManager* asset_manager);
+    explicit ARGraphicsApplication(JNIEnv* env, jobject j_asset_manager);
     ~ARGraphicsApplication();
 
     // OnPause is called on the UI thread from the Activity's onPause method.

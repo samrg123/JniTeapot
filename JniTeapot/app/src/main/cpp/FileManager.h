@@ -11,7 +11,7 @@
 
 class FileManager {
     private:
-        static AAssetManager* assetManager;
+        static inline AAssetManager* assetManager;
     
     public:
 
@@ -87,6 +87,3 @@ class FileManager {
         //}
         
 };
-
-AAssetManager* FileManager::assetManager;
-

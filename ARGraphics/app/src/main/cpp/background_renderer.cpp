@@ -55,6 +55,7 @@ void BackgroundRenderer::InitializeGlContent(AAssetManager* asset_manager,
 
 void BackgroundRenderer::Draw(const ArSession* session, const ArFrame* frame,
                               bool debug_show_depth_map) {
+
     static_assert(std::extent<decltype(kVertices)>::value == kNumVertices * 2,
                   "Incorrect kVertices length");
 

@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.4.1)
 
+string(REPLACE " -Werror" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -std=c++2a -fno-exceptions -fno-rtti -fdeclspec")
+
 # Import the ARCore (Google Play Services for AR) library.
 add_library(arcore SHARED IMPORTED)
 set_target_properties(arcore PROPERTIES IMPORTED_LOCATION
@@ -21,11 +24,18 @@ add_library(argraphics_native SHARED
 
 target_include_directories(argraphics_native PRIVATE
            src/main/cpp)
+
+
+add_subdirectory("${PROJECT_SOURCE_DIR}/src/main/cpp/FreeType2.9")
+target_include_directories(argraphics_native PRIVATE "${FREETYPE_INC}")
+
 target_link_libraries(argraphics_native
                       android
                       log
-                      GLESv2
+                      GLESv3
                       glm
-                      arcore)
+                      arcore
+                      ${FREETYPE_LIB}
+)
 
 

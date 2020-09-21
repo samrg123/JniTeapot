@@ -9,7 +9,6 @@
 #include <jni.h>
 
 
-
 #define JNI_METHOD(return_type, method_name) \
   JNIEXPORT return_type JNICALL              \
       Java_umich_argraphics_JniInterface_##method_name
@@ -35,8 +34,7 @@ jint JNI_OnLoad(JavaVM *vm, void *) {
 
 JNI_METHOD(jlong, createNativeApplication)
 (JNIEnv *env, jobject, jobject j_asset_manager) {
-    AAssetManager *asset_manager = AAssetManager_fromJava(env, j_asset_manager);
-    return jptr(new ARGraphicsApplication(asset_manager));
+    return jptr(new ARGraphicsApplication(env, j_asset_manager));
 }
 
 //JNI_METHOD(char *, getDebugString)

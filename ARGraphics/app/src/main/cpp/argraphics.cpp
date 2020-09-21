@@ -2,12 +2,24 @@
 // Created by nachi on 9/11/20.
 //
 
-#include <GLES3/gl31.h>
+#include <GLES3/gl32.h>
 #include "argraphics.h"
 #include <string>
 
-ARGraphicsApplication::ARGraphicsApplication(AAssetManager* asset_manager) : asset_manager_(asset_manager){
+// Note(Same): hack to get text on the screen
+#include "GlContext.h"
+#include "GlText.h"
+#include "FileManager.h"
 
+static GlContext glContext;
+static GlText* glText;
+
+
+
+ARGraphicsApplication::ARGraphicsApplication(JNIEnv* env, jobject j_asset_manager) : asset_manager_(AAssetManager_fromJava(env, j_asset_manager)){
+
+    //Note(Sam): hack to get text to work
+    FileManager::Init(env, j_asset_manager);
 }
 
 ARGraphicsApplication::~ARGraphicsApplication() {}
@@ -94,6 +106,23 @@ void ARGraphicsApplication::OnSurfaceCreated() {
     depth_texture_.CreateOnGlThread();
     background_renderer_.InitializeGlContent(asset_manager_,
                                              depth_texture_.GetTextureId());
+
+    // NOTE(Sam): hack to get GlText to work!!!
+    {
+        delete glText;
+        glText = new GlText(&glContext, "fonts/xolonium_regular.ttf");
+
+        glText->RenderTexture(GlText::RenderParams {
+            .targetGlyphSize = 25,
+            .renderStringAttrib = { .rgba = RGBA(1.f, 0, 0) },
+        });
+
+        //NOTE: just for text blending - this should be turned off otherwise to accelerate rendering
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+    }
 }
 
 void ARGraphicsApplication::OnDisplayGeometryChanged(int display_rotation, int width, int height) {
@@ -104,9 +133,16 @@ void ARGraphicsApplication::OnDisplayGeometryChanged(int display_rotation, int w
     if (ar_session_ != nullptr) {
         ArSession_setDisplayGeometry(ar_session_, display_rotation, width, height);
     }
+
+    // NOTE(Sam): hack to get GlText to work!!!
+    {
+        glContext.UpdateScreenSize(width, height);
+        glText->UpdateScreenSize(width, height);
+    }
 }
 void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
                                         bool useDepthForOcclusion) {
+
     glClearColor(0.1f, 0.1f, 0.9f, 1.0f);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
@@ -122,10 +158,29 @@ void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
         depth_texture_.UpdateWithDepthImageOnGlThread(*ar_session_, *ar_frame_);
     }
 
+
+    // Note(Sam): 'background_renderer_.Draw' doesn't use vao or vbo, because most glPrograms will
+    //            use them we unbind before we call background_renderer_.Draw instead of in GlText::Draw
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     background_renderer_.Draw(ar_session_, ar_frame_,
-                              false);
-//    background_renderer_.Draw(ar_session_, ar_frame_,
-//                              true);
+                              false //depth info
+    );
+
+    // Note(Sam): Example opengl text
+//    if constexpr(0)
+    {
+        glText->SetStringAttrib(GlText::StringAttrib {
+            .scale = Vec2(3.f, 3.f),
+            .rgba = RGBA(1.f, 1.f, 1.f),
+            .depth = -.9f
+        });
+
+        static int counter = 0;
+        glText->PushString(Vec2(50, 50),  "Hello World: %d", counter++);
+        glText->Draw();
+        glText->Clear();
+    }
 
 }
 
