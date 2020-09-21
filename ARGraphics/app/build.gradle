@@ -24,7 +24,7 @@ android {
                         "-DANDROID_STL=c++_static",
                         "-DARCORE_LIBPATH=${arcore_libpath}/jni",
                         "-DARCORE_INCLUDE=${project.rootDir}/app/src/main/cpp/include",
-                        "-DGLM_INCLUDE=${project.rootDir}/../../third_party/glm"
+                        "-DGLM_INCLUDE=${project.rootDir}/app/src/main/cpp/glm"
             }
         }
         ndk {
