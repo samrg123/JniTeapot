@@ -5,6 +5,7 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import android.widget.TextView
 import umich.argraphics.JniInterface.onResume
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -16,6 +17,7 @@ class MainActivity : AppCompatActivity(),  GLSurfaceView.Renderer, DisplayManage
     private var viewportChanged: Boolean = false
     private var viewportWidth = 0
     private var viewportHeight = 0
+   // private var helloTextView :TextView = findViewById<TextView>(R.id.firstTextView)
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +38,8 @@ class MainActivity : AppCompatActivity(),  GLSurfaceView.Renderer, DisplayManage
         surfaceView?.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
         surfaceView?.setWillNotDraw(false);
 
+        var helloTextView = findViewById<TextView>(R.id.firstTextView)
+        helloTextView.setText("hiiiiiiiiii")
 //        installRequested = false
 //        calculateUVTransform = true
 //
@@ -102,7 +106,10 @@ class MainActivity : AppCompatActivity(),  GLSurfaceView.Renderer, DisplayManage
             }
             JniInterface.onGlSurfaceDrawFrame(
                 nativeApplication)
-
+            //var helloTextView = findViewById<TextView>(R.id.firstTextView)
+            //val text: String = JniInterface.getDebugString(nativeApplication)
+            //helloTextView.setText("hiiiiiiiiii")
+            //helloTextView.setText(text)
         }
     }
     override fun onResume() {

@@ -4,6 +4,7 @@
 
 #include <GLES3/gl31.h>
 #include "argraphics.h"
+#include <string>
 
 ARGraphicsApplication::ARGraphicsApplication(AAssetManager* asset_manager) : asset_manager_(asset_manager){
 
@@ -13,8 +14,11 @@ ARGraphicsApplication::~ARGraphicsApplication() {}
 
 void ARGraphicsApplication::OnPause() {}
 
+
+
 void ARGraphicsApplication::OnResume(void *env, void *context, void *activity) {
     if (ar_session_ == nullptr) {
+
         ArInstallStatus install_status;
         // If install was not yet requested, that means that we are resuming the
         // activity first time because of explicit user interaction (such as
@@ -127,3 +131,13 @@ void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
 
 void ARGraphicsApplication::OnTouched(float x, float y) {}
 
+//char * ARGraphicsApplication::getDebugString()
+//{
+   /* int64_t * out_timestamp_ns = 0;
+    ArFrame_getTimestamp(ar_session_, ar_frame_, out_timestamp_ns);
+    std::string vOut = std::to_string(reinterpret_cast<long>(out_timestamp_ns));
+    char * cstring = new char [vOut.length()+1];
+    std::strcpy (cstring, vOut.c_str());
+    return cstring; */
+ //  return message;
+//}

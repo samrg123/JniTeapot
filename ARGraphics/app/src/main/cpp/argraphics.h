@@ -15,6 +15,8 @@
 
 class ARGraphicsApplication {
 public:
+
+    //char * getDebugString();
     // Constructor and deconstructor.
     explicit ARGraphicsApplication(AAssetManager* asset_manager);
     ~ARGraphicsApplication();
@@ -60,7 +62,7 @@ private:
     int height_ = 1;
     int display_rotation_ = 0;
     bool is_instant_placement_enabled_ = true;
-
+    char * message = "hi";
     AAssetManager* const asset_manager_;
 
     // The anchors at which we are drawing android models using given colors.
