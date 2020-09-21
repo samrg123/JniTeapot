@@ -9,6 +9,7 @@
 #include <jni.h>
 
 
+
 #define JNI_METHOD(return_type, method_name) \
   JNIEXPORT return_type JNICALL              \
       Java_umich_argraphics_JniInterface_##method_name
@@ -37,6 +38,11 @@ JNI_METHOD(jlong, createNativeApplication)
     AAssetManager *asset_manager = AAssetManager_fromJava(env, j_asset_manager);
     return jptr(new ARGraphicsApplication(asset_manager));
 }
+
+//JNI_METHOD(char *, getDebugString)
+//(JNIEnv *, jobject, jlong native_application)  {
+//    return native(native_application)->getDebugString();
+//}
 
 //JNI_METHOD(jboolean, isDepthSupported)
 //(JNIEnv *, jclass, jlong native_application) {

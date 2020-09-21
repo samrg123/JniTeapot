@@ -25,6 +25,8 @@ object JniInterface {
 
     external fun onPause(nativeApplication: Long)
 
+   // external fun getDebugString(nativeApplication: Long): String
+
     external fun onResume(nativeApplication: Long, context: Context, activity: Activity)
 
     /** Allocate OpenGL resources for rendering.  */
@@ -69,4 +71,6 @@ object JniInterface {
     fun loadTexture(target: Int, bitmap: Bitmap) {
         GLUtils.texImage2D(target, 0, bitmap, 0)
     }
+
+
 }
