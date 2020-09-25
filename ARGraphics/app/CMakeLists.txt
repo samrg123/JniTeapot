@@ -20,7 +20,8 @@ add_library(argraphics_native SHARED
             src/main/cpp/argraphics.cpp
             src/main/cpp/background_renderer.cpp
             src/main/cpp/util.cpp
-            src/main/cpp/texture.cpp)
+            src/main/cpp/texture.cpp
+            src/main/cpp/sphere_renderer.cpp)
 
 target_include_directories(argraphics_native PRIVATE
            src/main/cpp)
