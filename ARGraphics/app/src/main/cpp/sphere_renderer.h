@@ -17,7 +17,6 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-namespace hello_ar {
 
 // PlaneRenderer renders ARCore plane type.
     class ObjRenderer {
@@ -28,8 +27,7 @@ namespace hello_ar {
         // Loads the OBJ file and texture and sets up OpenGL resources used to draw
         // the model.  Must be called on the OpenGL thread prior to any other calls.
         void InitializeGlContent(AAssetManager* asset_manager,
-                                 const std::string& obj_file_name,
-                                 const std::string& png_file_name);
+                                 const std::string& obj_file_name);
 
         // Sets the surface's lighting reflectace properties.  Diffuse is modulated by
         // the texture's color.
@@ -106,6 +104,5 @@ namespace hello_ar {
         float depth_aspect_ratio_ = 0.0f;
         glm::mat3 uv_transform_ = glm::mat3(1.0f);
     };
-}  // namespace hello_ar
 
 #endif  // C_ARCORE_HELLOE_AR_OBJ_RENDERER_

@@ -11,6 +11,7 @@
 #include "include/arcore_c_api.h"
 #include "texture.h"
 #include "background_renderer.h"
+#include "sphere_renderer.h"
 #include "util.h"
 
 #define GLM_FORCE_RADIANS 1
@@ -84,6 +85,7 @@ private:
 //
 //    PointCloudRenderer point_cloud_renderer_;
     BackgroundRenderer background_renderer_;
+    ObjRenderer obj_renderer_;
 //    PlaneRenderer plane_renderer_;
 //    ObjRenderer andy_renderer_;
     Texture depth_texture_;

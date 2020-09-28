@@ -106,7 +106,7 @@ void ARGraphicsApplication::OnSurfaceCreated() {
     depth_texture_.CreateOnGlThread();
     background_renderer_.InitializeGlContent(asset_manager_,
                                              depth_texture_.GetTextureId());
-
+    obj_renderer_.InitializeGlContent(asset_manager_, "meshes/cow.obj");
     // NOTE(Sam): hack to get GlText to work!!!
     {
         delete glText;
@@ -187,8 +187,11 @@ void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     background_renderer_.Draw(ar_session_, ar_frame_,
-                              false //depth info
-    );
+                              false); //depth info
+    glm::mat4 model_mat(0.01f);
+    float color_correction[4] = {1, 1, 1, 1};
+    float object_color[4] = {1, 1, 1, 1};
+    obj_renderer_.Draw(projection_mat, view_mat, model_mat, color_correction, object_color);
 
     // Note(Sam): Example opengl text
 //    if constexpr(0)
