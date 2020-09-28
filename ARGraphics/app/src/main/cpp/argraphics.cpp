@@ -188,7 +188,8 @@ void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     background_renderer_.Draw(ar_session_, ar_frame_,
                               false); //depth info
-    glm::mat4 model_mat(0.1f);
+    glm::mat4 model_mat(0.05f);
+    model_mat[3].w = 1.0;
     float color_correction[4] = {1, 1, 1, 1};
     float object_color[4] = {1, 1, 1, 1};
     obj_renderer_.Draw(projection_mat, view_mat, model_mat, color_correction, object_color);
