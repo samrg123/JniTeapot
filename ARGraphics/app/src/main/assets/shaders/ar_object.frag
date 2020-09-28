@@ -29,6 +29,7 @@ uniform float u_DepthAspectRatio;
 
 varying vec3 v_ViewPosition;
 varying vec3 v_ViewNormal;
+varying vec3 v_WorldNormal;
 varying vec2 v_TexCoord;
 varying vec3 v_ScreenSpacePosition;
 uniform vec4 u_ObjColor;
@@ -201,5 +202,11 @@ float DepthGetBlurredVisibilityAroundUV(in sampler2D depth_texture, in vec2 uv,
 //}
 
 void main() {
-    gl_FragColor = vec4(0., 1., 0., 1.);
+    vec3 light = normalize(vec3(1, 1, 1));
+    vec3 viewNormal = normalize(v_WorldNormal);
+    float ambient = 0.1;
+    float diffuse = 0.5 * (dot(viewNormal, light) + 1.0);
+    float shading = ambient + diffuse;
+    gl_FragColor = vec4(0., 1., 0., 1.) * shading;
+    gl_FragColor.a = 1.;
 }
