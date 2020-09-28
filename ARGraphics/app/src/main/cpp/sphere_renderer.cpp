@@ -146,14 +146,14 @@
         glEnableVertexAttribArray(position_attrib_);
         glVertexAttribPointer(position_attrib_, 3, GL_FLOAT, GL_FALSE, 0,
                               vertices_.data());
-
-        glEnableVertexAttribArray(normal_attrib_);
-        glVertexAttribPointer(normal_attrib_, 3, GL_FLOAT, GL_FALSE, 0,
-                              normals_.data());
-
-        glEnableVertexAttribArray(tex_coord_attrib_);
-        glVertexAttribPointer(tex_coord_attrib_, 2, GL_FLOAT, GL_FALSE, 0,
-                              uvs_.data());
+//
+//        glEnableVertexAttribArray(normal_attrib_);
+//        glVertexAttribPointer(normal_attrib_, 3, GL_FLOAT, GL_FALSE, 0,
+//                              normals_.data());
+//
+//        glEnableVertexAttribArray(tex_coord_attrib_);
+//        glVertexAttribPointer(tex_coord_attrib_, 2, GL_FLOAT, GL_FALSE, 0,
+//                              uvs_.data());
 
         glDepthMask(GL_TRUE);
         glEnable(GL_BLEND);
@@ -168,8 +168,8 @@
 
         glDisable(GL_BLEND);
         glDisableVertexAttribArray(position_attrib_);
-        glDisableVertexAttribArray(tex_coord_attrib_);
-        glDisableVertexAttribArray(normal_attrib_);
+//        glDisableVertexAttribArray(tex_coord_attrib_);
+//        glDisableVertexAttribArray(normal_attrib_);
 
         glUseProgram(0);
         CheckGlError("obj_renderer::Draw()");
