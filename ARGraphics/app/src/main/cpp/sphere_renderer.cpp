@@ -39,6 +39,35 @@
 
         LoadObjFile(obj_file_name, asset_manager, &vertices_, &normals_, &uvs_,
                           &indices_);
+        if (normals_.empty()) {
+
+            // if no normals, generate them ourselves
+            normals_.resize(vertices_.size());
+            std::fill(normals_.begin(), normals_.end(), 0);
+            for (int i = 0; i < indices_.size(); i+=3) {
+                auto a = glm::make_vec3(vertices_.data() + (3*indices_[i]));
+                auto b = glm::make_vec3(vertices_.data() + (3*indices_[i+1]));
+                auto c = glm::make_vec3(vertices_.data() + (3*indices_[i+2]));
+                // (a-b) x (a-c)
+                auto normal = glm::cross(a-c, a-b);
+                auto add_vec3 = [&] (int index) {
+                    *(normals_.data() + (3*index) + 0) += normal.x;
+                    *(normals_.data() + (3*index) + 1) += normal.y;
+                    *(normals_.data() + (3*index) + 2) += normal.z;
+                };
+                for (int j = 0; j < 3; ++j) {
+                    add_vec3(indices_[i+j]);
+                }
+            }
+            // normalize all vertex normals
+            for (int i = 0; i < normals_.size(); i+=3) {
+                auto n = glm::make_vec3(normals_.data() + i);
+                n = glm::normalize(n);
+                *(normals_.data() + i + 0) = n.x;
+                *(normals_.data() + i + 1) = n.y;
+                *(normals_.data() + i + 2) = n.z;
+            }
+        }
 
         CheckGlError("obj_renderer::InitializeGlContent()");
     }
@@ -147,9 +176,9 @@
         glVertexAttribPointer(position_attrib_, 3, GL_FLOAT, GL_FALSE, 0,
                               vertices_.data());
 //
-//        glEnableVertexAttribArray(normal_attrib_);
-//        glVertexAttribPointer(normal_attrib_, 3, GL_FLOAT, GL_FALSE, 0,
-//                              normals_.data());
+        glEnableVertexAttribArray(normal_attrib_);
+        glVertexAttribPointer(normal_attrib_, 3, GL_FLOAT, GL_FALSE, 0,
+                              normals_.data());
 //
 //        glEnableVertexAttribArray(tex_coord_attrib_);
 //        glVertexAttribPointer(tex_coord_attrib_, 2, GL_FLOAT, GL_FALSE, 0,
@@ -169,7 +198,7 @@
         glDisable(GL_BLEND);
         glDisableVertexAttribArray(position_attrib_);
 //        glDisableVertexAttribArray(tex_coord_attrib_);
-//        glDisableVertexAttribArray(normal_attrib_);
+        glDisableVertexAttribArray(normal_attrib_);
 
         glUseProgram(0);
         CheckGlError("obj_renderer::Draw()");

@@ -276,12 +276,30 @@ GLuint CreateProgram(const char* vertex_shader_file_name,
     GLuint vertexShader =
             LoadShader(GL_VERTEX_SHADER, vertexShaderContent.c_str());
     if (!vertexShader) {
+        LOGE("error compiling vertex shader");
+        GLint buf_length = 0;
+        glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &buf_length);
+        char* buf = reinterpret_cast<char*>(malloc(buf_length));
+        if (buf) {
+            glGetProgramInfoLog(vertexShader, buf_length, nullptr, buf);
+            LOGE("error:\n%s\n", buf);
+            free(buf);
+        }
         return 0;
     }
 
     GLuint fragment_shader =
             LoadShader(GL_FRAGMENT_SHADER, fragmentShaderContent.c_str());
     if (!fragment_shader) {
+        LOGE("error compiling fragment shader");
+        GLint buf_length = 0;
+        glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &buf_length);
+        char* buf = reinterpret_cast<char*>(malloc(buf_length));
+        if (buf) {
+            glGetProgramInfoLog(fragment_shader, buf_length, nullptr, buf);
+            LOGE("error:\n%s\n", buf);
+            free(buf);
+        }
         return 0;
     }
 
