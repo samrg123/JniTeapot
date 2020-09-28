@@ -19,7 +19,6 @@
 
 #include "util.h"
 
-namespace hello_ar {
     namespace {
         const glm::vec4 kLightDirection(0.0f, 1.0f, 0.0f, 0.0f);
         constexpr char kVertexShaderFilename[] = "shaders/ar_object.vert";
@@ -28,8 +27,7 @@ namespace hello_ar {
     }  // namespace
 
     void ObjRenderer::InitializeGlContent(AAssetManager* asset_manager,
-                                          const std::string& obj_file_name,
-                                          const std::string& png_file_name) {
+                                          const std::string& obj_file_name) {
         compileAndLoadShaderProgram(asset_manager);
         position_attrib_ = glGetAttribLocation(shader_program_, "a_Position");
         tex_coord_attrib_ = glGetAttribLocation(shader_program_, "a_TexCoord");
@@ -176,5 +174,3 @@ namespace hello_ar {
         glUseProgram(0);
         CheckGlError("obj_renderer::Draw()");
     }
-
-}  // namespace hello_ar
