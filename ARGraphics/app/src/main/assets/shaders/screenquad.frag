@@ -18,7 +18,16 @@ precision mediump float;
 varying vec2 v_TexCoord;
 uniform samplerExternalOES sTexture;
 
+layout(location = 0) out vec3 face0;
+layout(location = 1) out vec3 face1;
+layout(location = 2) out vec3 face2;
+layout(location = 3) out vec3 face3;
+layout(location = 4) out vec3 face4;
+layout(location = 5) out vec3 face5;
+
 
 void main() {
     gl_FragColor = texture2D(sTexture, v_TexCoord);
+
+    // face5 = texture2D(sTexture, v_TexCoord);
 }

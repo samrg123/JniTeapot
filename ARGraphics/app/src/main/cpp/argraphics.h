@@ -89,6 +89,8 @@ private:
 //    PlaneRenderer plane_renderer_;
 //    ObjRenderer andy_renderer_;
     Texture depth_texture_;
+    GLuint cubemap_texture_id[6];
+    GLuint cube_framebuffer[6];
 
 //    int32_t plane_count_ = 0;
 

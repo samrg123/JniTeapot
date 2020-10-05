@@ -11,6 +11,7 @@
 #include <cstdlib>
 
 #include "arcore_c_api.h"
+#include "glm/glm.hpp"
 
 class BackgroundRenderer {
 public:
@@ -26,7 +27,7 @@ public:
     //  debugShowDepthMap Toggles whether to show the live camera feed or latest
     //  depth image.
     void Draw(const ArSession* session, const ArFrame* frame,
-              bool debug_show_depth_map);
+              bool debug_show_depth_map, glm::vec3 camera_position, glm::vec3 camera_forward_direction);
 
     // Returns the generated texture name for the GL_TEXTURE_EXTERNAL_OES target.
     GLuint GetTextureId() const;
@@ -43,6 +44,9 @@ private:
     GLuint camera_position_attrib_;
     GLuint camera_tex_coord_attrib_;
     GLuint camera_texture_uniform_;
+
+    GLuint camera_world_position_attrib;
+    GLuint camera_forward_direction_attrib;
 
     GLuint depth_texture_uniform_;
     GLuint depth_position_attrib_;

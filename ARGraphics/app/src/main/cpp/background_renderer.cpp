@@ -36,7 +36,10 @@ void BackgroundRenderer::InitializeGlContent(AAssetManager* asset_manager,
 
     camera_texture_uniform_ = glGetUniformLocation(camera_program_, "sTexture");
     camera_position_attrib_ = glGetAttribLocation(camera_program_, "a_Position");
-    camera_tex_coord_attrib_ = glGetAttribLocation(camera_program_, "a_TexCoord");
+    camera_world_position_attrib = glGetAttribLocation(camera_program_, "cameraPosition");
+    camera_forward_direction_attrib = glGetAttribLocation(camera_program_, "cameraForwardDirection");
+
+
 
     depth_program_ = CreateProgram(kDepthVisualizerVertexShaderFilename,
                                          kDepthVisualizerFragmentShaderFilename,
@@ -54,7 +57,7 @@ void BackgroundRenderer::InitializeGlContent(AAssetManager* asset_manager,
 }
 
 void BackgroundRenderer::Draw(const ArSession* session, const ArFrame* frame,
-                              bool debug_show_depth_map) {
+                              bool debug_show_depth_map, glm::vec3 camera_position, glm::vec3 camera_forward_direction) {
 
     static_assert(std::extent<decltype(kVertices)>::value == kNumVertices * 2,
                   "Incorrect kVertices length");
@@ -112,6 +115,9 @@ void BackgroundRenderer::Draw(const ArSession* session, const ArFrame* frame,
                               transformed_uvs_);
         glEnableVertexAttribArray(camera_position_attrib_);
         glEnableVertexAttribArray(camera_tex_coord_attrib_);
+
+        glVertexAttrib3f(camera_world_position_attrib, camera_position.x, camera_position.y, camera_position.z);
+        glVertexAttrib3f(camera_forward_direction_attrib, camera_forward_direction.x, camera_forward_direction.y, cmamera_forward_direction.z);
     }
 
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
