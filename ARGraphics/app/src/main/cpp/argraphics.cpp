@@ -123,6 +123,32 @@ void ARGraphicsApplication::OnSurfaceCreated() {
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
     }
+
+    for (int face = 0; face < 6; ++face) {
+        cube_framebuffer[face] = 0;
+        glGenFramebuffers(1, &cube_framebuffer[face]);
+        glBindFramebuffer(GL_FRAMEBUFFER, cube_framebuffer[face]);
+
+        // The texture we're going to render to
+        glGenTextures(1, &cubemap_texture_id[face]);
+
+        glBindTexture(GL_TEXTURE_2D, cubemap_texture_id[face]);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 500, 500, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+        int color_attachment;
+        switch (face) {
+            case 0: color_attachment = GL_COLOR_ATTACHMENT0; break;
+            case 1: color_attachment = GL_COLOR_ATTACHMENT1; break;
+            case 2: color_attachment = GL_COLOR_ATTACHMENT2; break;
+            case 3: color_attachment = GL_COLOR_ATTACHMENT3; break;
+            case 4: color_attachment = GL_COLOR_ATTACHMENT4; break;
+            case 5: color_attachment = GL_COLOR_ATTACHMENT5; break;
+        }
+        glFramebufferTexture(GL_FRAMEBUFFER, color_attachment, cubemap_texture_id[face], 0);
+    }
+    GLenum DrawBuffers[6] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2,
+                             GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5 };
+    glDrawBuffers(6, DrawBuffers); // "1" is the size of DrawBuffers
 }
 
 void ARGraphicsApplication::OnDisplayGeometryChanged(int display_rotation, int width, int height) {
@@ -164,6 +190,8 @@ void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
     ArCamera_getPose(ar_session_, ar_camera, cameraPose);
     ArPose_getPoseRaw(ar_session_, cameraPose, poseRaw);
 
+
+
     glm::mat4 view_mat;
     glm::mat4 projection_mat;
     ArCamera_getViewMatrix(ar_session_, ar_camera, glm::value_ptr(view_mat));
@@ -173,6 +201,9 @@ void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
 
     ArCamera_release(ar_camera);
 
+    const glm::mat4 inverted = glm::inverse(view_mat);
+    const glm::vec3 camera_forward_direction = normalize(glm::vec3(inverted[2]));
+    const glm::vec3 camera_position(poseRaw[4], poseRaw[5], poseRaw[6]);
     LOGI("Camera position: (%f, %f, %f)\n", poseRaw[4], poseRaw[5], poseRaw[6]);
 
 
@@ -187,7 +218,7 @@ void ARGraphicsApplication::OnDrawFrame(bool depthColorVisualizationEnabled,
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     background_renderer_.Draw(ar_session_, ar_frame_,
-                              false); //depth info
+                              false, camera_position, camera_forward_direction); //depth info
     glm::mat4 model_mat(0.05f);
     model_mat[3].w = 1.0;
     float color_correction[4] = {1, 1, 1, 1};
