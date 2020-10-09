@@ -85,3 +85,7 @@
 	#define Warn(fmt, ...) 	{}
 	#define Error(fmt, ...) {}
 #endif
+
+
+template<typename T>
+inline void LogType() { Log("\n\t-- TYPE: %s --\n", __PRETTY_FUNCTION__ ); }

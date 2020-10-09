@@ -1,5 +1,16 @@
 #pragma once
 
+#include "types.h"
+
+auto constexpr Pi() { return 3.141592653589793238462643383279;  }
+template <typename T> constexpr auto ToDegrees(const T& v) { return v * (180.f/Pi()); }
+template <typename T> constexpr auto ToRadians(const T& v) { return v * (Pi()/180.f); }
+
+inline float FastCos(float r) { return __builtin_cosf(r); }
+inline float FastSin(float r) { return __builtin_sinf(r); }
+inline float FastTan(float r) { return __builtin_tanf(r); }
+inline float Infinity() { return __builtin_inff(); }
+
 template<typename T>
 constexpr auto Min(const T& n) { return n; }
 
@@ -81,6 +92,43 @@ inline float FastSqrt(float n) { return (float&)( ((unsigned int&)n+= (127<<23))
 inline float FastSqrtSafe(float n) { return n ? FastSqrt(n) : 0; }
 
 inline float FastAbs(float n) { return (float&)( (int&)n&= (~(1<<31)) ); }
+inline int   FastAbs(int n) { return __builtin_abs(n); }
+
+inline float FastPow10(float n) {
+    // Note this is: 10^n = 2^(log_2(10)*n)
+    // 60801 is fine tunning parameter for lowest rounding error taken from "A Fast, Compact Approximation of the Exponential Function" (scaled by 8 for double->float conversion)
+    // Note exponent bit shifting and offset is done in floating point to avoid zeroing lower 23 bits in int
+    int tmp = n*3.32192809489f*(1<<23) + ((127<<23) - 8*60801);
+    return (float&)tmp;
+}
+
+inline float FastPow10(int n) {
+    
+    //Note: float exponent is in range [-126, 127] so floating point is in range [2*2^-126, 2*2^127] = [2.35e-38, 3.4e38]
+    //      instead of doing any math we just lookup the answer in a 79 entry table
+    static float pow10Table[] = {
+        0.f,
+        1e-38f, 1e-37f, 1e-36f, 1e-35f, 1e-34f, 1e-33f, 1e-32f, 1e-31f, 1e-30f, 1e-29f,
+        1e-28f, 1e-27f, 1e-26f, 1e-25f, 1e-24f, 1e-23f, 1e-22f, 1e-21f, 1e-20f, 1e-19f,
+        1e-18f, 1e-17f, 1e-16f, 1e-15f, 1e-14f, 1e-13f, 1e-12f, 1e-11f, 1e-10f, 1e-09f,
+        1e-08f, 1e-07f, 1e-06f, 1e-05f, 1e-04f, 1e-03f, 1e-02f, 1e-01f, 1e+00f, 1e+01f,
+        1e+02f, 1e+03f, 1e+04f, 1e+05f, 1e+06f, 1e+07f, 1e+08f, 1e+09f, 1e+10f, 1e+11f,
+        1e+12f, 1e+13f, 1e+14f, 1e+15f, 1e+16f, 1e+17f, 1e+18f, 1e+19f, 1e+20f, 1e+21f,
+        1e+22f, 1e+23f, 1e+24f, 1e+25f, 1e+26f, 1e+27f, 1e+28f, 1e+29f, 1e+30f, 1e+31f,
+        1e+32f, 1e+33f, 1e+34f, 1e+35f, 1e+36f, 1e+37f, 1e+38f,
+        Infinity()
+    };
+    
+    //convert n to clamped index in pow10Table
+    //Note: if(Abs(n) <= 38) n+=39; else { if(n < 0) n = 0; else n = 78; }
+    
+    //Warn: if right shift is not arithmetic and instead fills upper bits with 0, replace s with ((n>>31)^1)*78
+    int s = (n>>31)&78; // 78 if n is negative, 0 otherwise
+    n+= 39;
+    n-= (((38+39) - FastAbs(n))>>31)*(n - s);
+    
+    return pow10Table[n];
+}
 
 constexpr int Round(float n) { return int(n + .5f); }
 constexpr int IPart(float n) { return int(n);}
@@ -153,6 +201,120 @@ inline N_t BinarySearchUpper(const E_t& element, const D_t* data, N_t size,
 
 constexpr unsigned int RGBA(uint r, uint g, uint b, uint a = 255) { return (r << 24) | (g << 16) | (b << 8) | a; }
 constexpr unsigned int RGBA(float r, float g, float b, float a = 1.f) { return (Round(r*255.f) << 24) | (Round(g*255.f) << 16) | (Round(b*255.f) << 8) | Round(a*255.f); }
+
+constexpr char LowerCase(char c) { return c | (1<<5);}
+constexpr char UpperCase(char c) { return c & (~(1<<5));}
+
+inline char* SkipLine(char* str) {
+    while(*str && *str++ != '\n');
+    return str;
+}
+
+inline char* SkipWhiteSpace(char* str) {
+    
+    for(char c; (c = *str); ++str) {
+        switch(c) {
+            case ' ':
+            case '\t':
+			case '\n':
+			case '\r':
+			case '\f': break;
+            
+            default: goto End;
+        }
+    }
+
+    End:
+    return str;
+}
+
+inline auto StrSign(char* str, char** strEnd = nullptr) {
+	
+    switch(*str) {
+        case '-': {
+            if(strEnd) *strEnd = str+1;
+            return -1;
+        }
+        
+        case '+': {
+            if(strEnd) *strEnd = str+1;
+            return 1;
+        }
+
+        //if there's no sign number is positive
+        default: {
+            if(strEnd) *strEnd = str;
+            return 1;
+        }
+    }
+}
+
+template<typename T>
+inline T StrDigits(char* str, T maxValue, char** strEnd = nullptr) {
+	
+	//skip over leading 0's
+	while(*str == '0') ++str;
+	
+	//grab digits
+	T digits = 0;
+	for(char c; InRange((c = *str), '0', '9'); ++str) {
+		
+		//Note: we check in separate variable to prevent overflow
+		T newDigits = 10*digits + (c - '0');
+		if(newDigits > maxValue) break;
+		
+		digits = newDigits;
+	}
+	
+	if(strEnd) *strEnd = str;
+	return digits;
+}
+
+inline int32 StrToInt(char* str, char** strEnd = nullptr) {
+	str = SkipWhiteSpace(str);
+	int sign = StrSign(str, &str);
+	return sign*StrDigits(str, MaxInt32(), strEnd);
+}
+
+inline float StrToFloat(char* str, char** strEnd = nullptr) {
+ 
+	str = SkipWhiteSpace(str);
+	int sign = StrSign(str, &str),
+		digits = StrDigits(str, 0xFFFFFF, &str); //get leading digits
+	
+	//get number of digits to decimal point
+	char* tmpStr = str;
+	while(InRange(*str, '0', '9')) ++str;
+	int power = str - tmpStr;
+	
+	//check for decimal point
+	if(*str == '.') {
+		++str;
+	
+		//add fractional sigfigs
+		tmpStr = str;
+		for(char c; InRange((c = *str), '0', '9') && digits < 0xFFFFFF; ++str) {
+			digits = 10*digits + (c - '0');
+		}
+		power-= str - tmpStr;
+		
+		//ignore remaining digits
+		while(InRange(*str, '0', '9')) ++str;
+	}
+
+	//check for E
+	if(LowerCase(*str) == 'e') power+= StrToInt(++str, &str);
+	
+	if(strEnd) *strEnd = str;
+	return (sign*digits)*FastPow10(power);
+}
+
+template<typename T> constexpr bool LargerThan8Bit(const T& n)  { return n & (T)(~0xFF); }
+template<typename T> constexpr bool LargerThan16Bit(const T& n) { return n & (T)(~0xFFFF); }
+template<typename T> constexpr bool LargerThan32Bit(const T& n) { return n & (T)(~0xFFFFFFFF); }
+
+
+#define CompileTimePrintType(x) CompileTimePrintType_<__COUNTER__>(x)
 
 //template <typename T>
 //inline unsigned char IthBitPosition(const T& n, unsigned char i) {

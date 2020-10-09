@@ -40,5 +40,14 @@ template<typename T> constexpr auto TB(T x) { return GB(x)*1024; }
 template<class rType, class ... paramTypes>
 using FuncPtr = rType (*)(paramTypes...);
 
-#define CrtGlobalInitFunc 	__attribute((constructor(102))) void
-#define CrtGlobalPreInitFunc __attribute__((constructor(101))) void
+
+//Note: '__attribute__((constructor(X)))' place function pointers to function call in the clang equivalent
+//      '.CRT$XCU' section in the order of increasing priority
+//Note: test funcs get executed before our main program init funcs
+#define CrtGlobalPreTestFunc    __attribute__((constructor(101))) void
+#define CrtGlobalTestFunc 	    __attribute((constructor(102))) void
+#define CrtGlobalPostTestFunc   __attribute((constructor(103))) void
+
+#define CrtGlobalPreInitFunc    __attribute__((constructor(104))) void
+#define CrtGlobalInitFunc 	    __attribute((constructor(105))) void
+#define CrtGlobalPostInitFunc   __attribute((constructor(106))) void

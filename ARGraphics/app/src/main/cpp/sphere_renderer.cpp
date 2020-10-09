@@ -138,52 +138,61 @@
         }
 
         glUseProgram(shader_program_);
+//
+//        glActiveTexture(GL_TEXTURE0);
+//        glUniform1i(texture_uniform_, 0);
+//        glBindTexture(GL_TEXTURE_2D, texture_id_);
+//
+//        glm::mat4 mvp_mat = projection_mat * view_mat * model_mat;
+//        glm::mat4 mv_mat = view_mat * model_mat;
+//        glm::vec4 view_light_direction = glm::normalize(mv_mat * kLightDirection);
+//
+//        glUniform4f(lighting_param_uniform_, view_light_direction[0],
+//                    view_light_direction[1], view_light_direction[2], 1.f);
+//        glUniform4f(material_param_uniform_, ambient_, diffuse_, specular_,
+//                    specular_power_);
+//        glUniform4fv(color_correction_param_uniform_, 1, color_correction4);
+//        glUniform4fv(color_uniform_, 1, object_color4);
+//
+//        glUniformMatrix4fv(mvp_mat_uniform_, 1, GL_FALSE, glm::value_ptr(mvp_mat));
+//        glUniformMatrix4fv(mv_mat_uniform_, 1, GL_FALSE, glm::value_ptr(mv_mat));
+//
+//        // Occlusion parameters.
+//        if (use_depth_for_occlusion_) {
+//            // Attach the depth texture.
+//            glActiveTexture(GL_TEXTURE1);
+//            glBindTexture(GL_TEXTURE_2D, depth_texture_id_);
+//            glUniform1i(depth_texture_uniform_, 1);
+//
+//            // Set the depth texture uv transform.
+//            glUniformMatrix3fv(depth_uv_transform_uniform_, 1, GL_FALSE,
+//                               glm::value_ptr(uv_transform_));
+//            glUniform1f(depth_aspect_ratio_uniform_, depth_aspect_ratio_);
+//        }
+//
+//        // Note: for simplicity, we are uploading the model each time we draw it.  A
+//        // real application should use vertex buffers to upload the geometry once.
 
-        glActiveTexture(GL_TEXTURE0);
-        glUniform1i(texture_uniform_, 0);
-        glBindTexture(GL_TEXTURE_2D, texture_id_);
 
-        glm::mat4 mvp_mat = projection_mat * view_mat * model_mat;
-        glm::mat4 mv_mat = view_mat * model_mat;
-        glm::vec4 view_light_direction = glm::normalize(mv_mat * kLightDirection);
-
-        glUniform4f(lighting_param_uniform_, view_light_direction[0],
-                    view_light_direction[1], view_light_direction[2], 1.f);
-        glUniform4f(material_param_uniform_, ambient_, diffuse_, specular_,
-                    specular_power_);
-        glUniform4fv(color_correction_param_uniform_, 1, color_correction4);
-        glUniform4fv(color_uniform_, 1, object_color4);
-
-        glUniformMatrix4fv(mvp_mat_uniform_, 1, GL_FALSE, glm::value_ptr(mvp_mat));
-        glUniformMatrix4fv(mv_mat_uniform_, 1, GL_FALSE, glm::value_ptr(mv_mat));
-
-        // Occlusion parameters.
-        if (use_depth_for_occlusion_) {
-            // Attach the depth texture.
-            glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, depth_texture_id_);
-            glUniform1i(depth_texture_uniform_, 1);
-
-            // Set the depth texture uv transform.
-            glUniformMatrix3fv(depth_uv_transform_uniform_, 1, GL_FALSE,
-                               glm::value_ptr(uv_transform_));
-            glUniform1f(depth_aspect_ratio_uniform_, depth_aspect_ratio_);
-        }
-
-        // Note: for simplicity, we are uploading the model each time we draw it.  A
-        // real application should use vertex buffers to upload the geometry once.
         glEnableVertexAttribArray(position_attrib_);
         glVertexAttribPointer(position_attrib_, 3, GL_FLOAT, GL_FALSE, 0,
                               vertices_.data());
 //
+<<<<<<< Updated upstream
         glEnableVertexAttribArray(normal_attrib_);
         glVertexAttribPointer(normal_attrib_, 3, GL_FLOAT, GL_FALSE, 0,
                               normals_.data());
+=======
+//        glEnableVertexAttribArray(normal_attrib_);
+//        glVertexAttribPointer(normal_attrib_, 3, GL_FLOAT, GL_FALSE, 0,
+//                              normals_.data());
+>>>>>>> Stashed changes
 //
 //        glEnableVertexAttribArray(tex_coord_attrib_);
 //        glVertexAttribPointer(tex_coord_attrib_, 2, GL_FLOAT, GL_FALSE, 0,
 //                              uvs_.data());
 
+<<<<<<< Updated upstream
         glDepthMask(GL_TRUE);
         glEnable(GL_BLEND);
 
@@ -191,15 +200,24 @@
         // (https://developer.android.com/reference/android/graphics/BitmapFactory.Options#inPremultiplied),
         // so we use the premultiplied alpha blend factors.
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+=======
+//        glDepthMask(GL_TRUE);
+//        glEnable(GL_BLEND);
+
+//        // Textures are loaded with premultiplied alpha
+//        // (https://developer.android.com/reference/android/graphics/BitmapFactory.Options#inPremultiplied),
+//        // so we use the premultiplied alpha blend factors.
+//        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+>>>>>>> Stashed changes
 
         glDrawElements(GL_TRIANGLES, indices_.size(), GL_UNSIGNED_SHORT,
                        indices_.data());
 
-        glDisable(GL_BLEND);
+//        glDisable(GL_BLEND);
         glDisableVertexAttribArray(position_attrib_);
 //        glDisableVertexAttribArray(tex_coord_attrib_);
         glDisableVertexAttribArray(normal_attrib_);
 
-        glUseProgram(0);
+//        glUseProgram(0);
         CheckGlError("obj_renderer::Draw()");
     }

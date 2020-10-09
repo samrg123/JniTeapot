@@ -51,6 +51,16 @@
 #define EglAssertTrue(val, errorMsg, ...) GlContextAssertValue_("EglAssertTrue", eglGetError, val, EGL_TRUE, errorMsg, ##__VA_ARGS__)
 #define GlAssertTrue(val,  errorMsg, ...) GlContextAssertValue_("GlAssertTrue",  glGetError,  val, GL_TRUE,  errorMsg, ##__VA_ARGS__)
 
+template<typename T> constexpr GLenum GlType();
+
+template<> constexpr GLenum GlType<int8>()  { return GL_BYTE; }
+template<> constexpr GLenum GlType<int16>() { return GL_SHORT; }
+template<> constexpr GLenum GlType<int32>() { return GL_INT; }
+
+template<> constexpr GLenum GlType<uint8>()  { return GL_UNSIGNED_BYTE; }
+template<> constexpr GLenum GlType<uint16>() { return GL_UNSIGNED_SHORT; }
+template<> constexpr GLenum GlType<uint32>() { return GL_UNSIGNED_INT; }
+
 class GlContext {
     public:
         static constexpr GLuint kGlesMajorVersion = 3,
@@ -63,25 +73,8 @@ class GlContext {
         
         static constexpr EGLint kSwapInterval = 0; // 0 for no-vsync, 1-for vsync, n-for vsync buffing
         
-        
-        //TODO: do we even want a render queue like this? maybe just have people handle things
-        //      themselves like GLText?
-        template<typename T>
-        using RenderCommand = FuncPtr<void, T*>;
-        
-        static constexpr auto kMaxRenderQueueItems = 1024;
-        
     private:
-        
-        template<typename T>
-        struct RenderQueue {
-            RenderCommand<T> command;
-            T* data;
-        };
-        
-        RenderQueue<void> renderQueue[kMaxRenderQueueItems];
-		uint32 renderQueuePosition = 0;
-		
+    
 		ANativeWindow* nativeWindow = nullptr;
 
         EGLDisplay eglDisplay = EGL_NO_DISPLAY;
@@ -328,27 +321,6 @@ class GlContext {
                 return glProgram;
             }
     
-			template<typename T>
-            inline void PushRenderQueue(RenderCommand<T> cmd, T* data = nullptr) {
-				RUNTIME_ASSERT(renderQueuePosition < kMaxRenderQueueItems-1, "Exceeded maximum number of Render commands: %d", kMaxRenderQueueItems);
-				renderQueue[renderQueuePosition++] = RenderQueue<void>{ .command = (RenderCommand<void>)cmd, .data = data };
-			}
-
-            //TODO: create GENERIC!!! VBO
-            //TODO: create VBI's
-            //TODO: create FBO pipeline: vbo queue -> render with their included shaders & optional VBIs to backBuffer quad texture
-            //      - VBOs render pipeline takes in a camera to render to!
-            //      - Camera system for handling MVP matrix transforms
-    
-            //TODO: create FBO
-            //TODO: create COMPOSITE pipeline: fbo queue -> render with their included shaders (or none) -> stencil regions & z-ordering
-    
-            //TODO: have text render unit quad vertices for each character
-            //      - write shader that positions text on
-            //      - GlText is a type of renderable VBO - doesn't have world matrix though (default camera?)
-            //      - GlText gets rendered to a hub FBO - can still add post processing like shake, and distortion!
-    
-    
             static inline void VertexAttribPointerArray(GLuint attribIndex, GLuint dataType, uint32 bytes, const void* pointer) {
     
                 //Note: gl spec makes all attributes aligned to 4 bytes
@@ -366,19 +338,6 @@ class GlContext {
                     pointer = ByteOffset(pointer, stride);
                 }
             }
-            
-            
-            inline
-            void Draw() {
-				// Note: using function commands that call into opengl instead of an enumeration because we want
-				//       students to program the opengl calls
-				for(uint32 i = 0; i < renderQueuePosition; ++i) {
-				    RenderQueue<void>& queue = renderQueue[i];
-					queue.command(queue.data);
-				}
-				
-				renderQueuePosition = 0;
-			}
             
             // Returns false if context was recreated
             bool SwapBuffers() {

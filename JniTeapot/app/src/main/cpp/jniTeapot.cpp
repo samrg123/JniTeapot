@@ -1,6 +1,8 @@
 #include <jni.h>
 #include <pthread.h>
 
+#include "tests.h"
+
 #include "log.h"
 #include "panic.h"
 #include "customAssert.h"
@@ -11,6 +13,8 @@
 #include "Timer.h"
 
 #include "Memory.h"
+
+#include "GlObject.h"
 
 #include <android/native_window_jni.h>
 
@@ -57,7 +61,7 @@ void DrawStrings(GlText* glText, float renderTime, float frameTime) {
         
         //remove the stale frame from the average
         //TODO: think of way of mitigating floating point error - store cumulative time in the last frame and set that
-        //      YOU CAN TEST THE FLOATING ROUNDING ERROR by comenting out loopTimer.SleepLapMs in for loop and watching renderTime decay
+        //      YOU CAN TEST THE FLOATING ROUNDING ERROR by commenting out loopTimer.SleepLapMs in for loop and watching renderTime decay
         cumulativeInfo.renderTime-= frameInfo[frameIndex].renderTime;
         cumulativeInfo.frameTime-=  frameInfo[frameIndex].frameTime;
         cumulativeInfo.realFPS-=    frameInfo[frameIndex].realFPS;
@@ -118,16 +122,33 @@ void* activityLoop(void* nativeWindow) {
         .renderStringAttrib = { .rgba = RGBA(1.f, 0, 0) },
     });
     
+    
     InitGlesState();
-
-    for(Timer loopTimer(true), fpsTimer(true) ;; loopTimer.SleepLapMs(kTargetMsFrameTime) ) {
+    
+    //TODO: THIS
+    GlObject sphere("meshes/sphere.obj", GlTransform(Vec3(.2f, .2f, 0.f), Vec3(.2f, 1.f, 1.f)));
+    //GlObject sphere("meshes/triangle.obj");
+    constexpr Vec3 omega = ToRadians(Vec3(10.f, 5.f, 7.f));
+    
+    Timer fpsTimer(true),
+          physicsTimer(true);
+    
+    for(Timer loopTimer(true) ;; loopTimer.SleepLapMs(kTargetMsFrameTime) ) {
 
         // TODO: POLL ANDROID MESSAGE LOOP
-
-        // TODO: render TEAPOT!
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        //glContext.Draw();
+    
+        float secElapsed = physicsTimer.LapSec();
         
+        //Update sphere
+        {
+            GlTransform transform = sphere.GetTransform();
+            transform.Rotate(omega*secElapsed);
+            sphere.SetTransform(transform);
+        }
+
+        sphere.Draw();
+
         DrawStrings(&glText, loopTimer.ElapsedSec(), fpsTimer.LapSec());
         
         // present back buffer
@@ -142,8 +163,7 @@ extern "C" {
 
     void JFunc(App, NativeOnSurfaceCreated)(JNIEnv* env, jclass clazz,
                                             jobject surface, jobject jAssetManager) {
-        Log("Hello World from JNI!");
-	    
+        
         RUNTIME_ASSERT(surface, "Surface Is NULL!");
 
         FileManager::Init(env, jAssetManager);

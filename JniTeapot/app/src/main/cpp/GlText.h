@@ -7,8 +7,8 @@
 #include "GlContext.h"
 #include "types.h"
 #include "customAssert.h"
+#include "FileManager.h"
 
-#include "glPrimitives.h"
 #include "vec.h"
 #include "Rectangle.h"
 
@@ -18,7 +18,7 @@ class GlText {
 
         static constexpr Vec2<float> kDefaultStringAttribScale = Vec2(1.f, 1.f);
         static constexpr uint32 kDefaultStringAttribRGBA = RGBA(0u, 0, 0);
-        static constexpr float kDefaultStringAttribDepth = 0.f;
+        static constexpr float kDefaultStringAttribDepth = -1.f;
         
         struct alignas(8) StringAttrib {
             Vec2<float> scale = kDefaultStringAttribScale;
@@ -192,7 +192,7 @@ class GlText {
         GlyphData* offsetGlyphData;
         StringAttrib* stringAttribData;
         
-        GLint maxTextureSize, maxSharedBlockSize; //TODO: set this!
+        GLint maxTextureSize, maxSharedBlockSize;
         GLuint glProgram, fontSampler;
         
         union {
@@ -565,7 +565,7 @@ class GlText {
         
         GlText(GlContext* context, const char* assetPath, int fontIndex = 0): glTextures{}, pushedBytes{0}, stringAttribBitIndex{0}, uploadStringAttribBitIndex{0} {
             
-            memoryArena = Memory::CreateArena();
+            //load font into memory
             fontAssetBuffer = FileManager::OpenAsset(assetPath, &memoryArena);
     
             baseRegion = memoryArena.CreateRegion();
@@ -577,15 +577,18 @@ class GlText {
                            "Failed to load font face { ftError: %d, assetPath: %s, fontIndex: %d }",
                            ftError, assetPath, fontIndex);
             
+            
             glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
             RUNTIME_ASSERT(maxTextureSize >= kMinTextureSize,
                            "Max texture size: %d, is smaller than min texture size: %d",
                            maxTextureSize, kMinTextureSize);
     
+            glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &maxSharedBlockSize);
+    
             glProgram = GlContext::CreateGlProgram(kVertexShaderSource, kFragmentShaderSource);
         
-            //NOTE: DEBUGGING
-            GlContext::PrintVariables(glProgram);
+            ////NOTE: DEBUGGING
+            //GlContext::PrintVariables(glProgram);
 
             //Note: must be called after we compile program
             UpdateScreenSize(context->Width(), context->Height());
@@ -636,22 +639,25 @@ class GlText {
         inline
         ~GlText() {
             FT_Done_Face(face); //Warn: Must be called before we free memory - uses font stored in memoryArena
-            Memory::FreeArena(&memoryArena);
-    
-            glDeleteVertexArrays(1, &vao);
+            
             glDeleteTextures(ArrayCount(glTextures), glTextures);
             glDeleteBuffers(ArrayCount(glBuffers), glBuffers);
+    
+            // TODO: make this static so that they persist across the whole program
+            //      and initilize them with some GlText::Init call
+            glDeleteProgram(glProgram);
+            glDeleteVertexArrays(1, &vao);
+            glDeleteSamplers(1, &fontSampler);
         }
 
         // Note: vertexAttributeBuffer grows to fit largest draw call so we don't have to keep allocating a new one each draw call
         //       this can be called with numChars=0 to purge the buffer from memory and recreate a new one or preallocate a large buffer up front
         //       to prevent dynamically resizing
-        void AllocateBuffer(uint32 numChars) {
-            BindAndAllocateVertexAttributeBufferBytes(numChars * sizeof(vertexAttributeBuffer)); }
+        void AllocateBuffer(uint32 numChars) { BindAndAllocateVertexAttributeBufferBytes(numChars * sizeof(vertexAttributeBuffer)); }
 
         struct RenderParams {
             StringAttrib renderStringAttrib = kDefaultRenderStringAttrib;
-            uint32 extraColorSize = kDefaultExtraStringAttrib;
+            uint32 extraStringAttrib = kDefaultExtraStringAttrib;
             uint16 targetGlyphSize = kDefaultGlyphSize;
     
             uchar startChar   = kDefaultStartChar,
@@ -713,15 +719,15 @@ class GlText {
                            "unknownChar: '%c'[%d] must be between startChar: '%c'[%d] and endChar: '%c'[%d] { face: %s } ",
                            unknownChar, unknownChar, startChar,startChar, endChar,endChar, face->family_name);
     
-            stringAttribSize = params.extraColorSize + 1;
+            stringAttribSize = params.extraStringAttrib + 1;
             RUNTIME_ASSERT(stringAttribSize <= kMaxStringAttribSize,
                            "stringAttribSize exceeds maximum { stringAttribSize: %u, kMaxStringAttribSize: %u }",
                            stringAttribSize, kMaxStringAttribSize);
     
-            // TODO: make sure this fits in Shared block with glyphData NOT texture
-            //RUNTIME_ASSERT(renderParams.stringAttribSize < maxTextureSize,
-            //               "stringAttribSize exceeds maximum texture size { stringAttribMaxIndex: %u, stringAttribSize: %u, maxTextureSize: %u }",
-            //               stringAttribMaxIndex, stringAttribSize, maxTextureSize);
+            uint32 stringAttribBytes = sizeof(StringAttrib)*stringAttribSize;
+            RUNTIME_ASSERT(stringAttribBytes < maxSharedBlockSize,
+                           "stringAttribBytes exceeds maxSharedBlockSize { stringAttribBytes: %u, maxSharedBlockSize: %u }",
+                           stringAttribBytes, maxSharedBlockSize);
             
     
             // prepare fixed memory

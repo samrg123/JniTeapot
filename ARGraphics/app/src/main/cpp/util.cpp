@@ -11,6 +11,7 @@ void CheckGlError(const char* operation) {
         anyError = true;
     }
     if (anyError) {
+        exit(1);
 //        abort();
     }
 }
