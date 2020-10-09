@@ -15,10 +15,16 @@
 
 attribute vec4 a_Position;
 attribute vec2 a_TexCoord;
+attribute vec3 cameraPosition;
+attribute vec3 cameraForwardDirection;
 
 varying vec2 v_TexCoord;
+varying vec3 v_cameraPosition;
+varying vec3 v_cameraForwardDirection;
 
 void main() {
    gl_Position = a_Position;
    v_TexCoord = a_TexCoord;
+   v_cameraPosition = cameraPosition;
+   v_cameraForwardDirection = cameraForwardDirection;
 }
