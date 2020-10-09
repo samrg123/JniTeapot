@@ -10,6 +10,7 @@
 #include "Memory.h"
 
 class FileManager {
+
     private:
         static inline AAssetManager* assetManager;
     
@@ -20,14 +21,15 @@ class FileManager {
                 friend FileManager;
                 
                 static inline
-                uint32 AllocSize(uint32 bytes) {
-                    return sizeof(AssetBuffer)+bytes - 1; //Note: -1 byte for data placeholder
-                }
+                uint32 AllocSize(uint32 bytes) { return sizeof(AssetBuffer)+bytes; }
                 
             public:
                 uint64 size;
-                uint8 data[1];
+                uint8 data[1]; //Note: data is null terminated
         };
+        
+        static constexpr uint32 kMaxAssetBytes = MaxUint32() - sizeof(AssetBuffer);
+        
         
         static void Init(JNIEnv* env, jobject jAssetManager) {
             RUNTIME_ASSERT(!assetManager, "AssetManager already Initialized { requested jAssetManger: %p, assetManager: %p }", jAssetManager, assetManager);
@@ -44,11 +46,14 @@ class FileManager {
             RUNTIME_ASSERT(asset, "Failed to open asset { assetManger: %p, assetPath: %s }", assetManager, assetPath);
             
             off_t bytes= AAsset_getLength(asset);
+            RUNTIME_ASSERT(bytes <= kMaxAssetBytes, "Asset exceeds maximum size { assetPath: %s, bytes: %lu, kMaxAssetBytes: u% }",
+                           assetPath, bytes, kMaxAssetBytes);
+            
             AssetBuffer* buffer = (AssetBuffer*)arena->PushBytes(AssetBuffer::AllocSize(bytes), false);
             buffer->size = bytes;
             
             // Keep reading asset until everything is full
-            void* dataEnd = ByteOffset(buffer->data, bytes);
+            uint8* dataEnd = (uint8*)ByteOffset(buffer->data, bytes);
             while(bytes > 0) {
                
                 int32 readSize = AAsset_read(asset, ByteOffset(dataEnd, -bytes), bytes);
@@ -61,6 +66,7 @@ class FileManager {
             }
             AAsset_close(asset);
             
+            *dataEnd = 0; //null terminate data - Note: 'AssetBuffer::AllocSize' reserves 1 extra byte for trailing null
             return buffer;
         }
         

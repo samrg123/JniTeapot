@@ -7,6 +7,7 @@
 #include "types.h"
 #include "util.h"
 #include "customAssert.h"
+#include "panic.h"
 
 #define ENABLE_MEMORY_STATS 1
 
@@ -52,7 +53,7 @@ class Memory {
 			Block* block;
 			uint32 position;
 		};
-
+		
         class Arena {
         	private:
 	            friend Memory;
@@ -66,15 +67,6 @@ class Memory {
 	                uint32 arenaUnusedBytes; //bytes at end of blocks - includes reserve block
 	                uint arenaBlockCount;    //includes reserve block
 				#endif
-				
-				Arena(Block* currentBlock): currentBlock(currentBlock), reservedBlock(nullptr) {
-                    #if ENABLE_MEMORY_STATS
-                        arenaBytes = 0;
-                        arenaPadBytes = 0;
-                        arenaUnusedBytes = 0;
-                        arenaBlockCount = 0;
-                    #endif
-				}
 				
 		        inline Block* CreateBlock(uint32 minSize, Block* previousBlock) {
 			        uint32 blockBytes = Max(sizeof(Block) + minSize, kMinBlockSize);
@@ -189,10 +181,60 @@ class Memory {
 						
 					return tPos;
 		        }
+		
+				//Note: calls func(void* chunk, uint32 bytes) for each chunk in the arena while 'chunk != stopBlock'
+		        template<typename T>
+		    	inline void ForEachBlockExclusive(const Block* stopBlock, const T& func) const {
+					Block* block = currentBlock;
+					while(block != stopBlock) {
+						func(ByteOffset(block, sizeof(Block)), block->position - sizeof(Block));
+						block = block->previousBlock;
+					}
+		        }
+		        
+		        template<typename T>
+				static T DefaultTranslator(const void* element) { return *(const T*)element; }
 				
+		
+				// translates chunk with 'translator(void*)' and copies over results to buffer
+				//Note: this is designed to be used inside 'ForEach' which iterates chunks in reverse
+				// 		so instead of passing in the base buffer address and iterating forward we pass
+				// 		in the end buffer address and iterate backwards to preserve chunk ordering
+		        template<typename TranslatorFuncT>
+		        inline void TranslateChunkToBuffer(const TranslatorFuncT& translator, void*& bufferEnd,
+												   void* chunk, uint32 chunkBytes,
+												   uint32 bufferStride, uint32 chunkStride) const {
+					
+					using T = decltype(translator(nullptr));
+		        	
+		        	//position bufferData at start of chunk
+					void* bufferDataEnd = bufferEnd;
+					void* bufferData = ByteOffset(bufferDataEnd, -bufferStride*(chunkBytes/chunkStride));
+					
+					//set next tail at start of this chunk
+					bufferEnd = bufferData;
+					
+					//copy chunk into the buffer
+					while(bufferData < bufferDataEnd) {
+						*(T*)bufferData = translator(chunk);
+						
+						bufferData = ByteOffset(bufferData, bufferStride);
+						chunk = ByteOffset(chunk, chunkStride);
+					}
+		        }
+		        
         	public:
-
-                Arena() = default;
+		
+				inline Arena(uint32 prealocatedBytes = 0): reservedBlock(nullptr) {
+                    #if ENABLE_MEMORY_STATS
+                        arenaBytes = 0;
+                        arenaPadBytes = 0;
+                        arenaUnusedBytes = 0;
+                        arenaBlockCount = 0;
+                    #endif
+		            
+					currentBlock = prealocatedBytes ? CreateBlock(prealocatedBytes, &emptyBlock) : &emptyBlock;
+				}
 	    		
 				void* PushBytes(size_t bytes, bool zeroMemory = false, uint8 alignment = 1) {
 					RUNTIME_ASSERT(IsPow2Safe(alignment), "Alignment must be a power of 2. { alignment: %d }", alignment);
@@ -225,7 +267,7 @@ class Memory {
 				}
         		
 		        template<class T>
-		        T* PushStruct(bool zeroMemory = false, uint8 alignment = 1) { return PushBytes(sizeof(T), zeroMemory, alignment); }
+		        T* PushStruct(bool zeroMemory = false, uint8 alignment = 1) { return (T*)PushBytes(sizeof(T), zeroMemory, alignment); }
 
                 inline void Reserve(uint32 bytes) {
                 
@@ -299,18 +341,66 @@ class Memory {
 			        
 					currentBlock->position = region.position;
 		        }
-        
-        
+		        
+		        //Note: calls func(void* chunk, uint32 bytes) for each chunk in the arena
+				//Warn: ForEach iterates blocks in reverse order from when they were pushed to the region
+				template<typename T>
+				inline void ForEach(const T& func) const { ForEachBlockExclusive(&emptyBlock, func); }
+		
+				//Note: calls func(void* chunk, uint32 bytes) for each chunk in the region
+		        //Warn: ForEachRegion iterates blocks in reverse order from when they were pushed to the region
                 template<typename T>
-                inline void ForEachRegion(const Region& region, const T& func) {
-
-                    Block* block = currentBlock;
-                    while(block != region.block) {
-                        func(ByteOffset(block, sizeof(Block)), block->position - sizeof(Block));
-                        block = block->previousBlock;
-                    }
-                    
-                    func(ByteOffset(region.block, region.position), block->position - region.position);
+                inline void ForEachRegion(const Region& region, const T& func) const {
+					ForEachBlockExclusive(region.block, func);
+					func(ByteOffset(region.block, region.position), region.block->position - region.position);
+				}
+				
+				//Note: Copies whole arena of type 'T' to contiguous buffer preserving the order in which elements were pushed
+				template<typename T>
+				inline void CopyToBuffer(uint32 numElements, void* buffer,
+										 uint32 bufferStride = sizeof(T), uint32 arenaStride = sizeof(T)) const {
+					
+					void* bufferEnd = ByteOffset(buffer, bufferStride*numElements);
+		        	ForEach([&](void* chunk, uint32 bytes) {
+						TranslateChunkToBuffer(DefaultTranslator<T>, bufferEnd, chunk, bytes, bufferStride, arenaStride);
+		        	});
+		        }
+		
+				//Note: Copies Region of type 'T' to contiguous buffer preserving the order in which elements were pushed
+				template<typename T>
+				inline void CopyRegionToBuffer(const Region& region, uint32 numElements, void* buffer,
+											   uint32 bufferStride = sizeof(T), uint32 regionStride = sizeof(T)) const {
+					
+					void* bufferEnd = ByteOffset(buffer, bufferStride*numElements);
+					ForEachRegion(region, [&](void* chunk, uint32 bytes) {
+						TranslateChunkToBuffer(DefaultTranslator<T>, bufferEnd, chunk, bytes, bufferStride, regionStride);
+					});
+				}
+		
+				//Note: Copies arena to contiguous buffer of type 'T' preserving the order in which elements were pushed
+				// 		by translating each element with 'translator(void* element)->T'
+				template<typename TranslatorFuncT>
+				inline void TranslateToBuffer(uint32 numElements, void* buffer, uint32 arenaStride,
+											  const TranslatorFuncT& translator,
+											  uint32 bufferStride = sizeof(decltype(translator(nullptr)))) const {
+					
+					void* bufferEnd = ByteOffset(buffer, bufferStride*numElements);
+					ForEach([&](void* chunk, uint32 bytes) {
+						TranslateChunkToBuffer(translator, bufferEnd, chunk, bytes, bufferStride, arenaStride);
+					});
+		        }
+		
+				//Note: Copies Region to contiguous buffer of type 'T' preserving the order in which elements were pushed
+				// 		by translating each element with 'translator(void* element)->T'
+				template<typename TranslatorFuncT>
+				inline void TranslateRegionToBuffer(const Region& region, uint32 numElements, void* buffer, uint32 regionStride,
+													const TranslatorFuncT& translator,
+													uint32 bufferStride = sizeof(decltype(translator(nullptr)))) const {
+					
+					void* bufferEnd = ByteOffset(buffer, bufferStride*numElements);
+					ForEachRegion(region, [&](void* chunk, uint32 bytes) {
+						TranslateChunkToBuffer(translator, bufferEnd, chunk, bytes, bufferStride, regionStride);
+					});
 				}
 		        
 		        inline void Pack() {
@@ -325,20 +415,14 @@ class Memory {
 				        reservedBlock = nullptr;
 			        }
 		        }
+		
+				~Arena() {
+		        	Region region = {};
+		        	region.block = (Block*)&emptyBlock;
+					FreeRegion(region);
+					Pack();
+				}
         };
 
-        static inline Arena temporaryArena = Arena(&emptyBlock);
-        
-        static inline Arena CreateArena(uint32 prealocatedBytes = 0) {
-            Arena arena = {};
-            arena.currentBlock = prealocatedBytes ? arena.CreateBlock(prealocatedBytes, &emptyBlock) : &emptyBlock;
-            return arena;
-        }
-
-        static inline void FreeArena(Arena* arena) {
-			Region emptyRegion = {};
-			emptyRegion.block = (Block*)&emptyBlock;
-        	arena->FreeRegion(emptyRegion);
-        	arena->Pack();
-        }
+        static inline Arena temporaryArena = Arena(0);
 };
