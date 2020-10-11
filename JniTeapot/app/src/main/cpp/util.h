@@ -1,5 +1,7 @@
 #pragma once
 
+// TODO: BREAK THIS OUT INTO SEPERATE UTIL FILES
+
 #include "types.h"
 
 auto constexpr Pi() { return 3.141592653589793238462643383279;  }
@@ -73,12 +75,16 @@ template<typename T> void Swap(T& x, T& y) {
 	y = (T&&)tmp;
 }
 
-// TODO: see if compiler optimizes this
+// TODO: see if compiler optimizes this better than memset
 template<typename T>
 constexpr void ZeroStruct(T* mem) {
 	char* memBytes = (char*)mem;
 	for(unsigned int i = 0; i < sizeof(T); ++i) memBytes[i] = 0;
 }
+
+inline void FillMemory(void* mem, uint32 value, uint32 bytes) { __builtin_memset(mem, value, bytes); }
+
+inline void CopyMemory(void *dst, void* src, uint32 bytes) { __builtin_memcpy(dst, src, bytes); }
 
 //Note: These assume ArmV7 or newer with native floating point
 inline short ILog2(float n) { return ((int&)n >> 23) - 127; }

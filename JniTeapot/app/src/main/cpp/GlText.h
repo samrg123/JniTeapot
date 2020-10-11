@@ -280,7 +280,7 @@ class GlText {
                    stringAttribBytes = sizeof(StringAttrib) * stringAttribCount,
                    fixedMemoryBytes  = glyphDataBytes + stringAttribBytes;
     
-            memoryArena.FreeRegion(baseRegion);
+            memoryArena.FreeBaseRegion(baseRegion);
     
             GlyphData* glyphData = (GlyphData*)memoryArena.PushBytes(fixedMemoryBytes);
             stringAttribData = (StringAttrib*)ByteOffset(glyphData, glyphDataBytes);
@@ -702,8 +702,8 @@ class GlText {
                 
                 position.x+= scale.x * gData.advance.x;
             }
-            
-            Memory::temporaryArena.FreeRegion(tmpRegion);
+    
+            Memory::temporaryArena.FreeBaseRegion(tmpRegion);
         }
         
         void RenderTexture(const RenderParams& params) {
@@ -769,7 +769,7 @@ class GlText {
     
             // upload to GPU
             UploadRenderedTexture(tmpTexture, textureMetrics.size);
-            Memory::temporaryArena.FreeRegion(tmpRegion);
+            Memory::temporaryArena.FreeBaseRegion(tmpRegion);
     
             
             uint32 textureBytes = textureMetrics.size.Area(),
@@ -794,45 +794,54 @@ class GlText {
     
             //Note: glMapBufferRange fails with 0 size
             if(!pushedBytes) return;
-            
-            glUseProgram(glProgram);
-            glBindSampler(TUnitFont, fontSampler);
-            glBindVertexArray(vao);
-            
-            glActiveTexture(GL_TEXTURE0 + TUnitFont);
-            glBindTexture(GL_TEXTURE_2D, fontTexture);
     
+            //upload string attribs
             if(stringAttribBitIndex >= uploadStringAttribBitIndex) {
-
+        
                 // get inclusive distance from last uploaded stringAttribIndex to current stringAttribIndex
                 uint32 nextUploadStringAttribBitIndex = stringAttribBitIndex + StringAttribBitIndexIncrement();
-            
+        
                 uint32 uploadCount = StringAttribBitIndex(nextUploadStringAttribBitIndex - uploadStringAttribBitIndex);
-
+        
                 uint32 uscIndex = StringAttribBitIndex(uploadStringAttribBitIndex);
                 uploadStringAttribBitIndex = nextUploadStringAttribBitIndex;
-
+        
                 //upload the new stringAttrib bits
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, stringAttribBuffer);
                 glBufferSubData(GL_SHADER_STORAGE_BUFFER, uscIndex*sizeof(StringAttrib), uploadCount * sizeof(StringAttrib), stringAttribData + uscIndex);
             }
-            
-            if(vertexAttributeBufferBytes < pushedBytes) BindAndAllocateVertexAttributeBufferBytes(pushedBytes);
-            else                                         glBindBuffer(GL_ARRAY_BUFFER, vertexAttributeBuffer);
-            
-            // copy over the attributeData to glBuffer
+    
             // TODO: make this similar to stringAttrib - only push new bytes!
-            char* attributeBuffer = (char*)glMapBufferRange(GL_ARRAY_BUFFER, 0, pushedBytes, GL_MAP_WRITE_BIT);
-            GlAssert(attributeBuffer, "Failed to map vertexAttributeBuffer");
-            memoryArena.ForEachRegion(stringRegion, [&](void* chunk, uint32 chunkBytes) {
-                memcpy(attributeBuffer, chunk, chunkBytes);
-                attributeBuffer+= chunkBytes;
-            });
-            glUnmapBuffer(GL_ARRAY_BUFFER);
+            {
+                if(vertexAttributeBufferBytes < pushedBytes) BindAndAllocateVertexAttributeBufferBytes(pushedBytes);
+                else                                         glBindBuffer(GL_ARRAY_BUFFER, vertexAttributeBuffer);
+
+                // copy over the attributeData to glBuffer
+                char* attributeBuffer = (char*)glMapBufferRange(GL_ARRAY_BUFFER, 0, pushedBytes, GL_MAP_WRITE_BIT);
+                GlAssert(attributeBuffer, "Failed to map vertexAttributeBuffer");
+    
+                Memory::ForEachRegion(stringRegion, memoryArena.CreateRegion(),
+                                      [&](void *chunk, uint32 chunkBytes) {
+                                          CopyMemory(attributeBuffer, chunk, chunkBytes);
+                                          attributeBuffer+=chunkBytes;
+                                      }
+                                     );
+    
+                glUnmapBuffer(GL_ARRAY_BUFFER);
+            }
+    
+            glUseProgram(glProgram);
+            glBindSampler(TUnitFont, fontSampler);
+            glBindVertexArray(vao);
+    
+            glActiveTexture(GL_TEXTURE0 + TUnitFont);
+            glBindTexture(GL_TEXTURE_2D, fontTexture);
             
             //Note: 4 vertices per quad
             uint32 numChars = pushedBytes/sizeof(VertexAttributeData);
             glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, numChars);
+            
+            GlAssertNoError("Failed to draw");
         }
         
         inline void Clear() {
@@ -847,6 +856,6 @@ class GlText {
             stringAttribBitIndex = 0;
     
             pushedBytes = 0;
-            memoryArena.FreeRegion(stringRegion);
+            memoryArena.FreeBaseRegion(stringRegion);
         }
 };

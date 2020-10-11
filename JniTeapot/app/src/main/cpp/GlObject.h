@@ -2,6 +2,8 @@
 
 #include "GlContext.h"
 #include "GlTransform.h"
+#include "GlCamera.h"
+
 #include "FileManager.h"
 #include "Memory.h"
 #include "panic.h"
@@ -31,9 +33,6 @@ class GlObject {
                                                      "void main() {"
                                                      "  vec4 v4Position = vec4(position.x, position.y, position.z, 1.);"
                                                      "  gl_Position = mvpMatrix*v4Position;"
-                                                     //"  gl_Position.xyz = position;"
-                                                     ""
-                                                     "  gl_Position.w = 1.;"
                                                      "}";
         
         static constexpr const char* kFragmentSource = "#version 310 es\n"
@@ -49,8 +48,8 @@ class GlObject {
         enum UBlocks { UBLOCK_UNIFORM_BLOCK };
         
         enum Flag {
-            FLAG_NONE, FLAG_NORMAL = 1<<0, FLAG_UV = 1<<1,
-            FLAG_TRANSFORM_UPDATED = 1<<2
+            FLAG_NORMAL = 1<<0, FLAG_UV = 1<<1,
+            FLAG_OBJ_TRANSFORM_UPDATED = 1<<2
         };
         
         struct alignas(16) UniformBlock {
@@ -58,6 +57,9 @@ class GlObject {
         };
         
         GlTransform transform;
+        Mat4<float> transformMatrix;
+        GlCamera* camera;
+        uint32 cameraMatrixId;
         
         union {
             struct {
@@ -70,47 +72,242 @@ class GlObject {
         GLuint glProgram;
         
         uint32 flags;
-        uint32 numElements;
+        uint32 numIndices;
         GLenum elementType;
         
-        //Note: indices are Vec3<int> where x = vertexIndex, y = normalIndex, z = uvIndex
-        template<typename T>
-        inline void UploadElements(uint32 numIndices, const Memory::Arena& indicesArena, const Memory::Region& indicesRegion) {
+        inline uint32 AllocateVBO(uint32 numVerts, uint32 vboStride) {
+            uint32 vboBytes = numVerts*vboStride;
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
             
-            //set the elementType
-            elementType = GlType<T>();
-    
-            //Allocate element Buffer
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
-            uint32 elementBufferBytes = numIndices*sizeof(T);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, elementBufferBytes, nullptr, GL_STATIC_DRAW);
-            GlAssertNoError("Failed to allocate element buffer { numIndices: %u, elementBufferBytes: %u }", numIndices, elementBufferBytes);
-    
-            void* bufferPtr = glMapBufferRange(GL_ELEMENT_ARRAY_BUFFER, 0, elementBufferBytes, GL_MAP_WRITE_BIT) ;
-            GlAssert(bufferPtr, "Failed to map elementBuffer { numIndices: %u, elementBufferBytes: %u }", numIndices, elementBufferBytes);
-    
-            //Translate indices to type T and copy to element Buffer
-            indicesArena.TranslateRegionToBuffer(indicesRegion, numIndices, bufferPtr, sizeof(int), [&](const void* element){
-                return (T)(*(int*)element);
-            });
+            glBufferData(GL_ARRAY_BUFFER, vboBytes, nullptr, GL_STATIC_DRAW);
+            GlAssertNoError("Failed to allocate vbo. { numVerts: %u, vboBytes: %u, vboStride: %u }",
+                            numVerts, vboBytes, vboStride);
+            
+            return vboBytes;
+        }
 
+        inline uint32 AllocateElementsBuffer(uint32 numIndices, uint32 indexStride) {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
+            uint32 elementBufferBytes = numIndices*indexStride;
+
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, elementBufferBytes, nullptr, GL_STATIC_DRAW);
+            GlAssertNoError("Failed to allocate element buffer { numIndices: %u, elementBufferBytes: %u, indexStride: %u }",
+                            numIndices, elementBufferBytes, indexStride);
+            
+            return elementBufferBytes;
+        }
+        
+        template<uint32 kAttribute, typename ArenaT>
+        static inline uint32 InterleaveVboWithArena(const Memory::Arena* arena, uint32 numElements, void* vboPtr, uint32 vboStride, uint32 vboOffset) {
+            
+            glEnableVertexAttribArray(kAttribute);
+            glVertexAttribPointer(kAttribute, GlAttributeSize<ArenaT>(),
+                                  GlAttributeType<ArenaT>(), GL_FALSE, vboStride, (void*)vboOffset);
+    
+            arena->CopyToBuffer<ArenaT>(numElements, ByteOffset(vboPtr, vboOffset), sizeof(ArenaT), vboStride);
+            return vboOffset + sizeof(Vec3<float>);
+        }
+        
+        struct UploadBufferParams {
+            
+            Memory::Arena geoVertArena, normalVertArena, uvVertArena;
+            
+            Memory::Arena* indicesArena;
+            Memory::Region indicesStartRegion, indicesStopRegion;
+            
+            uint32 numIndices,
+                   numGeoVerts, numNormalVerts, numUvVerts;
+        };
+        
+        template<typename ElementT>
+        void UploadBuffers(const UploadBufferParams* params) {
+    
+            numIndices = params->numIndices;
+            elementType = GlAttributeType<ElementT>();
+            
+            uint32 numVerts = params->numGeoVerts;
+            RUNTIME_ASSERT(!params->numNormalVerts || params->numNormalVerts == numVerts,
+                           "numNormalVerts[%u] != numVerts[%u]", params->numNormalVerts, numVerts);
+            
+            RUNTIME_ASSERT(!params->numUvVerts || params->numUvVerts == numVerts,
+                           "numUvVerts[%u] != numVerts[%u]", params->numUvVerts, numVerts);
+            
+            // compute vbo stride
+            // Note: vbo's always contain geoVerts & normals (we compute them if not provided). UV is optional
+            uint32 vboStride = 2*sizeof(Vec3<float>);
+            if(flags&FLAG_UV) vboStride+= sizeof(Vec2<float>);
+            
+            // allocate buffers
+            glBindVertexArray(vao);
+            uint32 vboBytes = AllocateVBO(numVerts, vboStride);
+            uint32 elementBufferBytes = AllocateElementsBuffer(params->numIndices, sizeof(ElementT));
+            
+            void* vboPtr = glMapBufferRange(GL_ARRAY_BUFFER, 0, vboBytes, GL_MAP_WRITE_BIT);
+            GlAssert(vboPtr, "Failed to map vbo buffer");
+    
+            void* elementPtr = glMapBufferRange(GL_ELEMENT_ARRAY_BUFFER, 0, elementBufferBytes, GL_MAP_WRITE_BIT) ;
+            GlAssert(elementPtr, "Failed to map element buffer");
+    
+            
+            //upload geoVerts
+            uint32 vboOffset = InterleaveVboWithArena<ATTRIB_GEO_VERT, Vec3<float>>(&params->geoVertArena, numVerts, vboPtr, vboStride, 0);
+            
+            if(flags&FLAG_NORMAL) {
+    
+                //upload normalVerts - TODO: TEST THIS WITH FILE
+                vboOffset = InterleaveVboWithArena<ATTRIB_NORMAL_VERT, Vec3<float>>(&params->normalVertArena, numVerts, vboPtr, vboStride, vboOffset);
+    
+                //Translate indices to type T and copy to GL_ELEMENT_ARRAY_BUFFER
+                Memory::TranslateRegionsToBuffer(params->indicesStartRegion, params->indicesStopRegion,
+                                                 params->numIndices, elementPtr,
+                                                 sizeof(int), sizeof(ElementT),
+                                                 [](void* regionElement, void* bufferElement) {
+                                                    *(ElementT*)bufferElement = ElementT(*(int*)regionElement);
+                                                 });
+                
+            } else  {
+                
+                //create a tempory block of vectors filled with 0's to compute intermediate math on
+                Memory::Region tmpRegion = Memory::temporaryArena.CreateRegion();
+                Vec3<float>* tmpNormals = (Vec3<float>*)Memory::temporaryArena.PushBytes(numVerts*sizeof(Vec3<float>), true);
+                
+                auto computeNormalsAndTranslateIndices = [&](void* regionElements, void* bufferElements) {
+                    int* indices = (int*)regionElements;
+                    int index1 = indices[0],
+                        index2 = indices[1],
+                        index3 = indices[2];
+    
+                    //get corresponding vertices from vbo
+                    Vec3<float> *v1 = (Vec3<float>*)ByteOffset(vboPtr, vboStride*index1),
+                                *v2 = (Vec3<float>*)ByteOffset(vboPtr, vboStride*index2),
+                                *v3 = (Vec3<float>*)ByteOffset(vboPtr, vboStride*index3);
+    
+                    //compute the add normal vector
+                    Vec3<float> crossProduct = (*v2 - *v1).Cross(*v3 - *v1).Normalize();
+                    tmpNormals[index1]+= crossProduct;
+                    tmpNormals[index2]+= crossProduct;
+                    tmpNormals[index3]+= crossProduct;
+    
+                    //translate indices to T
+                    ElementT* translatedIndices = (ElementT*)bufferElements;
+                    translatedIndices[0] = (ElementT)index1;
+                    translatedIndices[1] = (ElementT)index2;
+                    translatedIndices[2] = (ElementT)index3;
+                };
+                
+                //compute smooth normals while translating indices to type T and copying to GL_ELEMENT_ARRAY_BUFFER
+                Memory::TranslateRegionsToBuffer(params->indicesStartRegion, params->indicesStopRegion,
+                                                 (params->numIndices)/3, elementPtr,
+                                                 3*sizeof(int), 3*sizeof(ElementT),
+                                                 computeNormalsAndTranslateIndices);
+
+                //average normals and interleave in vbo
+                Memory::TranslateRegionsToBuffer(tmpRegion, Memory::temporaryArena.CreateRegion(),
+                                                 numVerts, ByteOffset(vboPtr, vboOffset),
+                                                 sizeof(Vec3<float>), vboStride,
+                                                 [&](void* regionElement, void* bufferElement){ *(Vec3<float>*)bufferElement = ((Vec3<float>*)regionElement)->Normalize(); });
+    
+                Memory::temporaryArena.FreeBaseRegion(tmpRegion);
+                vboOffset+= sizeof(Vec3<float>);
+            }
+            
+            //upload uvVerts - TODO: TEST THIS WITH FILE
+            if(flags&FLAG_UV) {
+                vboOffset = InterleaveVboWithArena<ATTRIB_UV_VERT, Vec2<float>>(&params->uvVertArena, numVerts, vboPtr, vboStride, vboOffset);
+            }
+            
             glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+            glUnmapBuffer(GL_ARRAY_BUFFER);
+            
+            glBindVertexArray(0);
+        }
+        
+        char* LoadVertex(char* strPtr, UploadBufferParams* params) {
+            char mode = *++strPtr;
+            switch(mode) {
+        
+                //geometry vertex
+                case ' ':
+                case '\t': {
+                    ++params->numGeoVerts;
+            
+                    Vec3<float>* v = params->geoVertArena.PushStruct<Vec3<float>>();
+                    v->x = StrToFloat(++strPtr, &strPtr);
+                    v->y = StrToFloat(++strPtr, &strPtr);
+                    v->z = StrToFloat(++strPtr, &strPtr);
+            
+                } break;
+            
+                //texture vertex
+                case 't': {
+                    ++params->numUvVerts;
+            
+                    Vec2<float>* v = params->uvVertArena.PushStruct<Vec2<float>>();
+                    v->x = StrToFloat(++strPtr, &strPtr);
+                    v->y = StrToFloat(++strPtr, &strPtr);
+            
+                } break;
+
+                //normal vertex
+                case 'n': {
+                    ++params->numNormalVerts;
+            
+                    Vec3<float>* v = params->normalVertArena.PushStruct<Vec3<float>>();
+                    v->x = StrToFloat(++strPtr, &strPtr);
+                    v->y = StrToFloat(++strPtr, &strPtr);
+                    v->z = StrToFloat(++strPtr, &strPtr);
+            
+                } break;
+        
+                default: {
+                    Panic("Unsupported Vertex mode: %d[%c]", mode, mode);
+                }
+            }
+            return strPtr;
+        }
+        
+        char* LoadFace(char* strPtr, UploadBufferParams* params) {
+            
+            params->numIndices+= 3;
+    
+            int32 numGeoVerts = params->numGeoVerts;
+            RUNTIME_ASSERT(numGeoVerts > 0, "Overflowed maximum allowed number of vertices [%d]", MaxInt32());
+            
+            int* vertIndices = (int*)params->indicesArena->PushBytes(3*sizeof(int));
+            for(int i = 0; i < 3; ++i) {
+        
+                //get vertIndex
+                int geoIndex = StrToInt(++strPtr, &strPtr);
+                vertIndices[i] = (geoIndex <= 0) ? geoIndex + numGeoVerts : geoIndex - 1;
+                RUNTIME_ASSERT((uint32)vertIndices[i] < numGeoVerts, "Geometry Vertex not defined { geoIndex: %d, numGeoVerts: %d }", geoIndex, numGeoVerts);
+                
+                //get uvIndex
+                if(*strPtr == '/') {
+                    flags|= FLAG_UV;
+            
+                    int uvIndex = StrToInt(++strPtr, &strPtr);
+                    RUNTIME_ASSERT(uvIndex == geoIndex, "uvIndex [%d] != geoIndex [%d]. Shuffled Indices not supported!", uvIndex, geoIndex);
+            
+                    //get normalIndex
+                    if(*strPtr == '/') {
+                        flags|= FLAG_NORMAL;
+                
+                        int nIndex = StrToInt(++strPtr, &strPtr);
+                        RUNTIME_ASSERT(nIndex == geoIndex, "uvIndex [%d] != geoIndex [%d]. Shuffled Indices not supported!", uvIndex, geoIndex);
+                    }
+                }
+            }
+            
+            return strPtr;
         }
         
         void LoadObject(const FileManager::AssetBuffer* buffer) {
     
-            Memory::Arena &tmpIndicesArena = Memory::temporaryArena,
-                          tmpGeoVertArena,
-                          tmpNormalArena,
-                          tmpUvArena;
-            
-            Memory::Region tmpIndicesRegion = tmpIndicesArena.CreateRegion();
-
-            numElements = 0;
-            uint32 numGeoVerts = 0,
-                   numUvVerts = 0,
-                   numNormalVerts = 0;
-    
+            UploadBufferParams uploadParams = {
+                .indicesArena = &Memory::temporaryArena,
+                .indicesStartRegion = Memory::temporaryArena.CreateRegion()
+            };
+        
             char* ptr = (char*)buffer->data;
             for(;;) {
                 ptr = SkipWhiteSpace(ptr);
@@ -120,77 +317,14 @@ class GlObject {
 
                     //eof - Finish processing and return
                     case 0: {
-
-                        //TODO: turn triangles into triangle strips to reduce memory overhead of draw call
-                        //TODO: compute normals if they aren't available
-    
-                        bool hasNormal  = flags&FLAG_NORMAL,
-                             hasTexture = flags&FLAG_UV;
                         
-                        //TODO: add support for non-interlaced buffer by packing buffers back to back - EX:  vbo = {allGeo, allNormal, allTexture}
-                        //      Note: figuring out how we should pack vs interlace is a little tricky. Ex vbo = {allGeo, inerlacedNormalTexture} might be more efficient!
-                        RUNTIME_ASSERT(!hasNormal  || numGeoVerts == numNormalVerts, "numGeoVerts[%u] != numNormalVerts[%u]. Non-interlaced buffers not supported yet!", numGeoVerts, numNormalVerts);
-                        RUNTIME_ASSERT(!hasTexture || numGeoVerts == numUvVerts, "numGeoVerts[%u] != numUvVerts[%u]. Non-interlaced buffers not supported yet!", numGeoVerts, numUvVerts);
+                        uploadParams.indicesStopRegion = Memory::temporaryArena.CreateRegion();
                         
-                        uint32 numVerts = numGeoVerts;
+                             if(!LargerThan8Bit(uploadParams.numGeoVerts))  UploadBuffers<uint8>(&uploadParams);
+                        else if(!LargerThan16Bit(uploadParams.numGeoVerts)) UploadBuffers<uint16>(&uploadParams);
+                        else UploadBuffers<uint32>(&uploadParams);
     
-                        //Bind VAO - Note: UploadElemnets requires Vao to be bound so it can bind GL_ELEMENT_ARRAY_BUFFER (which is part of vao)
-                        glBindVertexArray(vao);
-    
-                        //Upload elementBuffer
-                        if(!LargerThan8Bit(numVerts))       UploadElements<uint8>(numElements, tmpIndicesArena, tmpIndicesRegion);
-                        else if(!LargerThan16Bit(numVerts)) UploadElements<uint16>(numElements, tmpIndicesArena, tmpIndicesRegion);
-                        else                                UploadElements<uint32>(numElements, tmpIndicesArena, tmpIndicesRegion);
-                        
-                        //compute vbo stride
-                        uint32 vboStride = sizeof(Vec3<float>);
-                        if(hasNormal)  vboStride+= sizeof(Vec3<float>);
-                        if(hasTexture) vboStride+= sizeof(Vec2<float>);
-    
-                        uint32 vboBytes = numVerts*vboStride;
-    
-                        //Allocate VBO
-                        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                        glBufferData(GL_ARRAY_BUFFER, vboBytes, nullptr, GL_STATIC_DRAW);
-                        GlAssertNoError("Failed to allocate vbo. { numVerts: %u, vboBytes: %u, hasNormal: %d, hasTexture: %d }", numVerts, vboBytes, hasNormal, hasTexture);
-                        
-                        //interleave vbo Data
-                        {
-                            uint32 vboOffset = 0;
-                            
-                            void* vboPtr = glMapBufferRange(GL_ARRAY_BUFFER, 0, vboBytes, GL_MAP_WRITE_BIT);
-                            GlAssert(vboPtr, "Failed to map vbo { numVerts: %u, vboBytes: %u, hasNormal: %d, hasTexture: %d }", numVerts, vboBytes, hasNormal, hasTexture);
-                            
-                            glEnableVertexAttribArray(ATTRIB_GEO_VERT);
-                            glVertexAttribPointer(ATTRIB_GEO_VERT, 3, GL_FLOAT, GL_FALSE, vboStride, (void*)vboOffset);
-                            
-                            //interleave geoVerts
-                            tmpGeoVertArena.CopyToBuffer<Vec3<float>>(numGeoVerts, ByteOffset(vboPtr, vboOffset), vboStride);
-                            vboOffset+= sizeof(Vec3<float>);
-    
-                            //interleave normalVerts and align vboPtr to start of nextElement
-                            if(hasNormal) {
-                                glEnableVertexAttribArray(ATTRIB_NORMAL_VERT);
-                                glVertexAttribPointer(ATTRIB_NORMAL_VERT, 3, GL_FLOAT, GL_FALSE, vboStride, (void*)vboOffset);
-    
-                                tmpNormalArena.CopyToBuffer<Vec3<float>>(numNormalVerts, ByteOffset(vboPtr, vboOffset), vboStride);
-                                vboOffset+= sizeof(Vec3<float>);
-                            }
-    
-                            //interleave uvVerts
-                            if(hasTexture) {
-                                glEnableVertexAttribArray(ATTRIB_UV_VERT);
-                                glVertexAttribPointer(ATTRIB_UV_VERT, 2, GL_FLOAT, GL_FALSE, vboStride, (void*)vboOffset);
-                                
-                                tmpUvArena.CopyToBuffer<Vec2<float>>(numUvVerts, ByteOffset(vboPtr, vboOffset), vboStride);
-                                vboOffset+= sizeof(Vec2<float>);
-                            }
-
-                            glUnmapBuffer(GL_ARRAY_BUFFER);
-                        }
-    
-                        glBindVertexArray(0);
-                        tmpIndicesArena.FreeRegion(tmpIndicesRegion);
+                        uploadParams.indicesArena->FreeBaseRegion(uploadParams.indicesStartRegion);
                         return;
                     }
                     
@@ -198,84 +332,13 @@ class GlObject {
                     case '#': break;
     
                     //handle vertices
-                    case 'v': {
-
-                        char mode = *++ptr;
-                        switch(mode) {
-                            
-                            //geometry vertex
-                            case ' ':
-                            case '\t': {
-                                ++numGeoVerts;
-                                
-                                Vec3<float>* v = tmpGeoVertArena.PushStruct<Vec3<float>>();
-                                v->x = StrToFloat(++ptr, &ptr);
-                                v->y = StrToFloat(++ptr, &ptr);
-                                v->z = StrToFloat(++ptr, &ptr);
-
-                            } break;
-                            
-                            
-                            //texture vertex
-                            case 't': {
-                                ++numUvVerts;
-                                
-                                Vec2<float>* v = tmpUvArena.PushStruct<Vec2<float>>();
-                                v->x = StrToFloat(++ptr, &ptr);
-                                v->y = StrToFloat(++ptr, &ptr);
-
-                            } break;
-                            
-                            //normal vertex
-                            case 'n': {
-                                ++numNormalVerts;
-    
-                                Vec3<float>* v = tmpNormalArena.PushStruct<Vec3<float>>();
-                                v->x = StrToFloat(++ptr, &ptr);
-                                v->y = StrToFloat(++ptr, &ptr);
-                                v->z = StrToFloat(++ptr, &ptr);
-                                
-                            } break;
-                            
-                            default: {
-                                Panic("Unsupported Vertex mode: %d[%c]", mode, mode);
-                            }
-                        }
-                    } break;
+                    case 'v': ptr = LoadVertex(ptr, &uploadParams);
+                    break;
         
+                    
                     //Note: faces - defined by indices in the form 'v/vt/vn' where vt and vn are optional
-                    case 'f': {
-                        numElements+= 3;
-                        
-                        //TODO: VertIndices has a lot of waste (only .33 space effiecient if no normal or uv)
-                        //      throw away the Normal and UV index and map everything to the same geo index after inforcing they are
-                        //      the same
-                        int* vertIndices = (int*)tmpIndicesArena.PushBytes(3*sizeof(int));
-                        
-                        for(int i = 0; i < 3; ++i) {
-    
-                            //get vertIndex
-                            int geoIndex = StrToInt(++ptr, &ptr);
-                            RUNTIME_ASSERT(geoIndex && geoIndex <= numGeoVerts, "Geometry Vertex not defined { geoIndex: %d, numGeoVerts: %d }", geoIndex, numGeoVerts);
-                            vertIndices[i] = (geoIndex < 0) ? geoIndex + numGeoVerts : geoIndex - 1;
-    
-                            //get uvIndex
-                            if(*ptr == '/') {
-                                flags|= FLAG_UV;
-                            
-                                int uvIndex = StrToInt(++ptr, &ptr);
-                                RUNTIME_ASSERT(uvIndex == geoIndex, "uvIndex [%d] != geoIndex [%d]. Shuffled Indices not supported yet!", uvIndex, geoIndex);
-                            
-                                //get normalIndex
-                                if(*ptr == '/') {
-                                    flags|= FLAG_NORMAL;
-                                    
-                                    int nIndex = StrToInt(++ptr, &ptr);
-                                    RUNTIME_ASSERT(nIndex == geoIndex, "uvIndex [%d] != geoIndex [%d]. Shuffled Indices not supported yet!", uvIndex, geoIndex);
-                                }
-                            }
-                        }
-                    } break;
+                    case 'f': ptr = LoadFace(ptr, &uploadParams);
+                    break;
                     
                     default: {
                         Panic("Unknown object command: %d[%c]", c, c);
@@ -289,8 +352,21 @@ class GlObject {
 
     public:
 
-        GlObject(const char* objPath, GlTransform transform = GlTransform()): transform(transform), flags(FLAG_TRANSFORM_UPDATED) {
+        inline void SetCamera(GlCamera* c) {
+            RUNTIME_ASSERT(c, "Camera cannot be null");
+            camera = c;
+
+            //set the matrixId to an stale one so mvp matrix gets updated next draw
+            cameraMatrixId = c->MatrixId()-1;
+        }
+        
+        GlObject(const char* objPath, GlCamera* camera, const GlTransform& transform = GlTransform()):
+                    transform(transform),
+                    camera(camera),
+                    flags(FLAG_OBJ_TRANSFORM_UPDATED) {
     
+            SetCamera(camera);
+            
             glGenVertexArrays(1, &vao);
             GlAssertNoError("Failed to create vao");
             
@@ -312,8 +388,8 @@ class GlObject {
             Memory::Region tmpRegion = Memory::temporaryArena.CreateRegion();
             FileManager::AssetBuffer* buffer = FileManager::OpenAsset(objPath, &Memory::temporaryArena);
             LoadObject(buffer);
-            
-            Memory::temporaryArena.FreeRegion(tmpRegion);
+    
+            Memory::temporaryArena.FreeBaseRegion(tmpRegion);
         }
         
         ~GlObject() {
@@ -323,21 +399,32 @@ class GlObject {
         }
         
         inline GlTransform GetTransform() const { return transform; }
-        inline void SetTransform(const GlTransform& t) { transform = t; flags|= FLAG_TRANSFORM_UPDATED; }
+        inline void SetTransform(const GlTransform& t) { transform = t; flags|= FLAG_OBJ_TRANSFORM_UPDATED; }
         
-        //TODO: pass in GlCamera transform
         void Draw() {
-
-            if(flags&FLAG_TRANSFORM_UPDATED) {
-                flags^= FLAG_TRANSFORM_UPDATED;
-             
+        
+            //check if camera matrix updated
+            // Warn: cameraMatrixId repeats every 2^32 iterations so its possible that this check fails if the cameraMatrixId differs by a multiple of 2^32.
+            //       This has a failure probability of 4.6566129e-10, way smaller than the chance of the earth being destroyed massive meteor (1e-8)
+            //       Failure mode is using the previous projection matrix until the next update to camera or object matrix (most likely will occur on the next frame)
+            //       If this failure rate/mode is still concerning use a uint64 for the camera matrixId instead
+            bool updateMvpMatrix = cameraMatrixId != camera->MatrixId();
+            
+            //check if the object matrix updated
+            if(flags&FLAG_OBJ_TRANSFORM_UPDATED) {
+                flags^= FLAG_OBJ_TRANSFORM_UPDATED;
+                transformMatrix = transform.Matrix();
+                updateMvpMatrix = true;
+            }
+    
+            //update mvpMatrix
+            if(updateMvpMatrix) {
                 glBindBuffer(GL_UNIFORM_BUFFER, uniformBlockBuffer);
                 Mat4<float>* mvpMatrix = (Mat4<float>*)glMapBufferRange(GL_UNIFORM_BUFFER, offsetof(UniformBlock, mvpMatrix), sizeof(Mat4<float>), GL_MAP_WRITE_BIT);
                 GlAssert(mvpMatrix, "Failed to map mvpMatrix");
     
-                //TODO: replace Identity with glCamera.ViewProjectionMatrix();
-                *mvpMatrix = transform.Matrix() * Mat4<float>::Identity;
-                
+                *mvpMatrix = camera->Matrix() * transformMatrix;
+    
                 glUnmapBuffer(GL_UNIFORM_BUFFER);
             }
             
@@ -346,12 +433,14 @@ class GlObject {
             //      Bind texture
             
             glUseProgram(glProgram);
-    
+            
             //Note: no need to bind 'GL_ELEMENT_ARRAY_BUFFER', its part of vao state
             glBindVertexArray(vao);
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-            glDrawElements(GL_TRIANGLES, numElements, elementType, 0);
+            
+            glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);
+            
+            GlAssertNoError("Failed to Draw");
         }
         
         //TODO: create GENERIC!!! VBO

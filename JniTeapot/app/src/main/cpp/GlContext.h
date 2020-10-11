@@ -1,65 +1,11 @@
 #pragma once
 
-#include <EGL/egl.h>
-#include <GLES3/gl31.h>
+
+#include "glUtil.h"
 #include <android/native_window.h> //C version of android.view.Surface
 
 #include "types.h"
 #include "Memory.h"
-
-#define GL_ASSERT_INDENT "\n\t\t\t"
-#define GL_ASSERT_END GL_ASSERT_INDENT "}\n\t\t"
-
-#define GlContextAssertNoError_(name, errorFunc, errorMsg, ...) {    \
-    int error_;                                                      \
-    RUNTIME_ASSERT(!(error_ = errorFunc()),                          \
-                    GL_ASSERT_INDENT name " failed {"                \
-                    GL_ASSERT_INDENT "\tMSG: " errorMsg              \
-                    GL_ASSERT_INDENT "\t" #errorFunc ": %d [0x%08x]" \
-                    GL_ASSERT_END,                                   \
-                    ##__VA_ARGS__, error_, error_);                  \
-}
-
-#define GlContextAssert_(name, errorFunc, condition, errorMsg, ...) { \
-    int error_;                                                       \
-    RUNTIME_ASSERT((condition) || (error_ = errorFunc(), false),      \
-                    GL_ASSERT_INDENT name " failed {"                 \
-                    GL_ASSERT_INDENT "\tMSG: " errorMsg               \
-                    GL_ASSERT_INDENT "\t" #errorFunc": %d [0x%08x]"   \
-                    GL_ASSERT_END,                                    \
-                    ##__VA_ARGS__, error_, error_);                   \
-}
-
-#define GlContextAssertValue_(name, errorFunc, value, trueValue, errorMsg, ...) {       \
-    int error_;                                                                         \
-    RUNTIME_ASSERT((value) == (trueValue) || (error_ = errorFunc(), false),             \
-                    GL_ASSERT_INDENT name " failed {"                                   \
-                    GL_ASSERT_INDENT "\tMSG: " errorMsg                                 \
-                    GL_ASSERT_INDENT "\t:" #errorFunc " %d [0x%08x]"                    \
-                    GL_ASSERT_INDENT "\tvalue: %d [0x%08x]"                             \
-                    GL_ASSERT_INDENT "\ttrueValue: %d [0x%08x]"                         \
-                    GL_ASSERT_END,                                                      \
-                    ##__VA_ARGS__, error_, error_, value, value, trueValue, trueValue); \
-}
-
-#define EglAssertNoError(errorMsg, ...) GlContextAssertNoError_("EglAssertNoError", eglGetError, errorMsg, ##__VA_ARGS__)
-#define GlAssertNoError(errorMsg,  ...) GlContextAssertNoError_("GlAssertNoError",  glGetError,  errorMsg, ##__VA_ARGS__)
-
-#define EglAssert(condition, errorMsg, ...) GlContextAssert_("EglAssert", eglGetError, condition, errorMsg, ##__VA_ARGS__)
-#define GlAssert(condition,  errorMsg, ...) GlContextAssert_("GlAssert",  glGetError,  condition, errorMsg, ##__VA_ARGS__)
-
-#define EglAssertTrue(val, errorMsg, ...) GlContextAssertValue_("EglAssertTrue", eglGetError, val, EGL_TRUE, errorMsg, ##__VA_ARGS__)
-#define GlAssertTrue(val,  errorMsg, ...) GlContextAssertValue_("GlAssertTrue",  glGetError,  val, GL_TRUE,  errorMsg, ##__VA_ARGS__)
-
-template<typename T> constexpr GLenum GlType();
-
-template<> constexpr GLenum GlType<int8>()  { return GL_BYTE; }
-template<> constexpr GLenum GlType<int16>() { return GL_SHORT; }
-template<> constexpr GLenum GlType<int32>() { return GL_INT; }
-
-template<> constexpr GLenum GlType<uint8>()  { return GL_UNSIGNED_BYTE; }
-template<> constexpr GLenum GlType<uint16>() { return GL_UNSIGNED_SHORT; }
-template<> constexpr GLenum GlType<uint32>() { return GL_UNSIGNED_INT; }
 
 class GlContext {
     public:

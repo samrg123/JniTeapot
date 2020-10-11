@@ -2,7 +2,6 @@
 
 #include <errno.h>
 #include <sys/mman.h>
-#include <string.h>
 
 #include "types.h"
 #include "util.h"
@@ -29,9 +28,9 @@ class Memory {
 
             inline uint32 FreeBytes() { return bytes - position; }
         };
-
-        static inline Block emptyBlock = {};
-    
+		
+		static inline Block emptyBlock = {};
+		
     public:
 		
 		#if ENABLE_MEMORY_STATS
@@ -40,8 +39,8 @@ class Memory {
 			static inline uint32 memoryUnusedBytes;
 			static inline uint32 memoryBlockReservedBytes;
 			
-			static inline uint memoryBlockCount;
-			static inline uint memoryBlockReserveCount;
+			static inline uint32 memoryBlockCount;
+			static inline uint32 memoryBlockReserveCount;
 		#endif
 
 		class Arena;
@@ -50,11 +49,22 @@ class Memory {
 			friend Arena;
 			friend Memory;
 			
-			Block* block;
-			uint32 position;
+			private:
+				Block* block;
+				uint32 position;
+				
+				constexpr Region(Block* block, uint32 position): block(block), position(position) {}
+				
+			public:
+				constexpr Region(): block(&emptyBlock), position(0) {}
 		};
 		
-        class Arena {
+	private:
+		static inline const Region kEmptyRegion;
+		
+	public:
+		
+        class Arena: NoCopyClass {
         	private:
 	            friend Memory;
 	    
@@ -62,10 +72,10 @@ class Memory {
 	            Block* reservedBlock;
 	
 				#if ENABLE_MEMORY_STATS
-	                uint32 arenaBytes;
-	                uint32 arenaPadBytes;
-	                uint32 arenaUnusedBytes; //bytes at end of blocks - includes reserve block
-	                uint arenaBlockCount;    //includes reserve block
+	                uint32 arenaBytes;		 //usedBytes + unusedBytes
+	                uint32 arenaPadBytes;	 //unusedBytes caused from block alignment
+	                uint32 arenaUnusedBytes; //unused bytes at end of blocks + reserveBlock bytes
+	                uint32 arenaBlockCount;  //number of blocks (includes reserveBlock)
 				#endif
 				
 		        inline Block* CreateBlock(uint32 minSize, Block* previousBlock) {
@@ -157,7 +167,7 @@ class Memory {
 					return newBlock;
 				}
 		        
-		        void* ExtendBlockWithT(Block* block, uint32 tBytes, uint8 alignment) {
+		        void* ExtendBlockWithT(Block* block, uint32 tBytes, uint8 alignment, bool zeroMemory) {
 					void* tPos = ByteOffset(block, block->position);
 					uint32 freeBytes = block->FreeBytes();
 			
@@ -169,6 +179,9 @@ class Memory {
 					tPos = ByteOffset(tPos, alignmentOffset);
 					block->position+= alignedBytes;
 			
+					//TODO: consider keeping dirty flag around for block and only zeroing if new region has been written to
+					if(zeroMemory) FillMemory(tPos, 0, tBytes);
+					
 					#if ENABLE_MEMORY_STATS
 						block->padBytes+= alignmentOffset;
 				
@@ -178,49 +191,8 @@ class Memory {
 						memoryPadBytes+= alignmentOffset;
 						memoryUnusedBytes-= alignedBytes;
                     #endif
-						
+					
 					return tPos;
-		        }
-		
-				//Note: calls func(void* chunk, uint32 bytes) for each chunk in the arena while 'chunk != stopBlock'
-		        template<typename T>
-		    	inline void ForEachBlockExclusive(const Block* stopBlock, const T& func) const {
-					Block* block = currentBlock;
-					while(block != stopBlock) {
-						func(ByteOffset(block, sizeof(Block)), block->position - sizeof(Block));
-						block = block->previousBlock;
-					}
-		        }
-		        
-		        template<typename T>
-				static T DefaultTranslator(const void* element) { return *(const T*)element; }
-				
-		
-				// translates chunk with 'translator(void*)' and copies over results to buffer
-				//Note: this is designed to be used inside 'ForEach' which iterates chunks in reverse
-				// 		so instead of passing in the base buffer address and iterating forward we pass
-				// 		in the end buffer address and iterate backwards to preserve chunk ordering
-		        template<typename TranslatorFuncT>
-		        inline void TranslateChunkToBuffer(const TranslatorFuncT& translator, void*& bufferEnd,
-												   void* chunk, uint32 chunkBytes,
-												   uint32 bufferStride, uint32 chunkStride) const {
-					
-					using T = decltype(translator(nullptr));
-		        	
-		        	//position bufferData at start of chunk
-					void* bufferDataEnd = bufferEnd;
-					void* bufferData = ByteOffset(bufferDataEnd, -bufferStride*(chunkBytes/chunkStride));
-					
-					//set next tail at start of this chunk
-					bufferEnd = bufferData;
-					
-					//copy chunk into the buffer
-					while(bufferData < bufferDataEnd) {
-						*(T*)bufferData = translator(chunk);
-						
-						bufferData = ByteOffset(bufferData, bufferStride);
-						chunk = ByteOffset(chunk, chunkStride);
-					}
 		        }
 		        
         	public:
@@ -240,13 +212,13 @@ class Memory {
 					RUNTIME_ASSERT(IsPow2Safe(alignment), "Alignment must be a power of 2. { alignment: %d }", alignment);
 					RUNTIME_ASSERT(currentBlock, "Null arena block - should be initialized to emptyBlock! { arena: %p } ", this);
 
-					void* tPosition = ExtendBlockWithT(currentBlock, bytes, alignment);
+					void* tPosition = ExtendBlockWithT(currentBlock, bytes, alignment, zeroMemory);
 					if(!tPosition) {
 
 						//check to see if we can reuse the reserved block
 						if(reservedBlock) {
 
-							tPosition = ExtendBlockWithT(reservedBlock, bytes, alignment);
+							tPosition = ExtendBlockWithT(reservedBlock, bytes, alignment, zeroMemory);
 							if(tPosition) {
 								#if ENABLE_MEMORY_STATS
 									memoryBlockReserveCount--;
@@ -256,13 +228,12 @@ class Memory {
 								reservedBlock->previousBlock = currentBlock;
 								currentBlock = reservedBlock;
 								reservedBlock = nullptr;
-
+								
 							} else currentBlock = CreateBlockWithT(currentBlock, bytes, alignment, &tPosition);
 
 						} else currentBlock = CreateBlockWithT(currentBlock, bytes, alignment, &tPosition);
 					}
 
-					if(zeroMemory) memset(tPosition, 0, bytes);
 					return tPosition;
 				}
         		
@@ -284,18 +255,16 @@ class Memory {
                     reservedBlock = CreateBlock(bytes, currentBlock);
 		        }
 		        
-		        inline bool IsEmptyRegion(Region r) {
+		        inline bool IsEmptyRegion(Region r) const {
 				    return r.block == currentBlock && r.position == currentBlock->position;
 				}
 		        
-		        inline Region CreateRegion() {
-		        	Region region;
-			        region.block = currentBlock;
-			        region.position = currentBlock->position;
-		        	return region;
-		        }
+		        inline Region CreateRegion() const { return Region(currentBlock, currentBlock->position); }
 		        
-		        inline void FreeRegion(const Region& region) {
+		        //TODO: make  a FreeRegion that can take in a startRegion and endRegion and use ForEachRegion to free blocks in range and merge start and stop block if needed
+		        
+		        //Free all blocks from current position in arena up into and including 'region'
+		        inline void FreeBaseRegion(const Region& region) {
 		        	
 			        RUNTIME_ASSERT(currentBlock != &emptyBlock || region.block == &emptyBlock, "Trying to free past start of arena { Arena: %p }", this);
 			        RUNTIME_ASSERT(region.block == &emptyBlock || region.position >= sizeof(Block),
@@ -341,68 +310,7 @@ class Memory {
 			        
 					currentBlock->position = region.position;
 		        }
-		        
-		        //Note: calls func(void* chunk, uint32 bytes) for each chunk in the arena
-				//Warn: ForEach iterates blocks in reverse order from when they were pushed to the region
-				template<typename T>
-				inline void ForEach(const T& func) const { ForEachBlockExclusive(&emptyBlock, func); }
-		
-				//Note: calls func(void* chunk, uint32 bytes) for each chunk in the region
-		        //Warn: ForEachRegion iterates blocks in reverse order from when they were pushed to the region
-                template<typename T>
-                inline void ForEachRegion(const Region& region, const T& func) const {
-					ForEachBlockExclusive(region.block, func);
-					func(ByteOffset(region.block, region.position), region.block->position - region.position);
-				}
-				
-				//Note: Copies whole arena of type 'T' to contiguous buffer preserving the order in which elements were pushed
-				template<typename T>
-				inline void CopyToBuffer(uint32 numElements, void* buffer,
-										 uint32 bufferStride = sizeof(T), uint32 arenaStride = sizeof(T)) const {
-					
-					void* bufferEnd = ByteOffset(buffer, bufferStride*numElements);
-		        	ForEach([&](void* chunk, uint32 bytes) {
-						TranslateChunkToBuffer(DefaultTranslator<T>, bufferEnd, chunk, bytes, bufferStride, arenaStride);
-		        	});
-		        }
-		
-				//Note: Copies Region of type 'T' to contiguous buffer preserving the order in which elements were pushed
-				template<typename T>
-				inline void CopyRegionToBuffer(const Region& region, uint32 numElements, void* buffer,
-											   uint32 bufferStride = sizeof(T), uint32 regionStride = sizeof(T)) const {
-					
-					void* bufferEnd = ByteOffset(buffer, bufferStride*numElements);
-					ForEachRegion(region, [&](void* chunk, uint32 bytes) {
-						TranslateChunkToBuffer(DefaultTranslator<T>, bufferEnd, chunk, bytes, bufferStride, regionStride);
-					});
-				}
-		
-				//Note: Copies arena to contiguous buffer of type 'T' preserving the order in which elements were pushed
-				// 		by translating each element with 'translator(void* element)->T'
-				template<typename TranslatorFuncT>
-				inline void TranslateToBuffer(uint32 numElements, void* buffer, uint32 arenaStride,
-											  const TranslatorFuncT& translator,
-											  uint32 bufferStride = sizeof(decltype(translator(nullptr)))) const {
-					
-					void* bufferEnd = ByteOffset(buffer, bufferStride*numElements);
-					ForEach([&](void* chunk, uint32 bytes) {
-						TranslateChunkToBuffer(translator, bufferEnd, chunk, bytes, bufferStride, arenaStride);
-					});
-		        }
-		
-				//Note: Copies Region to contiguous buffer of type 'T' preserving the order in which elements were pushed
-				// 		by translating each element with 'translator(void* element)->T'
-				template<typename TranslatorFuncT>
-				inline void TranslateRegionToBuffer(const Region& region, uint32 numElements, void* buffer, uint32 regionStride,
-													const TranslatorFuncT& translator,
-													uint32 bufferStride = sizeof(decltype(translator(nullptr)))) const {
-					
-					void* bufferEnd = ByteOffset(buffer, bufferStride*numElements);
-					ForEachRegion(region, [&](void* chunk, uint32 bytes) {
-						TranslateChunkToBuffer(translator, bufferEnd, chunk, bytes, bufferStride, regionStride);
-					});
-				}
-		        
+			       
 		        inline void Pack() {
 			        if(reservedBlock) {
 				
@@ -417,12 +325,104 @@ class Memory {
 		        }
 		
 				~Arena() {
-		        	Region region = {};
-		        	region.block = (Block*)&emptyBlock;
-					FreeRegion(region);
+                    FreeBaseRegion(kEmptyRegion);
 					Pack();
+				}
+		
+				//Note: translates whole arena to contiguous buffer using 'translator(void* regionElement, void* bufferElement)'
+				template <typename TranslatorFuncT>
+				inline void TranslateToBuffer(uint32 numElements, void* buffer,
+											  uint32 regionStride, uint32 bufferStride,
+											  const TranslatorFuncT& translator) {
+			
+					Memory::TranslateRegionsToBuffer(kEmptyRegion, CreateRegion(),
+													 numElements, buffer,
+													 regionStride, bufferStride,
+													 translator);
+				}
+				
+				//Note: Copies whole arena of type 'ArenaT' to contiguous buffer
+				template <typename ArenaT>
+				inline void CopyToBuffer(uint32 numElements, void* buffer,
+										 uint32 regionStride=sizeof(ArenaT), uint32 bufferStride=sizeof(ArenaT)) const {
+					
+					Memory::CopyRegionsToBuffer<ArenaT>(kEmptyRegion, CreateRegion(),
+														numElements, buffer,
+														regionStride, bufferStride);
 				}
         };
 
         static inline Arena temporaryArena = Arena(0);
+		
+		//Note: calls 'func(void* chunk, uint32 chunkBytes)' for each chunk in [startRegion, stopRegion] inclusive
+		//Warn: ForEachRegion iterates blocks in reverse order from when they were pushed to the region
+		template<typename FuncT>
+		static inline void ForEachRegion(const Region& startRegion, const Region& stopRegion, const FuncT& func) {
+			
+			Block *startBlock = startRegion.block,
+				  *stopBlock  = stopRegion.block;
+			
+			RUNTIME_ASSERT(startBlock == &emptyBlock || stopBlock != &emptyBlock, "non-empty region range has empty stopRegion");
+			
+			if(startBlock == stopBlock) {
+				func(ByteOffset(startBlock, startRegion.position), stopRegion.position - startRegion.position);
+			} else {
+				
+				//invoke on last block
+				func(ByteOffset(stopBlock, sizeof(Block)), stopRegion.position - sizeof(Block));
+				
+				//invoke on intermediate blocks
+				for(stopBlock = stopBlock->previousBlock; stopBlock != startBlock; stopBlock = stopBlock->previousBlock) {
+					RUNTIME_ASSERT(stopBlock != &emptyBlock, "Malformed Region range! - walked back to emptyBlock before hitting startBlock");
+					func(ByteOffset(stopBlock, sizeof(Block)), stopBlock->position - sizeof(Block));
+				}
+
+				//invoke on first block
+				func(ByteOffset(startBlock, startRegion.position), startBlock->position - startRegion.position);
+			}
+		}
+		
+		//Note: invokes 'translator(void* regionElement, void* bufferElement)' for each regionElement in [startRegion, stopRegion]
+		// 		and each bufferElement in a contiguous buffer
+		template<typename TranslatorFuncT>
+		static inline void TranslateRegionsToBuffer(const Region& startRegion, const Region& stopRegion, uint32 numElements, void* buffer,
+													uint32 regionStride, uint32 bufferStride, const TranslatorFuncT& translator) {
+			
+			void* bufferEnd = ByteOffset(buffer, bufferStride*numElements);
+			
+			//Note: ForEachRegion iterates chunks backwards so we translate buffer in reverse to maintain chunk ordering
+			ForEachRegion(startRegion, stopRegion,
+				          [&](void *chunk, uint32 chunkBytes) {
+				
+							  //position bufferData at start of chunk
+							  void *bufferDataEnd = bufferEnd;
+							  void *bufferData = ByteOffset(bufferDataEnd, -bufferStride*(chunkBytes/regionStride));
+				
+							  //set next tail at start of this chunk
+							  bufferEnd = bufferData;
+				
+							  //translate chunk to buffer
+							  while(bufferData < bufferDataEnd) {
+					
+								  translator(chunk, bufferData);
+					
+								  bufferData = ByteOffset(bufferData, bufferStride);
+								  chunk=ByteOffset(chunk, regionStride);
+							  }
+						  });
+		}
+		
+		//Note: Copies Region of type 'RegionT' to contiguous buffer
+		template <typename RegionT>
+		static inline void CopyRegionsToBuffer(const Region& startRegion, const Region& stopRegion, uint32 numElements, void* buffer,
+											   uint32 regionStride=sizeof(RegionT), uint32 bufferStride=sizeof(RegionT)) {
+			
+			//TODO: Make sure that translate function compiles int '__builtin_memcpy'
+			// 		if not, consider invoking CopyMemory to instead (will prevent constructors from being called)
+			
+			TranslateRegionsToBuffer(startRegion, stopRegion,
+				                     numElements, buffer,
+				                     regionStride, bufferStride,
+									 [](void *src, void *dst) { *(RegionT*)dst = *(RegionT*)src; });
+		}
 };

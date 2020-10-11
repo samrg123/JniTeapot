@@ -21,20 +21,25 @@ struct Mat4 {
     
     constexpr Mat4(){}
     
-    //TODO: replace this with 4xsimd move?
+    //TODO: replace this with 4xsimd move
     constexpr Mat4(const T (&v)[16] ): components{ {v[0],  v[1],  v[2],  v[3]},
                                                    {v[4],  v[5],  v[6],  v[7]},
                                                    {v[8],  v[9],  v[10], v[11]},
                                                    {v[12], v[13], v[14], v[15]}} {}
-
+    
+    //TODO: make sure this SIMD swizzles
+    inline Vec4<T> Row1() { return Vec4(a1, a2, a3, a4); }
+    inline Vec4<T> Row2() { return Vec4(b1, b2, b3, b4); }
+    inline Vec4<T> Row3() { return Vec4(c1, c2, c3, c4); }
+    inline Vec4<T> Row4() { return Vec4(d1, d2, d3, d4); }
+    
     template<typename T2>
     constexpr Mat4& operator*= (const Mat4<T2>& m) {
         
-        //TODO: make sure this SIMD swizzles
-        Vec4 row1(a1, a2, a3, a4),
-             row2(b1, b2, b3, b4),
-             row3(c1, c2, c3, c4),
-             row4(d1, d2, d3, d4);
+        Vec4 row1 = Row1(),
+             row2 = Row2(),
+             row3 = Row3(),
+             row4 = Row4();
         
         Vec4 col = m.column[0];
         a1 = row1.Dot(col);
@@ -84,7 +89,7 @@ struct Mat4 {
     inline Mat4 Orthogonal(const Vec2<float>& view, float nearPlane, float farPlane) {
         
         float iD = 1.f/(farPlane - nearPlane),
-            oD = -iD*(nearPlane + farPlane);
+              oD = -(farPlane + nearPlane)*iD;
         
         return Mat4({  2.f/view.x, 0,          0,    0,
                        0,          2.f/view.y, 0,    0,
@@ -96,22 +101,20 @@ struct Mat4 {
     static
     inline Mat4 Perspective(float aspect, float fovX, float nearPlane, float farPlane) {
         
-        float thetaX = .5f*fovX,
-              iTanX  = 1.f/FastTan(thetaX),
-              iTanY  = aspect * iTanX;
+        float tanX = FastTan(.5f*fovX);
         
         float iD = 1.f/(farPlane - nearPlane),
-              sD = iD*(nearPlane + farPlane),
+              sD = tanX*(farPlane + nearPlane)*iD,
               oD = -2.f*farPlane*nearPlane*iD;
         
-        return Mat4({  iTanX, 0,     0,   0,
-                       0,     iTanY, 0,   0,
-                       0,     0,     sD,  1,
-                       0,     0,     oD,  0
+        return Mat4({  1,     0,      0,   0,
+                       0,     aspect, 0,   0,
+                       0,     0,      sD,  tanX,
+                       0,     0,      oD,  0
                     });
     }
     
-    //rotation matrix rotates in thata.z, theta.y, theta.x order
+    //Note rotates matrix in thata.z, theta.y, theta.x order
     inline Mat4& Rotate(const Vec3<float>& theta) {
     
         //TODO: make sure this SIMD sin/cos
@@ -121,43 +124,53 @@ struct Mat4 {
         //TODO: see if we can simplify math more
         float cosThetaXSinThetaY = cosTheta.x*sinTheta.y,
               sinThetaXSinThetaY = sinTheta.x*sinTheta.y;
-
-        Vec3 col1(cosTheta.x*cosTheta.y,
-                  sinTheta.x*cosTheta.y,
-                  -sinTheta.y);
-        
-        Vec3 col2(cosThetaXSinThetaY*sinTheta.z - sinTheta.x*cosTheta.z,
+    
+        Vec3 row1(cosTheta.x*cosTheta.y,
+                  cosThetaXSinThetaY*sinTheta.z - sinTheta.x*cosTheta.z,
+                  cosThetaXSinThetaY*cosTheta.z + sinTheta.x*sinTheta.z);
+    
+        Vec3 row2(sinTheta.x*cosTheta.y,
                   sinThetaXSinThetaY*sinTheta.z + cosTheta.x*cosTheta.z,
-                  cosTheta.y*sinTheta.z);
-        
-        Vec3 col3(cosThetaXSinThetaY*cosTheta.z + sinTheta.x*sinTheta.z,
-                  sinThetaXSinThetaY*cosTheta.z - cosTheta.x*sinTheta.z,
+                  sinThetaXSinThetaY*cosTheta.z - cosTheta.x*sinTheta.z);
+    
+        Vec3 row3(-sinTheta.y,
+                  cosTheta.y*sinTheta.z,
                   cosTheta.y*cosTheta.z);
     
-        //TODO: make sure this SIMD swizzles
-        Vec3 row1(a1, a2, a3),
-             row2(b1, b2, b3),
-             row3(c1, c2, c3);
-  
-        a1 = row1.Dot(col1);
-        b1 = row2.Dot(col1);
-        c1 = row3.Dot(col1);
+        Vec3 col = (Vec3<float>)column[0];
+        a1 = row1.Dot(col);
+        b1 = row2.Dot(col);
+        c1 = row3.Dot(col);
     
-        a2 = row1.Dot(col2);
-        b2 = row2.Dot(col2);
-        c2 = row3.Dot(col2);
+        col = (Vec3<float>)column[1];
+        a2 = row1.Dot(col);
+        b2 = row2.Dot(col);
+        c2 = row3.Dot(col);
     
-        a3 = row1.Dot(col3);
-        b3 = row2.Dot(col3);
-        c3 = row3.Dot(col3);
+        col = (Vec3<float>)column[2];
+        a3 = row1.Dot(col);
+        b3 = row2.Dot(col);
+        c3 = row3.Dot(col);
+    
+        col = (Vec3<float>)column[3];
+        a4 = row1.Dot(col);
+        b4 = row2.Dot(col);
+        c4 = row3.Dot(col);
 
         return *this;
     }
     
     inline Mat4& Scale(const Vec3<float>& s) {
-        a1*= s.x;
-        b2*= s.y;
-        c3*= s.z;
+        (Vec3<float>&)column[0]*= s.x;
+        (Vec3<float>&)column[1]*= s.y;
+        (Vec3<float>&)column[2]*= s.z;
+        return *this;
+    }
+    
+    inline Mat4& Translate(const Vec3<float>& delta) {
+        d1 = delta.Dot((Vec3<float>&)column[0]);
+        d2 = delta.Dot((Vec3<float>&)column[1]);
+        d3 = delta.Dot((Vec3<float>&)column[2]);
         return *this;
     }
 };
