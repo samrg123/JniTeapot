@@ -78,14 +78,19 @@ struct Vec3 : Base {
     static inline const Vec3 one   = Vec3( 1,  1,  1);
     static inline const Vec3 zero  = Vec3( 0,  0,  0);
     
-    constexpr T Area() const { return x*y*z; }
-    constexpr Vec3 Inverse() const { return Vec3(1/x, 1/y, 1/z); }
+    constexpr T     Area()        const { return x*y*z; }
+    constexpr Vec3  Inverse()     const { return Vec3(1/x, 1/y, 1/z); }
+    constexpr T     NormSquared() const { return x*x + y*y + z*z; }
+    constexpr T     Norm()        const { return FastSqrt(NormSquared()); };
     
-    template<typename T2> constexpr auto Dot(const Vec3<T2>& v) const { return v.x*x + v.y*y + v.z*z; }
+    constexpr Vec3& Normalize() { return *this/= Norm(); }
+    
+    template<typename T2> constexpr auto Dot  (const Vec3<T2>& v) const { return v.x*x + v.y*y + v.z*z; }
+    template<typename T2> constexpr auto Cross(const Vec3<T2>& v) const { return ::Vec3(y*v.z - z*v.y, z*v.x - x*v.z, x*v.y - y*v.x); }
     
     constexpr const T* operator& () const { return component; };
-    constexpr operator Vec2<T>() const    { return (Vec2<T>&)*this; };
-    constexpr operator Vec2<T>&()         { return (Vec2<T>&)*this; };
+    constexpr operator Vec2<T>()    const { return *(Vec2<T>*)this; };
+    constexpr operator Vec2<T>&()         { return *(Vec2<T>*)this; };
     template<typename T2> constexpr operator Vec3<T2>() const { return Vec3<T2>(T2(x), T2(y), T2(z)); };
     
     template<typename St> constexpr auto operator*  (const St& s) const { return Vec3<decltype(x*s)>(x*s, y*s, z*s); }
@@ -148,10 +153,10 @@ struct Vec4 : Base {
     template<typename T2> constexpr auto Dot(const Vec4<T2>& v) const { return v.x*x + v.y*y + v.z*z + + v.w*w; }
     
     constexpr const T* operator& () const { return component; };
-    constexpr operator Vec3<T>() const    { return (Vec3<T>&)*this; };
-    constexpr operator Vec2<T>() const    { return (Vec3<T>&)*this; };
-    constexpr operator Vec3<T>&()         { return (Vec3<T>&)*this; };
-    constexpr operator Vec2<T>&()         { return (Vec3<T>&)*this; };
+    constexpr operator Vec3<T>() const    { return *(Vec3<T>*)this; };
+    constexpr operator Vec2<T>() const    { return *(Vec2<T>*)this; };
+    constexpr operator Vec3<T>&()         { return *(Vec3<T>*)this; };
+    constexpr operator Vec2<T>&()         { return *(Vec2<T>*)this; };
     template<typename T2> constexpr operator Vec4<T2>() const { return Vec4<T2>(T2(x), T2(y), T2(z), T2(w)); };
     
     template<typename St> constexpr auto operator*  (const St& s) const { return Vec4<decltype(x*s)>(x*s, y*s, z*s, w*s); }
@@ -194,5 +199,4 @@ struct Vec4 : Base {
     template<typename T2> constexpr Vec4& operator/= (const Vec2<T2>& v) { x/= v.x; y/= v.y; return *this; }
     template<typename T2> constexpr Vec4& operator+= (const Vec2<T2>& v) { x+= v.x; y+= v.y; return *this; }
     template<typename T2> constexpr Vec4& operator-= (const Vec2<T2>& v) { x-= v.x; y-= v.y; return *this; }
-    
 };

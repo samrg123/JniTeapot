@@ -125,10 +125,29 @@ void* activityLoop(void* nativeWindow) {
     
     InitGlesState();
     
-    //TODO: THIS
-    GlObject sphere("meshes/sphere.obj", GlTransform(Vec3(.2f, .2f, 0.f), Vec3(.2f, 1.f, 1.f)));
-    //GlObject sphere("meshes/triangle.obj");
-    constexpr Vec3 omega = ToRadians(Vec3(10.f, 5.f, 7.f));
+    //setup test enviornment
+    GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000),
+                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3<float>(1.f, 1.f, 1.f))
+                    //GlTransform(Vec3<float>::zero, Vec3<float>(200.f, 200.f, 200.f))
+    );
+    
+    //TODO: CAMERA TRANSLATION & ROTATION IS NOT NEGATED - should we bake negation in projection matrix or have camera
+    //      adjust it ... maybe GlObject?
+    //
+    
+    //float fovX = ToRadians(75.f);
+    //GlCamera camera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), fovX, 0.f, 1000.f),
+    //                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
+    //                //GlTransform(Vec3<float>::zero, Vec3<float>(.1f, .1f, .1f))
+    //               );
+
+    //constexpr Vec3 omega = ToRadians(Vec3(10.f, 5.f, 7.f));
+    const Vec3 omega = ToRadians(Vec3(0.f, 10.f, 0.f));
+    GlObject sphere("meshes/cow.obj",
+                    &camera,
+                    GlTransform(Vec3(0.f, 0.f, 1000.f), Vec3(100.f, 100.f, 100.f))
+                    //GlTransform(Vec3(.0f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f))
+             );
     
     Timer fpsTimer(true),
           physicsTimer(true);
@@ -144,7 +163,11 @@ void* activityLoop(void* nativeWindow) {
         {
             GlTransform transform = sphere.GetTransform();
             transform.Rotate(omega*secElapsed);
+            //camera.SetTransform(camera.GetTransform().Translate(Vec3(0.f, 0.f, .001f)));
+            //transform.Translate(Vec3(0.f, 0.f, .001f));
+            
             sphere.SetTransform(transform);
+            
         }
 
         sphere.Draw();
