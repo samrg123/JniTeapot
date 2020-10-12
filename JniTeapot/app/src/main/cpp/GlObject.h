@@ -20,7 +20,6 @@ class GlObject {
                                                      //Note: blocks must be defined in the order of their binding (gles 3.1 doesn't let use explicitly set location=binding)
                                                      "layout(std140, binding = 0) uniform UniformBlock {"
                                                      "  mat4 mvpMatrix;"
-                                                     //"  vec3 camera;"
                                                      "};"
                                                      ""
                                                      "layout(location = 0) in vec3 position;"
@@ -54,6 +53,9 @@ class GlObject {
         static constexpr const char* kFragmentSource = "#version 310 es\n"
                                                        "precision mediump float;"
                                                        ""
+                                                       "layout(binding = 0) uniform samplerCube cubemapSampler;"
+                                                       "layout(location = 0) uniform float mirrorConstant;"
+                                                       ""
                                                        "layout(location = 0) in vec3 lightDirection;"
                                                        "layout(location = 1) in vec3 fragNormal;"
                                                        "layout(location = 2) in vec3 cameraDirection;"
@@ -63,10 +65,13 @@ class GlObject {
                                                        ""
                                                        "void main() {"
                                                        " "
-                                                       "    vec4 diffuseColor = vec4(0., 1., 0., 1.);"
-                                                       "    vec4 ambientColor = vec4(1., 1., 1., .1);"
+                                                       //"    vec4 diffuseColor = vec4(0., 1., 0., 1.);"
+                                                       //"    vec4 diffuseColor = vec4(0.2, .2, .2, 1.);"
+                                                       "    vec4 diffuseColor = vec4(1., 1., 1., 1.);"
+                                                       "    vec4 ambientColor = vec4(1., 1., 1., mirrorConstant);"
+                                                       "    ambientColor.rgb = vec3(0.);"
                                                        ""
-                                                       "    float specularV = 1.;"
+                                                       "    float specularV = 0.;"
                                                        "    float specularPower  = 1.;"
                                                        "    "
                                                        "    vec3 kDiffuse  = diffuseColor.rgb;"
@@ -78,8 +83,9 @@ class GlObject {
                                                        ""
                                                        
                                                        //TODO: this - specular isn't working right!
-                                                       "    vec3 diffuseTerm = kDiffuse * dot(lightDirection, fragNormal);"
+                                                       "    vec3 diffuseTerm = kDiffuse * max(0., dot(lightDirection, fragNormal));"
                                                        "    vec3 specularTerm = kSpecular * pow(max(0., dot(lightReflection, cameraDirection)), specularPower);"
+                                                       "    specularTerm*= 0.;"
                                                        ""
                                                        "    vec3 ambientTerm = ambientColor.w * ambientColor.rgb;"
                                                        "    vec3 lightTerm = lightColor.w * (diffuseTerm + specularTerm);"
@@ -88,12 +94,24 @@ class GlObject {
                                                        "  fragColor.a = diffuseColor.a;"
                                                        ""
                                                        //"  fragColor.rgb = 2.*fragNormal - vec3(1., 1., 1.);"
-                                                       "  fragColor.rgb = fragNormal;"
+                                                       //"  fragColor.rgb = fragNormal;"
                                                        ""
+                                                       "    vec3 cubeReflection = 2.*fragNormal - cameraDirection;"
+                                                       "    vec4 cubeColor = texture(cubemapSampler, normalize(cubeReflection));"
+                                                       //"    cubeColor*=  max(0., dot(lightDirection, fragNormal));"
+                                                       "    cubeColor*= ambientColor.w;"
+                                                       "    cubeColor.rgb*= diffuseColor.rgb;"
+                                                       "    float reflectivity = 1.;"
+                                                       ""
+                                                       //"    fragColor.rgb = ((1. - reflectivity)*fragColor.rgb) + (reflectivity*cubeColor.rgb);"
+                                                       //"    fragColor.rgb = fragColor.rgb + (mirrorConstant*cubeColor.rgb);"
+                                                       "    fragColor.rgb = fragColor.rgb + (reflectivity*cubeColor.rgb);
+                                                       //""
                                                        "}";
                 
-        enum Attribs { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
-        enum UBlocks { UBLOCK_UNIFORM_BLOCK };
+        enum Attribs  { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
+        enum Uniforms { UNIFORM_MIRROR_CONSTANT };
+        enum UBlocks  { UBLOCK_UNIFORM_BLOCK };
         
         enum Flag {
             FLAG_NORMAL = 1<<0, FLAG_UV = 1<<1,
@@ -118,6 +136,7 @@ class GlObject {
         
         GLuint vao;
         GLuint glProgram;
+        GLuint cubeSampler, cubemapTexture;
         
         uint32 flags;
         uint32 numIndices;
@@ -445,6 +464,30 @@ class GlObject {
             LoadObject(buffer);
     
             Memory::temporaryArena.FreeBaseRegion(tmpRegion);
+            
+            //TODO: MOVE THIS OUT!!
+            {
+                const char* images[] = {
+                    "textures/skymap/px.png",
+                    "textures/skymap/nx.png",
+                    "textures/skymap/py.png",
+                    "textures/skymap/ny.png",
+                    "textures/skymap/pz.png",
+                    "textures/skymap/nz.png"
+                };
+                
+                cubemapTexture = GlContext::LoadCubemap(images);
+                Log("Cubemap Texture: %d", cubemapTexture);
+    
+                glGenSamplers(1, &cubeSampler);
+                glSamplerParameteri(cubeSampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glSamplerParameteri(cubeSampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glSamplerParameteri(cubeSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glSamplerParameteri(cubeSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                GlAssertNoError("Failed to create cubemap sampler: %d", cubeSampler);
+            }
+            
+            
         }
         
         ~GlObject() {
@@ -456,7 +499,7 @@ class GlObject {
         inline GlTransform GetTransform() const { return transform; }
         inline void SetTransform(const GlTransform& t) { transform = t; flags|= FLAG_OBJ_TRANSFORM_UPDATED; }
         
-        void Draw() {
+        void Draw(float mirrorConstant) {
         
             //check if camera matrix updated
             // Warn: cameraMatrixId repeats every 2^32 iterations so its possible that this check fails if the cameraMatrixId differs by a multiple of 2^32.
@@ -492,6 +535,12 @@ class GlObject {
             //Note: no need to bind 'GL_ELEMENT_ARRAY_BUFFER', its part of vao state
             glBindVertexArray(vao);
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    
+            glBindSampler(0, cubeSampler);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+    
+            glUniform1f(UNIFORM_MIRROR_CONSTANT, mirrorConstant);
             
             glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);
             

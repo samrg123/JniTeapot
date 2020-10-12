@@ -6,6 +6,10 @@
 
 #include "types.h"
 #include "Memory.h"
+#include "lodepng/lodepng.h"
+
+#include "stdlib.h"
+#include "lodepng/lodepng.h"
 
 class GlContext {
     public:
@@ -322,6 +326,46 @@ class GlContext {
     
                 eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext);
                 return false;
+            }
+        
+            static GLuint LoadCubemap(const char* (&images)[6]) {
+    
+                GLuint cubemapTexture;
+                glGenTextures(1, &cubemapTexture);
+                GlAssertNoError("Failed to create cubemap texture");
+                
+                glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+                
+                //TODO: generate cubemap mipmaps!
+                
+                for(int i = 0; i < 6; ++i) {
+    
+                    Memory::Region tmpRegion = Memory::temporaryArena.CreateRegion();
+                    FileManager::AssetBuffer* pngBuffer = FileManager::OpenAsset(images[i], &Memory::temporaryArena);
+    
+                    uchar* decodedPng;
+                    uint width, height;
+                    lodepng_decode_memory(&decodedPng, &width, &height, pngBuffer->data, pngBuffer->size, LodePNGColorType::LCT_RGBA, 8);
+    
+    
+                    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                                 0,               //mipmap level
+                                 GL_RGBA,         //internal format
+                                 width,
+                                 height,
+                                 0,                //border must be 0
+                                 GL_RGBA,          //input format
+                                 GL_UNSIGNED_BYTE,
+                                 decodedPng);
+
+                    GlAssertNoError("Failed to set cubemap image: '%s' side: %d", images[i], i);
+                    
+                    
+                    free(decodedPng);
+                    Memory::temporaryArena.FreeBaseRegion(tmpRegion);
+                }
+
+                return cubemapTexture;
             }
 };
 
