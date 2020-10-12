@@ -13,7 +13,7 @@ set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -std=c++2a -fno-exceptions -fno-r
 
 # build app libd
 #set(SOURCES JniTeapotActivity.h )
-set(SOURCES jniTeapot.cpp)
+set(SOURCES jniTeapot.cpp lodepng/lodepng.cpp)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 set_target_properties(${PROJECT_NAME}
     PROPERTIES

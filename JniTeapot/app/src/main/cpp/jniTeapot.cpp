@@ -143,11 +143,17 @@ void* activityLoop(void* nativeWindow) {
     
     //constexpr Vec3 omega = ToRadians(Vec3(10.f, 5.f, 7.f));
     const Vec3 omega = ToRadians(Vec3(0.f, 10.f, 0.f));
-    GlObject sphere("meshes/cow.obj",
+    //GlObject sphere("meshes/cow.obj",
+    //                &camera,
+    //                GlTransform(Vec3(0.f, 0.f, 1000.f), Vec3(100.f, 100.f, 100.f))
+    //                //GlTransform(Vec3(.0f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f))
+    //         );
+    
+    GlObject sphere("meshes/sphere.obj",
                     &camera,
-                    GlTransform(Vec3(0.f, 0.f, 1000.f), Vec3(100.f, 100.f, 100.f))
-                    //GlTransform(Vec3(.0f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f))
-             );
+                    GlTransform(Vec3(0.f, 0.f, 1000.f), Vec3(500.f, 500.f, 500.f))
+        //GlTransform(Vec3(.0f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f))
+                   );
     
     Timer fpsTimer(true),
           physicsTimer(true);
@@ -163,6 +169,7 @@ void* activityLoop(void* nativeWindow) {
         {
             GlTransform transform = sphere.GetTransform();
             transform.Rotate(omega*secElapsed);
+            
             //camera.SetTransform(camera.GetTransform().Translate(Vec3(0.f, 0.f, .001f)));
             //transform.Translate(Vec3(0.f, 0.f, .001f));
             
@@ -170,7 +177,11 @@ void* activityLoop(void* nativeWindow) {
             
         }
 
-        sphere.Draw();
+        constexpr float mirrorOmega = ToRadians( 180.f / 5.f);
+        static float mirrorTheta = 0.f;
+        mirrorTheta+= mirrorOmega*secElapsed;
+        
+        sphere.Draw( .5f*(FastSin(mirrorTheta)+1.f) );
 
         DrawStrings(&glText, loopTimer.ElapsedSec(), fpsTimer.LapSec());
         
