@@ -27,21 +27,69 @@ class GlObject {
                                                      "layout(location = 1) in vec3 normal;"
                                                      "layout(location = 2) in vec2 uv;"
                                                      ""
-                                                     //"smooth out uvOut;"
-                                                     //"smooth out reflectOut;"
+                                                     "layout(location = 0) out vec3 lightDirection;"
+                                                     "layout(location = 1) out vec3 fragNormal;"
+                                                     "layout(location = 2) out vec3 cameraDirection;"
+                                                     "layout(location = 3) out vec4 lightColor;"
+                                                     ""
                                                      ""
                                                      "void main() {"
                                                      "  vec4 v4Position = vec4(position.x, position.y, position.z, 1.);"
                                                      "  gl_Position = mvpMatrix*v4Position;"
+                                                     "  "
+                                                     "  "
+                                                    //TODO: make GlLight and pass light array to shader!
+                                                     "  vec3 lightPosition = vec3(100., 100., -100.);"
+                                                     "  vec3 cameraPosition = vec3(0., 0., -100.);"
+                                                     "  "
+                                                     "  cameraPosition = lightPosition;"
+                                                     ""
+                                                     "  fragNormal = normal;"
+                                                     "  lightColor = vec4(1., 1., 1., 1.);"
+                                                     "  lightDirection = normalize(lightPosition - position);"
+                                                     "  cameraDirection = normalize(cameraPosition - position);"
+                                                     ""
                                                      "}";
         
         static constexpr const char* kFragmentSource = "#version 310 es\n"
                                                        "precision mediump float;"
                                                        ""
+                                                       "layout(location = 0) in vec3 lightDirection;"
+                                                       "layout(location = 1) in vec3 fragNormal;"
+                                                       "layout(location = 2) in vec3 cameraDirection;"
+                                                       "layout(location = 3) in vec4 lightColor;"
+                                                       ""
                                                        "layout(location = 0) out vec4 fragColor;"
                                                        ""
                                                        "void main() {"
-                                                       "    fragColor = vec4(0., 1., 0., 1.);"
+                                                       " "
+                                                       "    vec4 diffuseColor = vec4(0., 1., 0., 1.);"
+                                                       "    vec4 ambientColor = vec4(1., 1., 1., .1);"
+                                                       ""
+                                                       "    float specularV = 1.;"
+                                                       "    float specularPower  = 1.;"
+                                                       "    "
+                                                       "    vec3 kDiffuse  = diffuseColor.rgb;"
+                                                       //"    vec3 kSpecular = vec3(1, 0, 0);"
+                                                       "    vec3 kSpecular = vec3(specularV, specularV, specularV);"
+                                                       ""
+                                                       //"    vec3 lightReflection = -reflect(lightDirection, fragNormal);"
+                                                       "    vec3 lightReflection = normalize(2.*dot(fragNormal, lightDirection) - lightDirection);"
+                                                       ""
+                                                       
+                                                       //TODO: this - specular isn't working right!
+                                                       "    vec3 diffuseTerm = kDiffuse * dot(lightDirection, fragNormal);"
+                                                       "    vec3 specularTerm = kSpecular * pow(max(0., dot(lightReflection, cameraDirection)), specularPower);"
+                                                       ""
+                                                       "    vec3 ambientTerm = ambientColor.w * ambientColor.rgb;"
+                                                       "    vec3 lightTerm = lightColor.w * (diffuseTerm + specularTerm);"
+                                                       ""
+                                                       "  fragColor.rgb = ambientTerm + lightTerm;"
+                                                       "  fragColor.a = diffuseColor.a;"
+                                                       ""
+                                                       //"  fragColor.rgb = 2.*fragNormal - vec3(1., 1., 1.);"
+                                                       "  fragColor.rgb = fragNormal;"
+                                                       ""
                                                        "}";
                 
         enum Attribs { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
@@ -167,6 +215,10 @@ class GlObject {
                 
             } else  {
                 
+                //TODO: clean this up and break out to function
+                
+                Log("Normals not provided in obj file. Computing normals.");
+                
                 //create a tempory block of vectors filled with 0's to compute intermediate math on
                 Memory::Region tmpRegion = Memory::temporaryArena.CreateRegion();
                 Vec3<float>* tmpNormals = (Vec3<float>*)Memory::temporaryArena.PushBytes(numVerts*sizeof(Vec3<float>), true);
@@ -202,6 +254,9 @@ class GlObject {
                                                  computeNormalsAndTranslateIndices);
 
                 //average normals and interleave in vbo
+                glEnableVertexAttribArray(ATTRIB_NORMAL_VERT);
+                glVertexAttribPointer(ATTRIB_NORMAL_VERT, 3, GL_FLOAT, GL_FALSE, vboStride, (void*)vboOffset);
+                
                 Memory::TranslateRegionsToBuffer(tmpRegion, Memory::temporaryArena.CreateRegion(),
                                                  numVerts, ByteOffset(vboPtr, vboOffset),
                                                  sizeof(Vec3<float>), vboStride,

@@ -140,7 +140,7 @@ void* activityLoop(void* nativeWindow) {
     //                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
     //                //GlTransform(Vec3<float>::zero, Vec3<float>(.1f, .1f, .1f))
     //               );
-
+    
     //constexpr Vec3 omega = ToRadians(Vec3(10.f, 5.f, 7.f));
     const Vec3 omega = ToRadians(Vec3(0.f, 10.f, 0.f));
     GlObject sphere("meshes/cow.obj",
