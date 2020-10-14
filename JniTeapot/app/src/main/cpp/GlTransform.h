@@ -14,6 +14,8 @@ class GlTransform {
             position(position),
             scale(scale) {}
         
+        inline Mat4<float> RotationMatrix() { return rotationMatrix; }
+        
         //TODO: store rotation in quternion so we can lerp it & save space & speed up rotations
         //      Note: will come at the cost of coverting quaternion to matrix
         

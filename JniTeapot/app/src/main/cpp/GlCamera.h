@@ -33,7 +33,10 @@ class GlCamera {
             if(flags & (FLAG_PROJECTION_MATRIX_UPDATED | FLAG_CAM_TRANSFORM_UPDATED)) {
                 
                 if(flags & FLAG_CAM_TRANSFORM_UPDATED) {
+
+                    //Note: column4 has x,y,z translation negated because camera shifts world in opposite direction
                     transformMatrix = transform.Matrix();
+                    ((Vec3<float>&)transformMatrix.column[3])*= -1.f;
                 }
                 
                 flags&= ~(FLAG_PROJECTION_MATRIX_UPDATED | FLAG_CAM_TRANSFORM_UPDATED);

@@ -110,7 +110,7 @@ struct Mat4 {
         return Mat4({  1,     0,      0,   0,
                        0,     aspect, 0,   0,
                        0,     0,      sD,  tanX,
-                       0,     0,      oD,  0
+                       0,     0,      oD,  1
                     });
     }
     

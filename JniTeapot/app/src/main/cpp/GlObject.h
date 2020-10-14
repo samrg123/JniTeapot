@@ -20,7 +20,12 @@ class GlObject {
                                                      //Note: blocks must be defined in the order of their binding (gles 3.1 doesn't let use explicitly set location=binding)
                                                      "layout(std140, binding = 0) uniform UniformBlock {"
                                                      "  mat4 mvpMatrix;"
+                                                     "  mat4 mvMatrix;"
                                                      "};"
+                                                     ""
+                                                     "layout(location = 0) uniform float mirrorConstant;"
+                                                     "layout(location = 1) uniform vec3 cameraPosition;"
+                                                     "layout(location = 2) uniform vec3 lightPosition;"
                                                      ""
                                                      "layout(location = 0) in vec3 position;"
                                                      "layout(location = 1) in vec3 normal;"
@@ -30,28 +35,28 @@ class GlObject {
                                                      "layout(location = 1) out vec3 fragNormal;"
                                                      "layout(location = 2) out vec3 cameraDirection;"
                                                      "layout(location = 3) out vec4 lightColor;"
+                                                     "layout(location = 4) out vec3 worldPosition;"
+                                                     "layout(location = 5) out vec3 fragLightPosition;"
                                                      ""
                                                      ""
                                                      "void main() {"
-                                                     "  vec4 v4Position = vec4(position.x, position.y, position.z, 1.);"
+                                                     "  vec4 v4Position = vec4(position, 1.);"
                                                      "  gl_Position = mvpMatrix*v4Position;"
-                                                     "  "
-                                                     "  "
-                                                    //TODO: make GlLight and pass light array to shader!
-                                                     "  vec3 lightPosition = vec3(100., 100., -100.);"
-                                                     "  vec3 cameraPosition = vec3(0., 0., -100.);"
-                                                     "  "
-                                                     "  cameraPosition = lightPosition;"
+                                                     "  "                                                     "  "
+                                                     "  fragNormal = normalize((mvMatrix * vec4(normal, 0.)).xyz);"
+                                                     "  worldPosition = (mvMatrix * v4Position).xyz;"
+                                                     "  fragLightPosition = lightPosition;"
                                                      ""
-                                                     "  fragNormal = normal;"
-                                                     "  lightColor = vec4(1., 1., 1., 1.);"
-                                                     "  lightDirection = normalize(lightPosition - position);"
-                                                     "  cameraDirection = normalize(cameraPosition - position);"
-                                                     ""
+                                                     //"  lightColor = vec4(0., 1., 0., .3);"
+                                                     //"  lightColor = vec4(1., 1., 1., 300000.);"
+                                                     //"  lightColor = vec4(0.85, .95, 1., 200000.);"
+                                                     "  lightColor = vec4(0.6784, .7255, .698, 1000000.);"
+                                                     "  lightDirection = normalize(lightPosition - worldPosition);"
+                                                     "  cameraDirection = normalize(cameraPosition - worldPosition);"
                                                      "}";
         
         static constexpr const char* kFragmentSource = "#version 310 es\n"
-                                                       "precision mediump float;"
+                                                       "precision highp float;"
                                                        ""
                                                        "layout(binding = 0) uniform samplerCube cubemapSampler;"
                                                        "layout(location = 0) uniform float mirrorConstant;"
@@ -60,57 +65,52 @@ class GlObject {
                                                        "layout(location = 1) in vec3 fragNormal;"
                                                        "layout(location = 2) in vec3 cameraDirection;"
                                                        "layout(location = 3) in vec4 lightColor;"
+                                                       "layout(location = 4) in vec3 worldPosition;"
+                                                       "layout(location = 5) in vec3 fragLightPosition;"
                                                        ""
                                                        "layout(location = 0) out vec4 fragColor;"
                                                        ""
                                                        "void main() {"
                                                        " "
-                                                       //"    vec4 diffuseColor = vec4(0., 1., 0., 1.);"
-                                                       //"    vec4 diffuseColor = vec4(0.2, .2, .2, 1.);"
-                                                       "    vec4 diffuseColor = vec4(1., 1., 1., 1.);"
-                                                       "    vec4 ambientColor = vec4(1., 1., 1., mirrorConstant);"
-                                                       "    ambientColor.rgb = vec3(0.);"
+                                                       "    vec4 diffuseColor = vec4(.9, .9, .9, 1.);"
+                                                       "    vec4 ambientColor = vec4(.4471, .4486, .3464, 1.);"
                                                        ""
-                                                       "    float specularV = 0.;"
-                                                       "    float specularPower  = 1.;"
+                                                       "    float reflectivity = mirrorConstant;"
+                                                       "    float diffuseness = 1. - mirrorConstant;"
+                                                       //"    float specularPower  = 16.;" //Note: smaller numbers = more reflective
+                                                       "    float specularPower  = 8.;" //Note: smaller numbers = more reflective
                                                        "    "
-                                                       "    vec3 kDiffuse  = diffuseColor.rgb;"
-                                                       //"    vec3 kSpecular = vec3(1, 0, 0);"
-                                                       "    vec3 kSpecular = vec3(specularV, specularV, specularV);"
                                                        ""
+                                                       //TODO: this is phong - see if we should do blin-phong instead
                                                        //"    vec3 lightReflection = -reflect(lightDirection, fragNormal);"
-                                                       "    vec3 lightReflection = normalize(2.*dot(fragNormal, lightDirection) - lightDirection);"
-                                                       ""
-                                                       
-                                                       //TODO: this - specular isn't working right!
-                                                       "    vec3 diffuseTerm = kDiffuse * max(0., dot(lightDirection, fragNormal));"
-                                                       "    vec3 specularTerm = kSpecular * pow(max(0., dot(lightReflection, cameraDirection)), specularPower);"
-                                                       "    specularTerm*= 0.;"
-                                                       ""
-                                                       "    vec3 ambientTerm = ambientColor.w * ambientColor.rgb;"
-                                                       "    vec3 lightTerm = lightColor.w * (diffuseTerm + specularTerm);"
-                                                       ""
-                                                       "  fragColor.rgb = ambientTerm + lightTerm;"
-                                                       "  fragColor.a = diffuseColor.a;"
-                                                       ""
-                                                       //"  fragColor.rgb = 2.*fragNormal - vec3(1., 1., 1.);"
-                                                       //"  fragColor.rgb = fragNormal;"
-                                                       ""
-                                                       "    vec3 cubeReflection = 2.*fragNormal - cameraDirection;"
+                                                       "    vec3 lightReflection = normalize( ((2.*dot(fragNormal, lightDirection)) * fragNormal) - lightDirection);"
+                                                       "    vec3 cubeReflection = (2.*fragNormal) - cameraDirection;"
                                                        "    vec4 cubeColor = texture(cubemapSampler, normalize(cubeReflection));"
-                                                       //"    cubeColor*=  max(0., dot(lightDirection, fragNormal));"
-                                                       "    cubeColor*= ambientColor.w;"
-                                                       "    cubeColor.rgb*= diffuseColor.rgb;"
-                                                       "    float reflectivity = 1.;"
                                                        ""
-                                                       //"    fragColor.rgb = ((1. - reflectivity)*fragColor.rgb) + (reflectivity*cubeColor.rgb);"
-                                                       //"    fragColor.rgb = fragColor.rgb + (mirrorConstant*cubeColor.rgb);"
-                                                       "    fragColor.rgb = fragColor.rgb + (reflectivity*cubeColor.rgb);
-                                                       //""
+                                                       "    float lightDistance = fragLightPosition.z - worldPosition.z;"
+                                                       "    float invLightDistanceSqaured = 1./(lightDistance*lightDistance);"
+                                                       ""
+                                                       "    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((diffuseness*ambientColor.rgb) + (reflectivity*cubeColor.rgb));"
+                                                       //"    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((.999*ambientColor.rgb) + (.001*cubeColor.rgb));"
+                                                       "    vec3 diffuseTerm =   diffuseness * diffuseColor.rgb * max(0., dot(fragNormal, lightDirection));"
+                                                       "    float specularTerm = reflectivity * pow(max(0., dot(cameraDirection, lightReflection)), specularPower);"
+                                                       "    vec3 lightTerm = lightColor.w * lightColor.rgb * invLightDistanceSqaured*(diffuseTerm + specularTerm);"
+                                                       " "
+                                                       "    fragColor.rgb = ambientTerm + lightTerm;"
+                                                       "    fragColor.a = diffuseColor.a;"
+                                                       ""
+                                                       //"    fragColor.rgb = (fragColor.rgb*.001) + (.5*(lightDirection + vec3(1.)));"
+                                                       ""
+                                                       //Prevenets optimized out uniform error
+                                                       //"    fragColor.rgb = fragColor.rgb + mirrorConstant*.01*cubeColor.rgb;"
+
+                                                       ////NormalColor
+                                                       //"    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));"
+                                                       "    fragColor.rgb = (.001*fragColor.rgb) + vec3(1.);"
                                                        "}";
                 
         enum Attribs  { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
-        enum Uniforms { UNIFORM_MIRROR_CONSTANT };
+        enum Uniforms { UNIFORM_MIRROR_CONSTANT, UNIFORM_CAMERA_POSITION, UNIFORM_LIGHT_POSITION };
         enum UBlocks  { UBLOCK_UNIFORM_BLOCK };
         
         enum Flag {
@@ -119,7 +119,8 @@ class GlObject {
         };
         
         struct alignas(16) UniformBlock {
-            Mat4<float> mvpMatrix;
+            Mat4<float> mvpMatrix,
+                        mvMatrix;
         };
         
         GlTransform transform;
@@ -506,23 +507,24 @@ class GlObject {
             //       This has a failure probability of 4.6566129e-10, way smaller than the chance of the earth being destroyed massive meteor (1e-8)
             //       Failure mode is using the previous projection matrix until the next update to camera or object matrix (most likely will occur on the next frame)
             //       If this failure rate/mode is still concerning use a uint64 for the camera matrixId instead
-            bool updateMvpMatrix = cameraMatrixId != camera->MatrixId();
+            bool updateUniformBlock =cameraMatrixId != camera->MatrixId();
             
             //check if the object matrix updated
             if(flags&FLAG_OBJ_TRANSFORM_UPDATED) {
                 flags^= FLAG_OBJ_TRANSFORM_UPDATED;
                 transformMatrix = transform.Matrix();
-                updateMvpMatrix = true;
+                updateUniformBlock = true;
             }
     
             //update mvpMatrix
-            if(updateMvpMatrix) {
+            if(updateUniformBlock) {
                 glBindBuffer(GL_UNIFORM_BUFFER, uniformBlockBuffer);
-                Mat4<float>* mvpMatrix = (Mat4<float>*)glMapBufferRange(GL_UNIFORM_BUFFER, offsetof(UniformBlock, mvpMatrix), sizeof(Mat4<float>), GL_MAP_WRITE_BIT);
-                GlAssert(mvpMatrix, "Failed to map mvpMatrix");
+                UniformBlock* uniformBlock = (UniformBlock*)glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(UniformBlock), GL_MAP_WRITE_BIT);
+                GlAssert(uniformBlock, "Failed to map uniformBlock");
     
-                *mvpMatrix = camera->Matrix() * transformMatrix;
-    
+                uniformBlock->mvpMatrix = camera->Matrix() * transformMatrix;
+                uniformBlock->mvMatrix = transformMatrix;
+
                 glUnmapBuffer(GL_UNIFORM_BUFFER);
             }
             
@@ -532,15 +534,26 @@ class GlObject {
             
             glUseProgram(glProgram);
             
+            
+            //TODO: DEBUG CODE
+            {
+                glUniform1f(UNIFORM_MIRROR_CONSTANT, mirrorConstant);
+    
+                Vec3<float> cameraPosition = camera->GetTransform().position;
+                glUniform3fv(UNIFORM_CAMERA_POSITION, 1, cameraPosition.component);
+    
+                Vec3<float> lightPosition = Vec3(1500.f, 1000.f, -1500.f);
+                glUniform3fv(UNIFORM_LIGHT_POSITION, 1, lightPosition.component);
+            }
+            
             //Note: no need to bind 'GL_ELEMENT_ARRAY_BUFFER', its part of vao state
             glBindVertexArray(vao);
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
     
+            //TODO: make TuUniform instead of passing 0
             glBindSampler(0, cubeSampler);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-    
-            glUniform1f(UNIFORM_MIRROR_CONSTANT, mirrorConstant);
             
             glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);
             
