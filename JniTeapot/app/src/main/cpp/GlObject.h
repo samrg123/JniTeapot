@@ -42,7 +42,7 @@ class GlObject {
                                                      "void main() {"
                                                      "  vec4 v4Position = vec4(position, 1.);"
                                                      "  gl_Position = mvpMatrix*v4Position;"
-                                                     "  "                                                     "  "
+                                                     ""
                                                      "  fragNormal = normalize((mvMatrix * vec4(normal, 0.)).xyz);"
                                                      "  worldPosition = (mvMatrix * v4Position).xyz;"
                                                      "  fragLightPosition = lightPosition;"
@@ -106,7 +106,6 @@ class GlObject {
 
                                                        ////NormalColor
                                                        //"    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));"
-                                                       "    fragColor.rgb = (.001*fragColor.rgb) + vec3(1.);"
                                                        "}";
                 
         enum Attribs  { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
@@ -554,9 +553,9 @@ class GlObject {
             glBindSampler(0, cubeSampler);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-            
+
             glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);
-            
+
             GlAssertNoError("Failed to Draw");
         }
         

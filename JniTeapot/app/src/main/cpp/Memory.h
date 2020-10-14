@@ -396,7 +396,7 @@ class Memory {
 				
 							  //position bufferData at start of chunk
 							  void *bufferDataEnd = bufferEnd;
-							  void *bufferData = ByteOffset(bufferDataEnd, -bufferStride*(chunkBytes/regionStride));
+							  void *bufferData = NegByteOffset(bufferDataEnd, bufferStride*(chunkBytes/regionStride));
 				
 							  //set next tail at start of this chunk
 							  bufferEnd = bufferData;

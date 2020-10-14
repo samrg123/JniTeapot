@@ -37,8 +37,9 @@ inline bool IsPow2<float>(float n) { return (unsigned int&)n & (0x1FF<<23); }
 template<> //TODO: add Nan and inf detection
 inline bool IsPow2Safe<float>(float n) { return IsPow2(n); }
 
-template<typename T>
-constexpr void* ByteOffset(const void* ptr, const T& bytes) { return (char*)ptr + bytes; }
+template<typename T> constexpr void* ByteOffset(const void* ptr, const T& bytes) { return (char*)ptr + bytes; }
+template<typename T> constexpr void* NegByteOffset(const void* ptr, const T& negBytes) { return (char*)ptr - negBytes; }
+
 constexpr auto ByteDistance(const void* ptr1, const void* ptr2) { return (char*)ptr1 - (char*)ptr2; }
 
 template <typename T>
