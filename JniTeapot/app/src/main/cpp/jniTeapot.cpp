@@ -140,6 +140,10 @@ void* activityLoop(void* nativeWindow) {
     //const Vec3 omega = ToRadians(Vec3(0.f, 0.f, 0.f));
     const float mirrorOmega = ToRadians( 180.f / 10.f);
     
+    //GlObject sphere("meshes/triangle.obj",
+    //                &camera,
+    //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(110.f, 110.f, 110.f))
+    //               );
 
     GlObject sphere("meshes/cow.obj",
                     &camera,
