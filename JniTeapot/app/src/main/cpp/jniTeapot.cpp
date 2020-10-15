@@ -15,12 +15,21 @@
 #include "Memory.h"
 
 #include "GlObject.h"
+#include "ARWrapper.h"
 
 #include <android/native_window_jni.h>
 
 #define JFunc(jClass, jMethod) JNIEXPORT JNICALL Java_com_eecs487_jniteapot_##jClass##_ ##jMethod
 
 constexpr float kTargetMsFrameTime = 1000.f/60;
+
+struct RenderThreadParams {
+    void* nativeWindow;
+    void* env;
+    void* context;
+    void* activity;
+    JavaVM* vm;
+};
 
 void InitGlesState() {
     //glClearColor(1.f, 1.f, 0.f, 1.f); // yellow
@@ -111,8 +120,10 @@ void DrawStrings(GlText* glText, float renderTime, float frameTime) {
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
-void* activityLoop(void* nativeWindow) {
-    
+void* activityLoop(void* _params) {
+    RenderThreadParams* params = (RenderThreadParams*) _params;
+    auto nativeWindow = params->nativeWindow;
+
     GlContext glContext;
     glContext.Init((ANativeWindow*)nativeWindow);
     
@@ -121,9 +132,13 @@ void* activityLoop(void* nativeWindow) {
         .targetGlyphSize = 25,
         .renderStringAttrib = { .rgba = RGBA(1.f, 0, 0) },
     });
-    
-    
+
     InitGlesState();
+
+    // setup ARCore
+    ARWrapper::Get()->InitializeGlContent();
+    ARWrapper::Get()->UpdateScreenSize(glContext.Width(), glContext.Height());
+
     
     //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000),
     //                GlTransform(Vec3(0.f, 0.f, -1000.f), Vec3<float>(1.f, 1.f, 1.f))
@@ -147,7 +162,7 @@ void* activityLoop(void* nativeWindow) {
 
     GlObject sphere("meshes/cow.obj",
                     &camera,
-                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(110.f, 110.f, 110.f))
+                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.05f, .05f, .05f))
              );
 
     //GlObject sphere("meshes/sphere.obj",
@@ -164,7 +179,9 @@ void* activityLoop(void* nativeWindow) {
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     
         float secElapsed = physicsTimer.LapSec();
-        
+
+        ARWrapper::Get()->Update(camera);
+
         //Update sphere
         {
             GlTransform transform = sphere.GetTransform();
@@ -182,7 +199,9 @@ void* activityLoop(void* nativeWindow) {
         
         float r = .5f*(FastSin(mirrorTheta)+1.f);
         //float r = .5f;
-        
+
+        ARWrapper::Get()->DrawCameraBackground();
+
         sphere.Draw(r);
 
         DrawStrings(&glText, loopTimer.ElapsedSec(), fpsTimer.LapSec());
@@ -198,7 +217,7 @@ void* activityLoop(void* nativeWindow) {
 extern "C" {
 
     void JFunc(App, NativeOnSurfaceCreated)(JNIEnv* env, jclass clazz,
-                                            jobject surface, jobject jAssetManager) {
+                                            jobject surface, jobject jAssetManager, jobject context, jobject activity) {
         
         RUNTIME_ASSERT(surface, "Surface Is NULL!");
 
@@ -209,8 +228,17 @@ extern "C" {
         pthread_attr_t threadAttribs;
         RUNTIME_ASSERT(!pthread_attr_init(&threadAttribs), "Failed to Init threadAttribs");
 
+        JNIEnv* jenv = (JNIEnv*) env;
+        JavaVM* vm;
+        jenv->GetJavaVM(&vm);
+
         ANativeWindow* nativeWindow = ANativeWindow_fromSurface(env, surface);
-        pthread_create(&thread, &threadAttribs, activityLoop, nativeWindow);
+        auto* r = new RenderThreadParams{.nativeWindow = nativeWindow, .env = env, .context = context, .activity = activity, .vm = vm};
+
+        // This needs to happen on the JNI thread or bad things happen
+        ARWrapper::Get()->InitializeARSession(env, context);
+
+        pthread_create(&thread, &threadAttribs, activityLoop, (void*)r);
     }
 
     // TODO: Func to release native window context
