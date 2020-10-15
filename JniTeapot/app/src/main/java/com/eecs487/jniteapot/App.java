@@ -1,5 +1,7 @@
 package com.eecs487.jniteapot;
 
+import android.app.Activity;
+import android.content.Context;
 import android.util.Log;
 import android.view.Surface;
 import android.content.res.AssetManager;
@@ -10,7 +12,7 @@ public class App {
 		System.loadLibrary("JniTeapot");
 	}
 
-	public static native void NativeOnSurfaceCreated(Surface surface, AssetManager assets);
+	public static native void NativeOnSurfaceCreated(Surface surface, AssetManager assets, Context context, Activity activity );
 
 	public static void Log(String msg)   { Log.i(LogPrefixStr("MSG"), msg); }
 	public static void Warn(String msg)  { Log.w(LogPrefixStr("WARN"), msg); }

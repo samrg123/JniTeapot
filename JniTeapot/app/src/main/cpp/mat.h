@@ -17,6 +17,7 @@ struct Mat4 {
         
         Vec4<float> column[4];
         T components[4][4];
+        T values[16];
     };
     
     constexpr Mat4(){}

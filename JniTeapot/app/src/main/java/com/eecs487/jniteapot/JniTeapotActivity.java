@@ -44,7 +44,7 @@ public class JniTeapotActivity extends Activity
 	@Override
 	public void surfaceCreated(SurfaceHolder surfaceHolder) {
 		App.Log("Surface Created!");
-		App.NativeOnSurfaceCreated(surfaceHolder.getSurface(), getAssets());
+		App.NativeOnSurfaceCreated(surfaceHolder.getSurface(), getAssets(), getApplicationContext(), this);
 	}
 	@Override
 	public void surfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
