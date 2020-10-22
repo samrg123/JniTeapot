@@ -160,8 +160,19 @@ void* activityLoop(void* _params) {
     //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(110.f, 110.f, 110.f))
     //               );
 
+    const char* cubemapImages[] = {
+                    "textures/skymap/px.png",
+                    "textures/skymap/nx.png",
+                    "textures/skymap/py.png",
+                    "textures/skymap/ny.png",
+                    "textures/skymap/pz.png",
+                    "textures/skymap/nz.png"
+                };
+    GlCubemap cubemap(cubemapImages);
+
     GlObject sphere("meshes/cow.obj",
                     &camera,
+                    &cubemap,
                     GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.05f, .05f, .05f))
              );
 

@@ -3,6 +3,7 @@
 #include "GlContext.h"
 #include "GlTransform.h"
 #include "GlCamera.h"
+#include "GlCubemap.h"
 
 #include "FileManager.h"
 #include "Memory.h"
@@ -136,7 +137,7 @@ class GlObject {
         
         GLuint vao;
         GLuint glProgram;
-        GLuint cubeSampler, cubemapTexture;
+        GlCubemap* cubemap;
         
         uint32 flags;
         uint32 numIndices;
@@ -434,10 +435,11 @@ class GlObject {
             cameraMatrixId = c->MatrixId()-1;
         }
         
-        GlObject(const char* objPath, GlCamera* camera, const GlTransform& transform = GlTransform()):
+        GlObject(const char* objPath, GlCamera* camera, GlCubemap* cubemap = nullptr, const GlTransform& transform = GlTransform()):
                     transform(transform),
                     camera(camera),
-                    flags(FLAG_OBJ_TRANSFORM_UPDATED) {
+                    flags(FLAG_OBJ_TRANSFORM_UPDATED),
+                    cubemap(cubemap) {
     
             SetCamera(camera);
             
@@ -464,29 +466,6 @@ class GlObject {
             LoadObject(buffer);
     
             Memory::temporaryArena.FreeBaseRegion(tmpRegion);
-            
-            //TODO: MOVE THIS OUT!!
-            {
-                const char* images[] = {
-                    "textures/skymap/px.png",
-                    "textures/skymap/nx.png",
-                    "textures/skymap/py.png",
-                    "textures/skymap/ny.png",
-                    "textures/skymap/pz.png",
-                    "textures/skymap/nz.png"
-                };
-                
-                cubemapTexture = GlContext::LoadCubemap(images);
-                Log("Cubemap Texture: %d", cubemapTexture);
-    
-                glGenSamplers(1, &cubeSampler);
-                glSamplerParameteri(cubeSampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glSamplerParameteri(cubeSampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                glSamplerParameteri(cubeSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glSamplerParameteri(cubeSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                GlAssertNoError("Failed to create cubemap sampler: %d", cubeSampler);
-            }
-            
             
         }
         
@@ -550,9 +529,9 @@ class GlObject {
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
     
             //TODO: make TuUniform instead of passing 0
-            glBindSampler(0, cubeSampler);
+            glBindSampler(0, cubemap->getCubeSampler());
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap->getCubeTexture());
 
             glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);
 
