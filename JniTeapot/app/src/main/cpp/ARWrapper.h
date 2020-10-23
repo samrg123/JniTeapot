@@ -36,40 +36,66 @@ public:
         glBindTexture(GL_TEXTURE_EXTERNAL_OES, backgroundTextureId);
         glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        {
+            static constexpr const char* kVertexSource = "attribute vec4 a_Position;"
+                                                        "attribute vec2 a_TexCoord;"
+                                                        "varying vec2 v_TexCoord;"
+                                                        ""
+                                                        "void main() {"
+                                                        "   gl_Position = a_Position;"
+                                                        "   v_TexCoord = a_TexCoord;"
+                                                        "}";
+            static constexpr const char* kFragmentSource = "#extension GL_OES_EGL_image_external : require\n"
+                                                        ""
+                                                        "precision mediump float;"
+                                                        "varying vec2 v_TexCoord;"
+                                                        "uniform samplerExternalOES sTexture;"
+                                                        ""
+                                                        "void main() {"
+                                                        "    gl_FragColor = texture2D(sTexture, v_TexCoord);"
+                                                        "}";
 
-        static constexpr const char* kVertexSource = "attribute vec4 a_Position;"
-                                                     "attribute vec2 a_TexCoord;"
-                                                     "varying vec2 v_TexCoord;"
-                                                     ""
-                                                     "void main() {"
-                                                     "   gl_Position = a_Position;"
-                                                     "   v_TexCoord = a_TexCoord;"
-                                                     "}";
-        static constexpr const char* kFragmentSource = "#extension GL_OES_EGL_image_external : require\n"
-                                                       ""
-                                                       "precision mediump float;"
-                                                       "varying vec2 v_TexCoord;"
-                                                       "uniform samplerExternalOES sTexture;"
-                                                       ""
-                                                       "void main() {"
-                                                       "    gl_FragColor = texture2D(sTexture, v_TexCoord);"
-                                                       "}";
 
-
-        cameraProgram = GlContext::CreateGlProgram(kVertexSource, kFragmentSource);
-        cameraTextureUniform = glGetUniformLocation(cameraProgram, "sTexture");
-        cameraPositionAttrib = glGetAttribLocation(cameraProgram, "a_Position");
-        cameraTexCoordAtrrib = glGetAttribLocation(cameraProgram, "a_TexCoord");
-
-    }
-
-    void UpdateScreenSize(int width, int height, int rotation = 1) {
-        if (arSession != nullptr) {
-            ArSession_setDisplayGeometry(arSession, rotation, width, height);
+            cameraProgram = GlContext::CreateGlProgram(kVertexSource, kFragmentSource);
+            cameraTextureUniform = glGetUniformLocation(cameraProgram, "sTexture");
+            cameraPositionAttrib = glGetAttribLocation(cameraProgram, "a_Position");
+            cameraTexCoordAtrrib = glGetAttribLocation(cameraProgram, "a_TexCoord");
         }
+
+        {
+             static constexpr const char* kVertexSource = "attribute vec4 a_Position;"
+                                                        "attribute vec2 a_TexCoord;"
+                                                        "varying vec2 v_TexCoord;"
+                                                        ""
+                                                        "void main() {"
+                                                        "   gl_Position = a_Position;"
+                                                        "   v_TexCoord = a_TexCoord;"
+                                                        "}";
+            static constexpr const char* kFragmentSource = "#extension GL_OES_EGL_image_external : require\n"
+                                                        ""
+                                                        "precision mediump float;"
+                                                        "varying vec2 v_TexCoord;"
+                                                        "uniform samplerExternalOES sTexture;"
+                                                        ""
+                                                        "void main() {"
+                                                        "    gl_FragColor = vec4(0.85f, 0.4f, 0.53f, 1.0f);"
+                                                        "}";
+
+
+            cubemapProgram = GlContext::CreateGlProgram(kVertexSource, kFragmentSource);
+        }
+
     }
 
-    void Update(GlCamera &cam) {
+    void UpdateScreenSize(int width_, int height_, int rotation = 1) {
+        if (arSession != nullptr) {
+            ArSession_setDisplayGeometry(arSession, rotation, width_, height_);
+        }
+        width = width_;
+        height = height_;
+    }
+
+    void Update(GlCamera &cam, GlCubemap &cubemap) {
         Log("Starting ARWrapper Update\n");
         ArSession_setCameraTextureName(arSession, backgroundTextureId);
 
@@ -97,6 +123,7 @@ public:
         cam.SetTransformMatrix(viewMat);
 
         ArCamera_release(arCamera);
+        UpdateCubemap(cubemap);
     }
 
     void DrawCameraBackground() {
@@ -143,6 +170,11 @@ private:
     GLuint cameraTexCoordAtrrib;
     GLuint cameraTextureUniform;
 
+    GLuint cubemapProgram;
+    GLuint cubemapFbo;
+
+    int width, height;
+
     float transformedUVs[8];
 
     bool IsDepthSupported() {
@@ -166,6 +198,64 @@ private:
                                              AR_INSTANT_PLACEMENT_MODE_DISABLED);
         ArSession_configure(arSession, arConfig);
         ArConfig_destroy(arConfig);
+    }
+
+    void UpdateCubemap(GlCubemap& cubemap) {
+        //make a framebuffer, bind it, and make it the render target
+        glGenFramebuffers(1, &cubemapFbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cubemapFbo);
+        //glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, cubemapFbo);
+        
+        //set size of cubemap face
+        glViewport(0, 0, (GLsizei)cubemap.getSize(), (GLsizei)cubemap.getSize());
+
+        for (int i = 0; i < 6; ++i) {
+            DrawCubemapFace(cubemap, i);
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        //return viewport back to normal
+        glViewport(0, 0, (GLsizei)width, (GLsizei)height);
+    }
+
+    // https://gamedev.stackexchange.com/questions/19461/opengl-glsl-render-to-cube-map
+    void DrawCubemapFace(GlCubemap& cubemap, int iFace) {
+        //attach a texture image to a framebuffer object
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_X + iFace, 
+                                cubemap.getCubeTexture(), 0);
+        GLenum status = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
+        GlAssertNoError("Error drawing cubemap faceFIRST TWO");
+
+
+        if(status != GL_FRAMEBUFFER_COMPLETE) {
+            Log("Status error: %08x\n", status);
+        }
+        
+
+        //use our shader to do thing
+        // glUseProgram(cubemapProgram);
+        DrawCameraBackground();
+        
+        // //but not really
+        // if (iFace % 2) {
+        //     glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        // }
+        // else {
+        //     glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        // }
+        
+        // glClear(GL_COLOR_BUFFER_BIT);
+        GlAssertNoError("Error drawing cCLEARED OR WHATEVER");
+
+        
+        //activate texture and bind it
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.getCubeTexture());
+
+        // glUseProgram(0);
+
+        GlAssertNoError("Error drawing cubemap face");
     }
 };
 
