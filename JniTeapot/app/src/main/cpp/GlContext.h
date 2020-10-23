@@ -328,7 +328,7 @@ class GlContext {
                 return false;
             }
         
-            static GLuint LoadCubemap(const char* (&images)[6]) {
+            static GLuint LoadCubemap(const char* (&images)[6], int &size) {
     
                 GLuint cubemapTexture;
                 glGenTextures(1, &cubemapTexture);
@@ -337,6 +337,7 @@ class GlContext {
                 glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
                 
                 //TODO: generate cubemap mipmaps!
+                size = -1;
                 
                 for(int i = 0; i < 6; ++i) {
     
@@ -346,7 +347,11 @@ class GlContext {
                     uchar* decodedPng;
                     uint width, height;
                     lodepng_decode_memory(&decodedPng, &width, &height, pngBuffer->data, pngBuffer->size, LodePNGColorType::LCT_RGBA, 8);
-    
+                   
+                    if (width != height || (size != -1 && width != size)) {
+                        Log("Invalid cubemap texture size\n");
+                    } 
+                    size = width;
     
                     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
                                  0,               //mipmap level

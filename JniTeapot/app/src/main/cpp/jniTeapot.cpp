@@ -191,7 +191,7 @@ void* activityLoop(void* _params) {
     
         float secElapsed = physicsTimer.LapSec();
 
-        ARWrapper::Get()->Update(camera);
+        ARWrapper::Get()->Update(camera, cubemap);
 
         //Update sphere
         {
