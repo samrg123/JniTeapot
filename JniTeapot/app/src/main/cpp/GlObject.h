@@ -1,6 +1,7 @@
 #pragma once
 
-#include "GlContext.h"
+#include "shaderUtil.h"
+#include "GlRenderable.h"
 #include "GlTransform.h"
 #include "GlCamera.h"
 #include "GlCubemap.h"
@@ -11,133 +12,134 @@
 
 #include "util.h"
 #include "vec.h"
-#include "mat.h"
 
-class GlObject {
+
+class GlObject : public GlRenderable {
     private:
         
-        static constexpr const char* kVertexSource = "#version 310 es\n"
-                                                     ""
-                                                     //Note: blocks must be defined in the order of their binding (gles 3.1 doesn't let use explicitly set location=binding)
-                                                     "layout(std140, binding = 0) uniform UniformBlock {"
-                                                     "  mat4 mvpMatrix;"
-                                                     "  mat4 mvMatrix;"
-                                                     "};"
-                                                     ""
-                                                     "layout(location = 0) uniform float mirrorConstant;"
-                                                     "layout(location = 1) uniform vec3 cameraPosition;"
-                                                     "layout(location = 2) uniform vec3 lightPosition;"
-                                                     ""
-                                                     "layout(location = 0) in vec3 position;"
-                                                     "layout(location = 1) in vec3 normal;"
-                                                     "layout(location = 2) in vec2 uv;"
-                                                     ""
-                                                     "layout(location = 0) out vec3 lightDirection;"
-                                                     "layout(location = 1) out vec3 fragNormal;"
-                                                     "layout(location = 2) out vec3 cameraDirection;"
-                                                     "layout(location = 3) out vec4 lightColor;"
-                                                     "layout(location = 4) out vec3 worldPosition;"
-                                                     "layout(location = 5) out vec3 fragLightPosition;"
-                                                     ""
-                                                     ""
-                                                     "void main() {"
-                                                     "  vec4 v4Position = vec4(position, 1.);"
-                                                     "  gl_Position = mvpMatrix*v4Position;"
-                                                     ""
-                                                     "  fragNormal = normalize((mvMatrix * vec4(normal, 0.)).xyz);"
-                                                     "  worldPosition = (mvMatrix * v4Position).xyz;"
-                                                     "  fragLightPosition = lightPosition;"
-                                                     ""
-                                                     //"  lightColor = vec4(0., 1., 0., .3);"
-                                                     //"  lightColor = vec4(1., 1., 1., 300000.);"
-                                                     //"  lightColor = vec4(0.85, .95, 1., 200000.);"
-                                                     "  lightColor = vec4(0.6784, .7255, .698, 1000000.);"
-                                                     "  lightDirection = normalize(lightPosition - worldPosition);"
-                                                     "  cameraDirection = normalize(cameraPosition - worldPosition);"
-                                                     "}";
+        GlCubemap* cubemap;
         
-        static constexpr const char* kFragmentSource = "#version 310 es\n"
-                                                       "precision highp float;"
-                                                       ""
-                                                       "layout(binding = 0) uniform samplerCube cubemapSampler;"
-                                                       "layout(location = 0) uniform float mirrorConstant;"
-                                                       ""
-                                                       "layout(location = 0) in vec3 lightDirection;"
-                                                       "layout(location = 1) in vec3 fragNormal;"
-                                                       "layout(location = 2) in vec3 cameraDirection;"
-                                                       "layout(location = 3) in vec4 lightColor;"
-                                                       "layout(location = 4) in vec3 worldPosition;"
-                                                       "layout(location = 5) in vec3 fragLightPosition;"
-                                                       ""
-                                                       "layout(location = 0) out vec4 fragColor;"
-                                                       ""
-                                                       "void main() {"
-                                                       " "
-                                                       "    vec4 diffuseColor = vec4(.9, .9, .9, 1.);"
-                                                       "    vec4 ambientColor = vec4(.4471, .4486, .3464, 1.);"
-                                                       ""
-                                                       "    float reflectivity = mirrorConstant;"
-                                                       "    float diffuseness = 1. - mirrorConstant;"
-                                                       //"    float specularPower  = 16.;" //Note: smaller numbers = more reflective
-                                                       "    float specularPower  = 8.;" //Note: smaller numbers = more reflective
-                                                       "    "
-                                                       ""
-                                                       //TODO: this is phong - see if we should do blin-phong instead
-                                                       //"    vec3 lightReflection = -reflect(lightDirection, fragNormal);"
-                                                       "    vec3 lightReflection = normalize( ((2.*dot(fragNormal, lightDirection)) * fragNormal) - lightDirection);"
-                                                       "    vec3 cubeReflection = (2.*fragNormal) - cameraDirection;"
-                                                       "    vec4 cubeColor = texture(cubemapSampler, normalize(cubeReflection));"
-                                                       ""
-                                                       "    float lightDistance = fragLightPosition.z - worldPosition.z;"
-                                                       "    float invLightDistanceSqaured = 1./(lightDistance*lightDistance);"
-                                                       ""
-                                                       "    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((diffuseness*ambientColor.rgb) + (reflectivity*cubeColor.rgb));"
-                                                       //"    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((.999*ambientColor.rgb) + (.001*cubeColor.rgb));"
-                                                       "    vec3 diffuseTerm =   diffuseness * diffuseColor.rgb * max(0., dot(fragNormal, lightDirection));"
-                                                       "    float specularTerm = reflectivity * pow(max(0., dot(cameraDirection, lightReflection)), specularPower);"
-                                                       "    vec3 lightTerm = lightColor.w * lightColor.rgb * invLightDistanceSqaured*(diffuseTerm + specularTerm);"
-                                                       " "
-                                                       "    fragColor.rgb = ambientTerm + lightTerm;"
-                                                       "    fragColor.a = diffuseColor.a;"
-                                                       ""
-                                                       //"    fragColor.rgb = (fragColor.rgb*.001) + (.5*(lightDirection + vec3(1.)));"
-                                                       ""
-                                                       //Prevenets optimized out uniform error
-                                                       //"    fragColor.rgb = fragColor.rgb + mirrorConstant*.01*cubeColor.rgb;"
+        enum Attribs      { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
+        enum TextureUnits { TU_SKY_MAP };
+        enum Uniforms     { UNIFORM_MIRROR_CONSTANT, UNIFORM_CAMERA_POSITION, UNIFORM_LIGHT_POSITION };
+        enum UBlocks      { UBLOCK_OBJECT };
+        
+        static inline const StringLiteral kVertexShaderSource =
+            kGlesVersionStr +
+    
+            ShaderUniformBlock(UBLOCK_OBJECT) + "ObjectBlock {" +
+            "  mat4 mvpMatrix;"
+            "  mat4 mvMatrix;"
+            "};" +
 
-                                                       ////NormalColor
-                                                       //"    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));"
-                                                       "}";
-                
-        enum Attribs  { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
-        enum Uniforms { UNIFORM_MIRROR_CONSTANT, UNIFORM_CAMERA_POSITION, UNIFORM_LIGHT_POSITION };
-        enum UBlocks  { UBLOCK_UNIFORM_BLOCK };
+            ShaderUniform(UNIFORM_MIRROR_CONSTANT) + "float mirrorConstant;" +
+            ShaderUniform(UNIFORM_CAMERA_POSITION) + "vec3 cameraPosition;" +
+            ShaderUniform(UNIFORM_LIGHT_POSITION)  + "vec3 lightPosition;" +
         
+            ShaderIn(ATTRIB_GEO_VERT)    + "vec3 position;" +
+            ShaderIn(ATTRIB_NORMAL_VERT) + "vec3 normal;" +
+            ShaderIn(ATTRIB_UV_VERT)     + "vec2 uv;" +
+            
+            ShaderOut(0) + "vec3 lightDirection;" +
+            ShaderOut(1) + "vec3 fragNormal;" +
+            ShaderOut(2) + "vec3 cameraDirection;" +
+            ShaderOut(3) + "vec4 lightColor;" +
+            ShaderOut(4) + "vec3 worldPosition;" +
+            ShaderOut(5) + "vec3 fragLightPosition;" +
+            
+            "void main() {"
+            "  vec4 v4Position = vec4(position, 1.);"
+            "  gl_Position = mvpMatrix*v4Position;"
+            ""
+            "  fragNormal = normalize((mvMatrix * vec4(normal, 0.)).xyz);"
+            "  worldPosition = (mvMatrix * v4Position).xyz;"
+            "  fragLightPosition = lightPosition;"
+            ""
+            //"  lightColor = vec4(0., 1., 0., .3);"
+            //"  lightColor = vec4(1., 1., 1., 300000.);"
+            //"  lightColor = vec4(0.85, .95, 1., 200000.);"
+            "  lightColor = vec4(0.6784, .7255, .698, 1000000.);"
+            "  lightDirection = normalize(lightPosition - worldPosition);"
+            "  cameraDirection = normalize(cameraPosition - worldPosition);"
+            "}";
+            
+        static inline const StringLiteral kFragmentShaderSource =
+            kGlesVersionStr +
+            "precision highp float;" +
+        
+            ShaderSampler(TU_SKY_MAP) + "samplerCube cubemapSampler;" +
+            ShaderUniform(UNIFORM_MIRROR_CONSTANT) + "float mirrorConstant;" +
+
+            ShaderIn(0) + "vec3 lightDirection;" +
+            ShaderIn(1) + "vec3 fragNormal;" +
+            ShaderIn(2) + "vec3 cameraDirection;" +
+            ShaderIn(3) + "vec4 lightColor;" +
+            ShaderIn(4) + "vec3 worldPosition;" +
+            ShaderIn(5) + "vec3 fragLightPosition;" +
+            
+            ShaderOut(0) + "vec4 fragColor;" +
+            
+            "void main() {"
+            " "
+            "    vec4 diffuseColor = vec4(.9, .9, .9, 1.);"
+            "    vec4 ambientColor = vec4(.4471, .4486, .3464, 1.);"
+            ""
+            "    float reflectivity = mirrorConstant;"
+            "    float diffuseness = 1. - mirrorConstant;"
+            //"    float specularPower  = 16.;" //Note: smaller numbers = more reflective
+            "    float specularPower  = 8.;" //Note: smaller numbers = more reflective
+            "    "
+            ""
+            //TODO: this is phong - see if we should do blin-phong instead
+            //"    vec3 lightReflection = -reflect(lightDirection, fragNormal);"
+            "    vec3 lightReflection = normalize( ((2.*dot(fragNormal, lightDirection)) * fragNormal) - lightDirection);"
+            "    vec3 cubeReflection = (2.*fragNormal) - cameraDirection;"
+            "    vec4 cubeColor = texture(cubemapSampler, normalize(cubeReflection));"
+            ""
+            "    float lightDistance = fragLightPosition.z - worldPosition.z;"
+            "    float invLightDistanceSqaured = 1./(lightDistance*lightDistance);"
+            ""
+            "    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((diffuseness*ambientColor.rgb) + (reflectivity*cubeColor.rgb));"
+            //"    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((.999*ambientColor.rgb) + (.001*cubeColor.rgb));"
+            "    vec3 diffuseTerm =   diffuseness * diffuseColor.rgb * max(0., dot(fragNormal, lightDirection));"
+            "    float specularTerm = reflectivity * pow(max(0., dot(cameraDirection, lightReflection)), specularPower);"
+            "    vec3 lightTerm = lightColor.w * lightColor.rgb * invLightDistanceSqaured*(diffuseTerm + specularTerm);"
+            " "
+            "    fragColor.rgb = ambientTerm + lightTerm;"
+            "    fragColor.a = diffuseColor.a;"
+            ""
+            //"    fragColor.rgb = (fragColor.rgb*.001) + (.5*(lightDirection + vec3(1.)));"
+            ""
+            //Prevenets optimized out uniform error
+            //"    fragColor.rgb = fragColor.rgb + mirrorConstant*.01*cubeColor.rgb;"
+            
+            ////NormalColor
+            //"    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));"
+            "}";
+            
         enum Flag {
             FLAG_NORMAL = 1<<0, FLAG_UV = 1<<1,
             FLAG_OBJ_TRANSFORM_UPDATED = 1<<2
         };
         
-        struct alignas(16) UniformBlock {
+        struct alignas(16) UniformObjectBlock {
             Mat4<float> mvpMatrix,
                         mvMatrix;
         };
         
         GlTransform transform;
         Mat4<float> transformMatrix;
-        GlCamera* camera;
-        uint32 cameraMatrixId;
         
         union {
             struct {
-                GLuint vbo, elementBuffer, uniformBlockBuffer;
+                GLuint vbo, elementBuffer, uniformObjectBlockBuffer;
             };
             GLuint glBuffers[3];
         };
         
         GLuint vao;
         GLuint glProgram;
-        GlCubemap* cubemap;
+        GLuint cubeSampler, cubemapTexture;
         
         uint32 flags;
         uint32 numIndices;
@@ -426,21 +428,13 @@ class GlObject {
         }
 
     public:
-
-        inline void SetCamera(GlCamera* c) {
-            RUNTIME_ASSERT(c, "Camera cannot be null");
-            camera = c;
-
-            //set the matrixId to an stale one so mvp matrix gets updated next draw
-            cameraMatrixId = c->MatrixId()-1;
-        }
         
         GlObject(const char* objPath, GlCamera* camera, GlCubemap* cubemap = nullptr, const GlTransform& transform = GlTransform()):
+                    GlRenderable(camera),
                     transform(transform),
-                    camera(camera),
                     flags(FLAG_OBJ_TRANSFORM_UPDATED),
                     cubemap(cubemap) {
-    
+            
             SetCamera(camera);
             
             glGenVertexArrays(1, &vao);
@@ -448,23 +442,22 @@ class GlObject {
             
             glGenBuffers(ArrayCount(glBuffers), glBuffers);
             GlAssertNoError("Failed to create glBuffers");
-
-            glProgram = GlContext::CreateGlProgram(kVertexSource, kFragmentSource);
-    
+            
+            glProgram = GlContext::CreateGlProgram(kVertexShaderSource.str, kFragmentShaderSource.str);
+            
             //Debugging
             GlContext::PrintVariables(glProgram);
             
             //bind uniform block to program
-            glBindBuffer(GL_UNIFORM_BUFFER, uniformBlockBuffer);
-            glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBlock), nullptr, GL_DYNAMIC_DRAW);
-            glBindBufferBase(GL_UNIFORM_BUFFER, UBLOCK_UNIFORM_BLOCK, uniformBlockBuffer);
-            GlAssertNoError("Failed to bind UniformBlock [%d] to uniformBlockBuffer [%d]", UBLOCK_UNIFORM_BLOCK, uniformBlockBuffer);
+            glBindBufferBase(GL_UNIFORM_BUFFER, UBLOCK_OBJECT, uniformObjectBlockBuffer);
+            glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformObjectBlock), nullptr, GL_DYNAMIC_DRAW);
+            GlAssertNoError("Failed to bind UniformBlock [%d] to uniformBlockBuffer [%d]", UBLOCK_OBJECT, uniformObjectBlockBuffer);
             
             // load obj
             Memory::Region tmpRegion = Memory::temporaryArena.CreateRegion();
             FileManager::AssetBuffer* buffer = FileManager::OpenAsset(objPath, &Memory::temporaryArena);
             LoadObject(buffer);
-    
+            
             Memory::temporaryArena.FreeBaseRegion(tmpRegion);
             
         }
@@ -472,6 +465,7 @@ class GlObject {
         ~GlObject() {
             glDeleteVertexArrays(1, &vao);
             glDeleteBuffers(ArrayCount(glBuffers), glBuffers);
+            glDeleteSamplers(1, &cubeSampler);
             glDeleteProgram(glProgram);
         }
         
@@ -479,29 +473,29 @@ class GlObject {
         inline void SetTransform(const GlTransform& t) { transform = t; flags|= FLAG_OBJ_TRANSFORM_UPDATED; }
         
         void Draw(float mirrorConstant) {
-        
-            //check if camera matrix updated
-            // Warn: cameraMatrixId repeats every 2^32 iterations so its possible that this check fails if the cameraMatrixId differs by a multiple of 2^32.
-            //       This has a failure probability of 4.6566129e-10, way smaller than the chance of the earth being destroyed massive meteor (1e-8)
-            //       Failure mode is using the previous projection matrix until the next update to camera or object matrix (most likely will occur on the next frame)
-            //       If this failure rate/mode is still concerning use a uint64 for the camera matrixId instead
-            bool updateUniformBlock =cameraMatrixId != camera->MatrixId();
-            
+    
             //check if the object matrix updated
+            bool updateUniformObjectBlock;
             if(flags&FLAG_OBJ_TRANSFORM_UPDATED) {
                 flags^= FLAG_OBJ_TRANSFORM_UPDATED;
                 transformMatrix = transform.Matrix();
-                updateUniformBlock = true;
+                updateUniformObjectBlock = true;
+
+            } else {
+                //check if camera updated
+                updateUniformObjectBlock = DidCameraUpdate();
             }
-    
+        
             //update mvpMatrix
-            if(updateUniformBlock) {
-                glBindBuffer(GL_UNIFORM_BUFFER, uniformBlockBuffer);
-                UniformBlock* uniformBlock = (UniformBlock*)glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(UniformBlock), GL_MAP_WRITE_BIT);
-                GlAssert(uniformBlock, "Failed to map uniformBlock");
+            if(updateUniformObjectBlock) {
+                ApplyCameraUpdate();
+                
+                glBindBuffer(GL_UNIFORM_BUFFER, uniformObjectBlockBuffer);
+                UniformObjectBlock* uniformObjectBlock = (UniformObjectBlock*)glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(UniformObjectBlock), GL_MAP_WRITE_BIT);
+                GlAssert(uniformObjectBlock, "Failed to map uniformObjectBlock");
     
-                uniformBlock->mvpMatrix = camera->Matrix() * transformMatrix;
-                uniformBlock->mvMatrix = transformMatrix;
+                uniformObjectBlock->mvpMatrix = camera->Matrix() * transformMatrix;
+                if(flags&FLAG_OBJ_TRANSFORM_UPDATED) uniformObjectBlock->mvMatrix = transformMatrix;
 
                 glUnmapBuffer(GL_UNIFORM_BUFFER);
             }
@@ -528,9 +522,8 @@ class GlObject {
             glBindVertexArray(vao);
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
     
-            //TODO: make TuUniform instead of passing 0
-            glBindSampler(0, cubemap->getCubeSampler());
-            glActiveTexture(GL_TEXTURE0);
+            glActiveTexture(GL_TEXTURE0+TU_SKY_MAP);
+            glBindSampler(TU_SKY_MAP, cubemap->getCubeSampler());
             glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap->getCubeTexture());
 
             glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);

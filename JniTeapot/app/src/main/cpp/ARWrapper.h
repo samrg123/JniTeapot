@@ -78,7 +78,7 @@ public:
                                                         "uniform samplerExternalOES sTexture;"
                                                         ""
                                                         "void main() {"
-                                                        "    gl_FragColor = vec4(0.85f, 0.4f, 0.53f, 1.0f);"
+                                                        "    gl_FragColor = vec4(0.85, 0.4, 0.53, 1.0);"
                                                         "}";
 
 

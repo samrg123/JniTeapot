@@ -61,8 +61,8 @@ class Timer {
         inline float LapSec()   { return 1E-9*LapNs(); }
         
         inline void SleepLapNs(uint64 ns) {
-            uint64 endTime = timeRef + ns,
-                endSleepTime = endTime - nsSleepGranularityCycles;
+            uint64  endTime = timeRef + ns,
+                    endSleepTime = endTime - nsSleepGranularityCycles;
             
             // sleep up to granularity intervals
             timeRef = QueryTime();

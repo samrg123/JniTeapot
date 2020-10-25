@@ -605,11 +605,9 @@ class GlText {
             GlAssertNoError("Failed to generate glBuffers");
     
             //setup glyphData buffer
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, vertexGlyphDataBuffer);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SBlockVertexGlyphData, vertexGlyphDataBuffer);
             
             //setup stringAttrib buffer
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, stringAttribBuffer);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SBlockStringAttribData, stringAttribBuffer);
             
             //setup attribute buffer

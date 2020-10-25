@@ -15,6 +15,7 @@
 #include "Memory.h"
 
 #include "GlObject.h"
+#include "GlSkybox.h"
 #include "ARWrapper.h"
 
 #include <android/native_window_jni.h>
@@ -159,7 +160,18 @@ void* activityLoop(void* _params) {
     //                &camera,
     //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(110.f, 110.f, 110.f))
     //               );
-
+    
+    GlSkybox skybox({
+                        .posX = "textures/skymap/px.png",
+                        .negX = "textures/skymap/nx.png",
+                        .posY = "textures/skymap/py.png",
+                        .negY = "textures/skymap/ny.png",
+                        .posZ = "textures/skymap/pz.png",
+                        .negZ = "textures/skymap/nz.png",
+        
+                        .camera = &camera
+                    });
+    
     const char* cubemapImages[] = {
                     "textures/skymap/px.png",
                     "textures/skymap/nx.png",
@@ -192,7 +204,13 @@ void* activityLoop(void* _params) {
         float secElapsed = physicsTimer.LapSec();
 
         ARWrapper::Get()->Update(camera, cubemap);
-
+        ARWrapper::Get()->DrawCameraBackground();
+        
+        //udate skybox
+        {
+            skybox.Draw();
+        }
+        
         //Update sphere
         {
             GlTransform transform = sphere.GetTransform();
@@ -202,18 +220,15 @@ void* activityLoop(void* _params) {
             //transform.Translate(Vec3(0.f, 0.f, .001f));
             
             sphere.SetTransform(transform);
-            
+    
+            static float mirrorTheta = 0.f;
+            mirrorTheta+= mirrorOmega*secElapsed;
+    
+            float r = .5f*(FastSin(mirrorTheta)+1.f);
+            //float r = .5f;
+    
+            sphere.Draw(r);
         }
-
-        static float mirrorTheta = 0.f;
-        mirrorTheta+= mirrorOmega*secElapsed;
-        
-        float r = .5f*(FastSin(mirrorTheta)+1.f);
-        //float r = .5f;
-
-        ARWrapper::Get()->DrawCameraBackground();
-
-        sphere.Draw(r);
 
         DrawStrings(&glText, loopTimer.ElapsedSec(), fpsTimer.LapSec());
         
