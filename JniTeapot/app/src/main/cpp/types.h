@@ -40,6 +40,8 @@ template<typename T> constexpr auto TB(T x) { return GB(x)*1024; }
 template<class rType, class ... paramTypes>
 using FuncPtr = rType (*)(paramTypes...);
 
+template<typename T> constexpr auto TypeString() { return __PRETTY_FUNCTION__; }
+template<typename T> constexpr auto TypeString(T) { return TypeString<T>(); }
 
 //Note: '__attribute__((constructor(X)))' place function pointers to function call in the clang equivalent
 //      '.CRT$XCU' section in the order of increasing priority

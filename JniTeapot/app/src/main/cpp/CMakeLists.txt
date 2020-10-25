@@ -1,15 +1,17 @@
 cmake_minimum_required(VERSION 3.4.1)
 project(JniTeapot LANGUAGES C CXX)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
-endif()
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+# TODO: DOES'T LOOK LIKE THIS IS WORKING
+#if(NOT CMAKE_BUILD_TYPE)
+#    set(CMAKE_BUILD_TYPE Debug)
+#endif()
+#
+#set(CMAKE_CXX_FLAGS_DEBUG "-g")
+#set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # set up common compile options
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -std=c++2a -fno-exceptions -fno-rtti -fdeclspec")
+#set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -std=c++2a -fno-exceptions -fno-rtti -fdeclspec -O3")
+set(CMAKE_CXX_FLAGS  "-Wall -std=c++2a -fno-exceptions -fno-rtti -fdeclspec -fno-threadsafe-statics -ftemplate-depth=4096 -g -Od")
 
 # build app libd
 #set(SOURCES JniTeapotActivity.h )
