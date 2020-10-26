@@ -113,8 +113,8 @@ class GlObject : public GlRenderable {
             //Prevenets optimized out uniform error
             //"    fragColor.rgb = fragColor.rgb + mirrorConstant*.01*cubeColor.rgb;"
             
-            ////NormalColor
-            //"    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));"
+            //NormalColor
+            "    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));"
             "}";
             
         enum Flag {
@@ -139,6 +139,8 @@ class GlObject : public GlRenderable {
         
         GLuint vao;
         GLuint glProgram;
+        
+        //TODO: merge with cubemap
         GLuint cubeSampler, cubemapTexture;
         
         uint32 flags;
@@ -465,7 +467,7 @@ class GlObject : public GlRenderable {
         ~GlObject() {
             glDeleteVertexArrays(1, &vao);
             glDeleteBuffers(ArrayCount(glBuffers), glBuffers);
-            glDeleteSamplers(1, &cubeSampler);
+            //glDeleteSamplers(1, &cubeSampler);
             glDeleteProgram(glProgram);
         }
         
@@ -477,13 +479,11 @@ class GlObject : public GlRenderable {
             //check if the object matrix updated
             bool updateUniformObjectBlock;
             if(flags&FLAG_OBJ_TRANSFORM_UPDATED) {
-                flags^= FLAG_OBJ_TRANSFORM_UPDATED;
-                transformMatrix = transform.Matrix();
                 updateUniformObjectBlock = true;
-
+                transformMatrix = transform.Matrix();
             } else {
                 //check if camera updated
-                updateUniformObjectBlock = DidCameraUpdate();
+                updateUniformObjectBlock = CameraUpdated();
             }
         
             //update mvpMatrix
@@ -494,18 +494,19 @@ class GlObject : public GlRenderable {
                 UniformObjectBlock* uniformObjectBlock = (UniformObjectBlock*)glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(UniformObjectBlock), GL_MAP_WRITE_BIT);
                 GlAssert(uniformObjectBlock, "Failed to map uniformObjectBlock");
     
+                //upload mvpMatrix
                 uniformObjectBlock->mvpMatrix = camera->Matrix() * transformMatrix;
-                if(flags&FLAG_OBJ_TRANSFORM_UPDATED) uniformObjectBlock->mvMatrix = transformMatrix;
+                
+                //upload mvMatrix
+                if(flags&FLAG_OBJ_TRANSFORM_UPDATED) {
+                    flags^= FLAG_OBJ_TRANSFORM_UPDATED;
+                    uniformObjectBlock->mvMatrix = transformMatrix;
+                }
 
                 glUnmapBuffer(GL_UNIFORM_BUFFER);
             }
             
-            //TODO: This
-            //      Bind sampler
-            //      Bind texture
-            
             glUseProgram(glProgram);
-            
             
             //TODO: DEBUG CODE
             {

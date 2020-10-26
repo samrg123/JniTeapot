@@ -94,37 +94,86 @@ public:
         width = width_;
         height = height_;
     }
-
-    void Update(GlCamera &cam, GlCubemap &cubemap) {
-        Log("Starting ARWrapper Update\n");
-        ArSession_setCameraTextureName(arSession, backgroundTextureId);
-
-        ArStatus status = ArSession_update(arSession, arFrame);
-        if (status != AR_SUCCESS) {
-            Log("Error in AR Session update\n");
-        }
-        ArFrame_acquireCamera(arSession, arFrame, &arCamera);
-
-        ArPose* cameraPose;
-        float poseRaw[7];
-
-        ArPose_create(arSession, NULL, &cameraPose);
-        ArCamera_getPose(arSession, arCamera, cameraPose);
-        ArPose_getPoseRaw(arSession, cameraPose, poseRaw);
-
-        Mat4<float> viewMat;
-        Mat4<float> projMat;
-        ArCamera_getViewMatrix(arSession, arCamera, viewMat.values);
-        ArCamera_getProjectionMatrix(arSession, arCamera,
+        
+        void Update(GlCamera &cam, GlCubemap &cubemap) {
+            Log("Starting ARWrapper Update\n");
+            ArSession_setCameraTextureName(arSession, backgroundTextureId);
+            
+            ArStatus status = ArSession_update(arSession, arFrame);
+            if (status != AR_SUCCESS) {
+                Log("Error in AR Session update\n");
+            }
+            ArFrame_acquireCamera(arSession, arFrame, &arCamera);
+            
+            ArPose* cameraPose;
+            float poseRaw[7];
+            
+            ArPose_create(arSession, NULL, &cameraPose);
+            ArCamera_getPose(arSession, arCamera, cameraPose);
+            ArPose_getPoseRaw(arSession, cameraPose, poseRaw);
+            
+            Mat4<float> viewMat;
+            Mat4<float> projMat;
+            ArCamera_getViewMatrix(arSession, arCamera, viewMat.values);
+            ArCamera_getProjectionMatrix(arSession, arCamera,
                 /*near=*/0.1f, /*far=*/100.f,
-                                     projMat.values);
-
-        cam.SetProjectionMatrix(projMat);
-        cam.SetTransformMatrix(viewMat);
-
-        ArCamera_release(arCamera);
-        UpdateCubemap(cubemap);
-    }
+                                         projMat.values);
+            
+            cam.SetProjectionMatrix(projMat);
+            cam.SetTransformMatrix(viewMat);
+            
+            ArCamera_release(arCamera);
+            UpdateCubemap(cubemap);
+        }
+    
+    //void Update(GlCamera &cam, GlCubemap &cubemap) {
+    //
+    //    ArSession_setCameraTextureName(arSession, backgroundTextureId);
+    //
+    //    ArStatus status = ArSession_update(arSession, arFrame);
+    //    if (status != AR_SUCCESS) {
+    //        Log("Error in AR Session update\n");
+    //    }
+    //
+    //    //update camera
+    //    {
+    //        ArFrame_acquireCamera(arSession, arFrame, &arCamera);
+    //
+    //        union RawPose {
+    //            struct {
+    //                Quaternion<float> rotation;
+    //                Vec3<float> position;
+    //            };
+    //            float vals[7];
+    //        } rawPose;
+    //
+    //        //ArPose* cameraPose;
+    //        //ArPose_create(arSession, nullptr, &cameraPose);
+    //        //ArCamera_getPose(arSession, arCamera, cameraPose);
+    //        //ArPose_getPoseRaw(arSession, cameraPose, rawPose.vals);
+    //        //ArPose_destroy(cameraPose);
+    //
+    //        //Log("camera { x: %f, y: %f, z: %f }", rawPose.position.x, rawPose.position.y, rawPose.position.z);
+    //
+    //        Mat4<float> projMatrix;
+    //        ArCamera_getProjectionMatrix(arSession, arCamera, 0.01f, 100.f, projMatrix.values);
+    //        cam.SetProjectionMatrix(projMatrix);
+    //
+    //        Mat4<float> viewMatrix;
+    //        ArCamera_getViewMatrix(arSession, arCamera, viewMatrix.values);
+    //        cam.SetViewMatrix(viewMatrix);
+    //
+    //        //GlTransform transform = cam.GetTransform();
+    //        //transform.rotation = rawPose.rotation;
+    //        //transform.position = Vec3(rawPose.position.x, rawPose.position.y, -rawPose.position.z);
+    //        //cam.SetTransform(transform);
+    //
+    //
+    //        ArCamera_release(arCamera);
+    //    }
+    //
+    //    UpdateCubemap(cubemap);
+    //}
 
     void DrawCameraBackground() {
         const static GLfloat kCameraVerts[] = {-1.0f, -1.0f, +1.0f, -1.0f, -1.0f, +1.0f, +1.0f, +1.0f};

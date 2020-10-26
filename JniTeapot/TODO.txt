@@ -1,0 +1,15 @@
+
+Low Priority:
+	- Ask for camera permissions at first run
+	- Get real linux sleep granularity for timers
+	- Make GlLight
+	- Clean up GlContext::RenderCubemap
+	- replace lodepng with libpng?
+	
+
+Medium Priority:
+	- Optimize ARCore rendering loop
+
+High Priority:
+	- Procedurally build cubemap texture with camera 
+

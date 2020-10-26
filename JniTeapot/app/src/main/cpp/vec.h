@@ -17,7 +17,7 @@ struct Vec2 : Base {
     };
     constexpr T& operator[] (uint8 n) { return component[n]; }
 
-    constexpr Vec2() {}
+    constexpr Vec2() = default;
     constexpr Vec2(const T& x, const T& y): x(x), y(y) {}
  
     static inline const Vec2 up    = Vec2(0, 1);
@@ -65,7 +65,7 @@ struct Vec3 : Base {
     };
     constexpr T& operator[] (uint8 n) { return component[n]; }
     
-    constexpr Vec3() {}
+    constexpr Vec3() = default;
     constexpr Vec3(const T& x, const T& y, const T& z): x(x), y(y), z(z) {}
     template<typename T2> constexpr Vec3(const Vec2<T2>& v): x(v.x), y(v.y), z(0) {}
     
@@ -133,7 +133,7 @@ struct Vec4 : Base {
     };
     constexpr T& operator[] (uint8 n) { return component[n]; }
     
-    constexpr Vec4() {}
+    constexpr Vec4() = default;
     constexpr Vec4(const T& x, const T& y, const T& z, const T& w): x(x), y(y), z(z), w(w) {}
     template<typename T2> constexpr Vec4(const Vec2<T2>& v): x(v.x), y(v.y), z(0),   w(0) {}
     template<typename T2> constexpr Vec4(const Vec3<T2>& v): x(v.x), y(v.y), z(v.z), w(0) {}
@@ -147,10 +147,14 @@ struct Vec4 : Base {
     static inline const Vec4 one   = Vec4( 1,  1,  1, 1);
     static inline const Vec4 zero  = Vec4( 0,  0,  0, 0);
     
-    constexpr T Area() const { return x*y*z*w; }
-    constexpr Vec4 Inverse() const { return Vec4(1/x, 1/y, 1/z, 1/w); }
+    constexpr T     Area()        const { return x*y*z*w; }
+    constexpr Vec4  Inverse()     const { return Vec4(1/x, 1/y, 1/z, 1/w); }
+    constexpr T     NormSquared() const { return x*x + y*y + z*z + w*w; }
+    constexpr T     Norm()        const { return FastSqrt(NormSquared()); };
     
     template<typename T2> constexpr auto Dot(const Vec4<T2>& v) const { return v.x*x + v.y*y + v.z*z + + v.w*w; }
+    
+    constexpr Vec4& Normalize() { return *this/= Norm(); }
     
     constexpr const T* operator& () const { return component; };
     constexpr operator Vec3<T>() const    { return *(Vec3<T>*)this; };
