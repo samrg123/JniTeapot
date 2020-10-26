@@ -22,27 +22,28 @@ class GlSkybox : public GlRenderable {
             "};" +
             ShaderOut(0) + "vec3 uvCoord;" +
 
-            //TODO: THIS UNIFORM BINDING IS WEIRD AND LOWER RIGHT VERTEX IS WRONG!
-            //TODO: see if computing vertex via id is actually faster than using VBO
             "void main() {"
             ""
-            "    if(gl_VertexID < 4) {"
-            "        uvCoord.x = ((gl_VertexID & 0x1) == 1) ?  1. : -1.;"
-            "        uvCoord.y = ((gl_VertexID & 0x3) == 1) ? -1. :  1.;"
-            "        uvCoord.z = -1.;"
-            ""
-            "    } else if(gl_VertexID < 10) {"
-            "        uvCoord.x = (gl_VertexID < 7) ?  1. : -1.;"
-            "        uvCoord.y = (gl_VertexID == 4 || gl_VertexID == 9) ? -1. :  1.;"
-            "        uvCoord.z = ((gl_VertexID & 0x1) == 1) ? -1. :  1.;"
-            ""
-            "    } else {"
-            "        uvCoord.x = ((gl_VertexID & 0x1) == 1) ? 1. : -1.;"
-            "        uvCoord.y = (gl_VertexID < 12) ? -1. : 1.;"
-            "        uvCoord.z = 1.;"
-            "    }"
-            ""
-            "   gl_Position = projectionMatrix * .25 *vec4(uvCoord.xyz, 0.);"
+            "   const vec3[14] vertices = vec3[]("
+            "       vec3(-1.,  1., -1.),"
+            "       vec3( 1.,  1., -1.),"
+            "       vec3(-1., -1., -1.),"
+            "       vec3( 1., -1., -1.),"
+            "       vec3( 1., -1.,  1.),"
+            "       vec3( 1.,  1., -1.),"
+            "       vec3( 1.,  1.,  1.),"
+            "       vec3(-1.,  1., -1.),"
+            "       vec3(-1.,  1.,  1.),"
+            "       vec3(-1., -1., -1.),"
+            "       vec3(-1., -1.,  1.),"
+            "       vec3( 1., -1.,  1.),"
+            "       vec3(-1.,  1.,  1.),"
+            "       vec3( 1.,  1.,  1.)"
+            "   );"
+            "   "
+            "   uvCoord = vertices[gl_VertexID];"
+            "   gl_Position = projectionMatrix * .25 * vec4(uvCoord.xyz, 0.);"
+            //"   gl_Position = vec4(uvCoord.xyz, 0.);"
             "   gl_Position.w = 1.;"
             "}";
         
@@ -156,14 +157,14 @@ class GlSkybox : public GlRenderable {
             glBindSampler(TU_CUBE_MAP, sampler);
             glBindVertexArray(0);
             
-            if(DidCameraUpdate()) {
+            if(CameraUpdated()) {
                 ApplyCameraUpdate();
                 
                 glBindBuffer(GL_UNIFORM_BUFFER, uniformBuffer);
                 UniformBlock* uniformBlock = (UniformBlock*)glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(UniformBlock), GL_MAP_WRITE_BIT);
                 GlAssert(uniformBlock, "Failed to map uniformBlock");
 
-                uniformBlock->mvpMatrix = camera->Matrix();
+                uniformBlock->mvpMatrix = camera->GetTransform().RotationMatrix();
 
                 glUnmapBuffer(GL_UNIFORM_BUFFER);
             }

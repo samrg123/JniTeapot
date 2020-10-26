@@ -141,19 +141,15 @@ void* activityLoop(void* _params) {
     ARWrapper::Get()->UpdateScreenSize(glContext.Width(), glContext.Height());
 
     
-    //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000),
-    //                GlTransform(Vec3(0.f, 0.f, -1000.f), Vec3<float>(1.f, 1.f, 1.f))
-    //                //GlTransform(Vec3<float>::zero, Vec3<float>(200.f, 200.f, 200.f))
-    //);
-
-    float fovX = ToRadians(90.f);
-    GlCamera camera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), fovX, 0.f, 2000.f),
-                        GlTransform(Vec3(0.f, 0.f, -1000.f), Vec3(1.f, 1.f, 1.f))
-                    //GlTransform(Vec3<float>::zero, Vec3<float>(.1f, .1f, .1f))
-                   );
+    //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height())*.01f, 0, 2000));
     
-    const Vec3 omega = ToRadians(Vec3(0.f, 10.f, 0.f));
-    //const Vec3 omega = ToRadians(Vec3(0.f, 0.f, 0.f));
+    //float fovX = ToRadians(90.f);
+    float fovX = ToRadians(85.f);
+    GlCamera camera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), fovX, 0.f, 2000.f));
+    
+    //const Vec3 omega = ToRadians(Vec3(0.f, 10.f, 0.f));
+    //const Vec3 omega = ToRadians(Vec3(10.f, 10.f, 10.f));
+    const Vec3 omega = ToRadians(Vec3(0.f, 0.f, 0.f));
     const float mirrorOmega = ToRadians( 180.f / 10.f);
     
     //GlObject sphere("meshes/triangle.obj",
@@ -162,15 +158,15 @@ void* activityLoop(void* _params) {
     //               );
     
     GlSkybox skybox({
-                        .posX = "textures/skymap/px.png",
-                        .negX = "textures/skymap/nx.png",
-                        .posY = "textures/skymap/py.png",
-                        .negY = "textures/skymap/ny.png",
-                        .posZ = "textures/skymap/pz.png",
-                        .negZ = "textures/skymap/nz.png",
-        
-                        .camera = &camera
-                    });
+        .posX = "textures/skymap/px.png",
+        .negX = "textures/skymap/nx.png",
+        .posY = "textures/skymap/py.png",
+        .negY = "textures/skymap/ny.png",
+        .posZ = "textures/skymap/pz.png",
+        .negZ = "textures/skymap/nz.png",
+
+        .camera = &camera
+    });
     
     const char* cubemapImages[] = {
                     "textures/skymap/px.png",
@@ -185,11 +181,14 @@ void* activityLoop(void* _params) {
     GlObject sphere("meshes/cow.obj",
                     &camera,
                     &cubemap,
+                    //GlTransform(Vec3(0.f, 0.f, 5.f), Vec3(1.f, 1.f, 1.f))
                     GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.05f, .05f, .05f))
+                    //GlTransform(Vec3(0.f, 0.f, 5.f), Vec3(100.f, 100.f, 100.f))
              );
-
+    //
     //GlObject sphere("meshes/sphere.obj",
     //                &camera,
+    //                &cubemap,
     //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(500.f, 500.f, 500.f))
     //               );
     
@@ -208,6 +207,10 @@ void* activityLoop(void* _params) {
         
         //udate skybox
         {
+            //GlTransform transform = camera.GetTransform();
+            //transform.Rotate(omega*secElapsed);
+            //camera.SetTransform(transform);
+            
             skybox.Draw();
         }
         
@@ -215,17 +218,13 @@ void* activityLoop(void* _params) {
         {
             GlTransform transform = sphere.GetTransform();
             transform.Rotate(omega*secElapsed);
-            
-            //camera.SetTransform(camera.GetTransform().Translate(Vec3(0.f, 0.f, .001f)));
-            //transform.Translate(Vec3(0.f, 0.f, .001f));
-            
             sphere.SetTransform(transform);
     
             static float mirrorTheta = 0.f;
             mirrorTheta+= mirrorOmega*secElapsed;
     
-            float r = .5f*(FastSin(mirrorTheta)+1.f);
-            //float r = .5f;
+            //float r = .5f*(FastSin(mirrorTheta)+1.f);
+            float r = .5f;
     
             sphere.Draw(r);
         }

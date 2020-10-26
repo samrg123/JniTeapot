@@ -4,6 +4,7 @@ template<typename T> constexpr bool LargerThan8Bit(const T& n)  { return n & (T)
 template<typename T> constexpr bool LargerThan16Bit(const T& n) { return n & (T)(~0xFFFF); }
 template<typename T> constexpr bool LargerThan32Bit(const T& n) { return n & (T)(~0xFFFFFFFF); }
 
+
 //TODO: implement non-compare min/max
 template<typename T>
 constexpr auto Min(const T& n) { return n; }
@@ -43,11 +44,14 @@ inline unsigned int ISqrtPow2(unsigned int n) { return 1 << (ILog2(n)>>1); }
 inline unsigned int ISqrtPow2Safe(unsigned int n) { return n > 0 ? ISqrtPow2(n) : 0; }
 
 // Note: arm doesn't have any built in sqrt
-inline float FastSqrt(float n) { return (float&)( ((unsigned int&)n+= (127<<23))>>= 1 ); }
-inline float FastSqrtSafe(float n) { return n ? FastSqrt(n) : 0; }
+// TODO: benchmark Sqrt against FastSqrt
+inline float Sqrt(float n)          { return __builtin_sqrtf(n); }
+inline float FastSqrt(float n)      { return (float&)( ((unsigned int&)n+= (127<<23))>>= 1 ); }
+inline float FastSqrtSafe(float n)  { return n ? FastSqrt(n) : 0; }
 
 inline float FastAbs(float n) { return (float&)( (int&)n&= (~(1<<31)) ); }
 inline int   FastAbs(int n) { return __builtin_abs(n); }
+template<typename T> constexpr bool Approx(const T& a, const T& b, T epsilon = .00001f)  { return FastAbs(a-b) <= epsilon; }
 
 inline float FastPow10(float n) {
     // Note this is: 10^n = 2^(log_2(10)*n)

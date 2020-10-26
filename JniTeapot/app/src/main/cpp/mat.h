@@ -20,7 +20,7 @@ struct Mat4 {
         T values[16];
     };
     
-    constexpr Mat4(){}
+    constexpr Mat4() = default;
     
     //TODO: replace this with 4xsimd move
     constexpr Mat4(const T (&v)[16] ): components{ {v[0],  v[1],  v[2],  v[3]},
@@ -75,13 +75,13 @@ struct Mat4 {
         return result*= m;
     }
 
-    static inline Mat4 Identity = Mat4({1, 0, 0, 0,
+    static inline Mat4 identity = Mat4({1, 0, 0, 0,
                                         0, 1, 0, 0,
                                         0, 0, 1, 0,
                                         0, 0, 0, 1});
     
-    static inline Mat4 Zero = Mat4({});
-    static inline Mat4 One = Mat4({1, 1, 1, 1,
+    static inline Mat4 zero = Mat4({});
+    static inline Mat4 one = Mat4({1, 1, 1, 1,
                                    1, 1, 1, 1,
                                    1, 1, 1, 1,
                                    1, 1, 1, 1});
@@ -115,7 +115,7 @@ struct Mat4 {
                     });
     }
     
-    //Note rotates matrix in thata.z, theta.y, theta.x order
+    //Note rotates matrix in theta.z, theta.y, theta.x order
     inline Mat4& Rotate(const Vec3<float>& theta) {
     
         //TODO: make sure this SIMD sin/cos
