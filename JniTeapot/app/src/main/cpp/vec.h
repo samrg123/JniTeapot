@@ -30,6 +30,7 @@ struct Vec2 : Base {
     constexpr T Area() const { return x*y; }
     constexpr Vec2 Inverse() const { return Vec2(1/x, 1/y); }
     
+    constexpr Vec2 operator-() const { return Vec3(-x, -y); }
     template<typename T2> constexpr auto Dot(const Vec2<T2>& v) const { return v.x*x + v.y*y; }
     
     constexpr const T* operator& () const { return component; };
@@ -81,10 +82,12 @@ struct Vec3 : Base {
     constexpr T     Area()        const { return x*y*z; }
     constexpr Vec3  Inverse()     const { return Vec3(1/x, 1/y, 1/z); }
     constexpr T     NormSquared() const { return x*x + y*y + z*z; }
-    constexpr T     Norm()        const { return FastSqrt(NormSquared()); };
+    constexpr T     Norm()        const { return Sqrt(NormSquared()); };
     
     constexpr Vec3& Normalize() { return *this/= Norm(); }
     
+    constexpr Vec3 operator-() const { return Vec3(-x, -y, -z); }
+    template<typename T2> constexpr auto Dot(const Vec2<T2>& v)   const { return v.x*x + v.y*y; }
     template<typename T2> constexpr auto Dot  (const Vec3<T2>& v) const { return v.x*x + v.y*y + v.z*z; }
     template<typename T2> constexpr auto Cross(const Vec3<T2>& v) const { return ::Vec3(y*v.z - z*v.y, z*v.x - x*v.z, x*v.y - y*v.x); }
     
@@ -150,9 +153,12 @@ struct Vec4 : Base {
     constexpr T     Area()        const { return x*y*z*w; }
     constexpr Vec4  Inverse()     const { return Vec4(1/x, 1/y, 1/z, 1/w); }
     constexpr T     NormSquared() const { return x*x + y*y + z*z + w*w; }
-    constexpr T     Norm()        const { return FastSqrt(NormSquared()); };
+    constexpr T     Norm()        const { return Sqrt(NormSquared()); };
     
-    template<typename T2> constexpr auto Dot(const Vec4<T2>& v) const { return v.x*x + v.y*y + v.z*z + + v.w*w; }
+    constexpr Vec4 operator-() const { return Vec4(-x, -y, -z, -w); }
+    template<typename T2> constexpr auto Dot(const Vec2<T2>& v) const { return v.x*x + v.y*y; }
+    template<typename T2> constexpr auto Dot(const Vec3<T2>& v) const { return v.x*x + v.y*y + v.z*z; }
+    template<typename T2> constexpr auto Dot(const Vec4<T2>& v) const { return v.x*x + v.y*y + v.z*z + v.w*w; }
     
     constexpr Vec4& Normalize() { return *this/= Norm(); }
     

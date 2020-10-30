@@ -130,8 +130,8 @@ class GlContext {
 
     public:
 
-        inline int Width() { return eglWidth; }
-        inline int Height() { return eglHeight; }
+        inline int Width()  const { return eglWidth; }
+        inline int Height() const { return eglHeight; }
         
         inline
         void static PrintVariables(GLuint glProgram) {

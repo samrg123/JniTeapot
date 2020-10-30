@@ -112,9 +112,9 @@ class GlObject : public GlRenderable {
             ""
             //Prevenets optimized out uniform error
             //"    fragColor.rgb = fragColor.rgb + mirrorConstant*.01*cubeColor.rgb;"
-            
-            //NormalColor
-            "    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));"
+            //
+            ////NormalColor
+            //"    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));"
             "}";
             
         enum Flag {

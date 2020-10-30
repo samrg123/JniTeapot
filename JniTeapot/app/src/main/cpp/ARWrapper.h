@@ -6,7 +6,16 @@
 #include "jni.h"
 #include "GLES2/gl2ext.h"
 
+#include "shaderUtil.h"
+#include "StringLiteral.h"
+
 class ARWrapper {
+private:
+    enum Uniforms       { UNIFORM_CAM_VIEW_MATRIX };
+    enum Attribs        { ATTRIB_POSITION};
+    enum TextureUnits   { TU_TEXTURE };
+    enum UniformBlocks  { UBLOCK_SKYBOX };
+    
 public:
     static ARWrapper* Get() {
         if (!instance) {
@@ -14,7 +23,7 @@ public:
         }
         return instance;
     }
-
+    
     void InitializeARSession(void* env, void* context) {
         //TODO use void ArCoreApk_checkAvailability(
         //  void *env,
@@ -38,13 +47,13 @@ public:
         glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         {
             static constexpr const char* kVertexSource = "attribute vec4 a_Position;"
-                                                        "attribute vec2 a_TexCoord;"
-                                                        "varying vec2 v_TexCoord;"
-                                                        ""
-                                                        "void main() {"
-                                                        "   gl_Position = a_Position;"
-                                                        "   v_TexCoord = a_TexCoord;"
-                                                        "}";
+                                                         "attribute vec2 a_TexCoord;"
+                                                         "varying vec2 v_TexCoord;"
+                                                         ""
+                                                         "void main() {"
+                                                         "   gl_Position = a_Position;"
+                                                         "   v_TexCoord = a_TexCoord;"
+                                                         "}";
             static constexpr const char* kFragmentSource = "#extension GL_OES_EGL_image_external : require\n"
                                                         ""
                                                         "precision mediump float;"
@@ -53,6 +62,7 @@ public:
                                                         ""
                                                         "void main() {"
                                                         "    gl_FragColor = texture2D(sTexture, v_TexCoord);"
+                                                        "    gl_FragColor.a = .5;"
                                                         "}";
 
 
@@ -61,28 +71,59 @@ public:
             cameraPositionAttrib = glGetAttribLocation(cameraProgram, "a_Position");
             cameraTexCoordAtrrib = glGetAttribLocation(cameraProgram, "a_TexCoord");
         }
-
+    
+        static StringLiteral kVertexSource =
+            kGlesVersionStr +
+        
+            ShaderUniformBlock(UBLOCK_SKYBOX) + "SkyBox {"
+            "   mat4 cameraTransform;"
+            "   mat4[6] cubeProjections;"
+            "};" +
+            
+            ShaderIn(ATTRIB_POSITION) + "vec3 position;" +
+            ShaderOut(0) + "vec2 uvPosition;" +
+        
+            "void main() {"
+            "   const vec2[4] vertices = vec2[]("
+            "       vec2(-1., -1.),"
+            "       vec2(-1.,  1.),"
+            "       vec2( 1., -1.),"
+            "       vec2( 1.,  1.)"
+            "   );"
+            "  vec4 screenPosition = vec4(vertices[gl_VertexID], 0., 1.);"
+            "  vec4 worldPosition = cameraTransform * screenPosition;"
+            "  gl_Position = cubeProjections[gl_InstanceID] * worldPosition;"
+            "  uvPosition = screenPosition.xy;"
+            "}";
         {
-             static constexpr const char* kVertexSource = "attribute vec4 a_Position;"
-                                                        "attribute vec2 a_TexCoord;"
-                                                        "varying vec2 v_TexCoord;"
-                                                        ""
-                                                        "void main() {"
-                                                        "   gl_Position = a_Position;"
-                                                        "   v_TexCoord = a_TexCoord;"
-                                                        "}";
-            static constexpr const char* kFragmentSource = "#extension GL_OES_EGL_image_external : require\n"
-                                                        ""
-                                                        "precision mediump float;"
-                                                        "varying vec2 v_TexCoord;"
-                                                        "uniform samplerExternalOES sTexture;"
-                                                        ""
-                                                        "void main() {"
-                                                        "    gl_FragColor = vec4(0.85, 0.4, 0.53, 1.0);"
-                                                        "}";
+    
+    
+            static StringLiteral kFragmentSource =
+                kGlesVersionStr +
+                "#extension GL_OES_EGL_image_external : require\n" +
+                "precision mediump float;" +
+
+                ShaderBinding(TU_TEXTURE) + "uniform samplerExternalOES sTexture;" +
+                ShaderIn(0) + "vec2 v_TexCoord;" +
+                ShaderOut(0) + "vec4 fragColor;" +
+
+                "void main() {"
+                "    fragColor = vec4(0.85, 0.4, 0.53, 1.0);"
+                "}";
+                
+    
+            //static constexpr const char*  = "attribute vec4 a_Position;"
+            //                                            "attribute vec2 a_TexCoord;"
+            //                                            "varying vec2 v_TexCoord;"
+            //                                            ""
+            //                                            "void main() {"
+            //                                            "   gl_Position = a_Position;"
+            //                                            "   v_TexCoord = a_TexCoord;"
+            //                                            "}";
+            
 
 
-            cubemapProgram = GlContext::CreateGlProgram(kVertexSource, kFragmentSource);
+            cubemapProgram = GlContext::CreateGlProgram(kVertexSource.str, kFragmentSource.str);
         }
 
     }
@@ -94,86 +135,57 @@ public:
         width = width_;
         height = height_;
     }
-        
-        void Update(GlCamera &cam, GlCubemap &cubemap) {
-            Log("Starting ARWrapper Update\n");
-            ArSession_setCameraTextureName(arSession, backgroundTextureId);
-            
-            ArStatus status = ArSession_update(arSession, arFrame);
-            if (status != AR_SUCCESS) {
-                Log("Error in AR Session update\n");
-            }
-            ArFrame_acquireCamera(arSession, arFrame, &arCamera);
-            
-            ArPose* cameraPose;
-            float poseRaw[7];
-            
-            ArPose_create(arSession, NULL, &cameraPose);
-            ArCamera_getPose(arSession, arCamera, cameraPose);
-            ArPose_getPoseRaw(arSession, cameraPose, poseRaw);
-            
-            Mat4<float> viewMat;
-            Mat4<float> projMat;
-            ArCamera_getViewMatrix(arSession, arCamera, viewMat.values);
-            ArCamera_getProjectionMatrix(arSession, arCamera,
-                /*near=*/0.1f, /*far=*/100.f,
-                                         projMat.values);
-            
-            cam.SetProjectionMatrix(projMat);
-            cam.SetTransformMatrix(viewMat);
-            
-            ArCamera_release(arCamera);
-            UpdateCubemap(cubemap);
-        }
+
+    inline Mat4<float> ProjectionMatrix(float nearPlane, float farPlane) const {
+        Mat4<float> projMatrix;
+        ArCamera_getProjectionMatrix(arSession, arCamera, nearPlane, farPlane, projMatrix.values);
+        return projMatrix;
+    }
     
-    //void Update(GlCamera &cam, GlCubemap &cubemap) {
-    //
-    //    ArSession_setCameraTextureName(arSession, backgroundTextureId);
-    //
-    //    ArStatus status = ArSession_update(arSession, arFrame);
-    //    if (status != AR_SUCCESS) {
-    //        Log("Error in AR Session update\n");
-    //    }
-    //
-    //    //update camera
-    //    {
-    //        ArFrame_acquireCamera(arSession, arFrame, &arCamera);
-    //
-    //        union RawPose {
-    //            struct {
-    //                Quaternion<float> rotation;
-    //                Vec3<float> position;
-    //            };
-    //            float vals[7];
-    //        } rawPose;
-    //
-    //        //ArPose* cameraPose;
-    //        //ArPose_create(arSession, nullptr, &cameraPose);
-    //        //ArCamera_getPose(arSession, arCamera, cameraPose);
-    //        //ArPose_getPoseRaw(arSession, cameraPose, rawPose.vals);
-    //        //ArPose_destroy(cameraPose);
-    //
-    //        //Log("camera { x: %f, y: %f, z: %f }", rawPose.position.x, rawPose.position.y, rawPose.position.z);
-    //
-    //        Mat4<float> projMatrix;
-    //        ArCamera_getProjectionMatrix(arSession, arCamera, 0.01f, 100.f, projMatrix.values);
-    //        cam.SetProjectionMatrix(projMatrix);
-    //
-    //        Mat4<float> viewMatrix;
-    //        ArCamera_getViewMatrix(arSession, arCamera, viewMatrix.values);
-    //        cam.SetViewMatrix(viewMatrix);
-    //
-    //        //GlTransform transform = cam.GetTransform();
-    //        //transform.rotation = rawPose.rotation;
-    //        //transform.position = Vec3(rawPose.position.x, rawPose.position.y, -rawPose.position.z);
-    //        //cam.SetTransform(transform);
-    //
-    //
-    //        ArCamera_release(arCamera);
-    //    }
-    //
-    //    UpdateCubemap(cubemap);
-    //}
+    inline uint32 EglCameraTexture() const { return backgroundTextureId; }
+    
+    void Update(GlCamera &cam, GlCubemap &cubemap) {
+
+        ArSession_setCameraTextureName(arSession, backgroundTextureId);
+
+        ArStatus status = ArSession_update(arSession, arFrame);
+        if (status != AR_SUCCESS) {
+            Log("Error in AR Session update\n");
+        }
+
+        //update camera
+        {
+            ArFrame_acquireCamera(arSession, arFrame, &arCamera);
+
+            union RawPose {
+                struct {
+                    Quaternion<float> rotation;
+                    Vec3<float> position;
+                };
+                float vals[7];
+            } rawPose;
+
+            ArPose* cameraPose;
+            ArPose_create(arSession, nullptr, &cameraPose);
+            ArCamera_getPose(arSession, arCamera, cameraPose);
+            ArPose_getPoseRaw(arSession, cameraPose, rawPose.vals);
+            ArPose_destroy(cameraPose);
+    
+            GlTransform transform = cam.GetTransform();
+            transform.SetRotation(rawPose.rotation);
+            transform.position = rawPose.position;
+            cam.SetTransform(transform);
+
+            //TODO: only set this when it changes!
+            // right now on startup ArCore gives us a distorted projection matrix? Maybe query the fov and just make our own?
+            cam.SetProjectionMatrix(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
+
+            ArCamera_release(arCamera);
+        }
+
+        //TODO: in the process of merging with GlSkybox
+        //UpdateCubemap(cubemap, cam);
+    }
 
     void DrawCameraBackground() {
         const static GLfloat kCameraVerts[] = {-1.0f, -1.0f, +1.0f, -1.0f, -1.0f, +1.0f, +1.0f, +1.0f};
@@ -249,7 +261,7 @@ private:
         ArConfig_destroy(arConfig);
     }
 
-    void UpdateCubemap(GlCubemap& cubemap) {
+    void UpdateCubemap(GlCubemap& cubemap, const GlCamera& cam) {
         //make a framebuffer, bind it, and make it the render target
         glGenFramebuffers(1, &cubemapFbo);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cubemapFbo);
@@ -259,7 +271,7 @@ private:
         glViewport(0, 0, (GLsizei)cubemap.getSize(), (GLsizei)cubemap.getSize());
 
         for (int i = 0; i < 6; ++i) {
-            DrawCubemapFace(cubemap, i);
+            DrawCubemapFace(cubemap, i, cam);
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -268,7 +280,8 @@ private:
     }
 
     // https://gamedev.stackexchange.com/questions/19461/opengl-glsl-render-to-cube-map
-    void DrawCubemapFace(GlCubemap& cubemap, int iFace) {
+    void DrawCubemapFace(GlCubemap& cubemap, int iFace, const GlCamera& cam) {
+        
         //attach a texture image to a framebuffer object
         glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
                                 GL_TEXTURE_CUBE_MAP_POSITIVE_X + iFace, 
@@ -283,16 +296,25 @@ private:
         
 
         //use our shader to do thing
-        // glUseProgram(cubemapProgram);
-        DrawCameraBackground();
+        glUseProgram(cubemapProgram);
         
-        // //but not really
-        // if (iFace % 2) {
-        //     glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-        // }
-        // else {
-        //     glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-        // }
+        //Debug colors
+        //if constexpr(false)
+        {
+            if(iFace%2) {
+                glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+            } else {
+                glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+            }
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
+        
+        //glVertexArrayPointer(ATTRIB_POSITION, );
+        
+        //TODO: this
+        //glUniformMatrix4fv(UNIFORM_CAM_VIEW_MATRIX, 1, false, cam.GetViewMatrix().values);
+        //glDrawArrays(GL_TRIANGLE_STRIP, 0, 14);
+    
         
         // glClear(GL_COLOR_BUFFER_BIT);
         GlAssertNoError("Error drawing cCLEARED OR WHATEVER");
