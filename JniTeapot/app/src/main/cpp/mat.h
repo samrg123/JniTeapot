@@ -89,8 +89,9 @@ struct Mat4 {
     static
     inline Mat4 Orthogonal(const Vec2<float>& view, float nearPlane, float farPlane) {
         
-        float iD = 1.f/(farPlane - nearPlane),
-              oD = -(farPlane + nearPlane)*iD;
+        //Note: this is right handed use '-iD, -oD for left handed'
+        float iD = 1.f/(nearPlane - farPlane),
+              oD = (farPlane + nearPlane)*iD;
         
         return Mat4({  2.f/view.x, 0,          0,    0,
                        0,          2.f/view.y, 0,    0,
@@ -102,16 +103,17 @@ struct Mat4 {
     static
     inline Mat4 Perspective(float aspect, float fovX, float nearPlane, float farPlane) {
         
-        float tanX = FastTan(.5f*fovX);
+        float negTanX = -FastTan(.5f*fovX);
         
+        //Note: this is right handed
         float iD = 1.f/(farPlane - nearPlane),
-              sD = tanX*(farPlane + nearPlane)*iD,
-              oD = -2.f*farPlane*nearPlane*iD;
-        
+              sD = negTanX*(farPlane + nearPlane)*iD,
+              oD = 2.f*negTanX*farPlane*nearPlane*iD;
+    
         return Mat4({  1,     0,      0,   0,
                        0,     aspect, 0,   0,
-                       0,     0,      sD,  tanX,
-                       0,     0,      oD,  1
+                       0,     0,      sD,  negTanX,
+                       0,     0,      oD,  0
                     });
     }
     
@@ -160,18 +162,16 @@ struct Mat4 {
 
         return *this;
     }
-    
+
     inline Mat4& Scale(const Vec3<float>& s) {
-        (Vec3<float>&)column[0]*= s.x;
-        (Vec3<float>&)column[1]*= s.y;
-        (Vec3<float>&)column[2]*= s.z;
+        column[0]*= s;
+        column[1]*= s;
+        column[2]*= s;
         return *this;
     }
     
     inline Mat4& Translate(const Vec3<float>& delta) {
-        d1 = delta.Dot((Vec3<float>&)column[0]);
-        d2 = delta.Dot((Vec3<float>&)column[1]);
-        d3 = delta.Dot((Vec3<float>&)column[2]);
+        column[3]+= delta;
         return *this;
     }
 };

@@ -4,6 +4,8 @@
 
 const StringLiteral kGlesVersionStr("#version 310 es\n");
 
+#define ShaderExtension(x) "#extension " x ":require\n"
+
 #define ShaderLocation(x) StringLiteral("layout(location=")+ToString((unsigned int)x)+")"
 #define ShaderBinding(x) StringLiteral("layout(binding=")+ToString((unsigned int)x)+")"
 

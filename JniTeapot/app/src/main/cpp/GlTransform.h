@@ -4,8 +4,9 @@
 #include "Quaternion.h"
 
 class GlTransform {
-    public:
         Quaternion<float> rotation;
+    
+    public:
         Vec3<float> position, scale;
         
         constexpr GlTransform(Vec3<float> position = Vec3<float>::zero,
@@ -15,18 +16,37 @@ class GlTransform {
             position(position),
             scale(scale) {}
         
-        inline Mat4<float> RotationMatrix() { return rotation.Matrix(); }
+        inline Quaternion <float> GetRotation() const { return rotation; }
+        inline void SetRotation(const Quaternion<float>& r) {
+        
+            //TODO: if quaternions are prone to decaying then we should just normalize them each time!
+            RUNTIME_ASSERT(Approx(r.NormSquared(), 1.f, .01f),
+                           "rotation is not unit quaternion { x: %f, y: %f, z: %f, w: %f | Norm: %f } ",
+                           r.x, r.y, r.z, r.w, r.Norm());
+            
+            rotation = r;
+        }
+        
+        //Note: returns S'*R'*T' where T'=inverseTranslationMatrix, R'=inverseRotationMatrix, S'=inverseScaleMatrix
+        inline Mat4<float> InverseMatrix() {
+            Vec3<float> inverseTranslation = -position;
+            Vec3<float> inverseScale = scale.Inverse();
+            
+            Mat4<float> result = rotation.Conjugate().Matrix();
+
+            result.column[0]*= inverseScale;
+            result.column[1]*= inverseScale;
+            result.column[2]*= inverseScale;
+            result.column[3] = Vec4(inverseScale.x * result.Row1().Dot(inverseTranslation),
+                                    inverseScale.y * result.Row2().Dot(inverseTranslation),
+                                    inverseScale.z * result.Row3().Dot(inverseTranslation),
+                                    1.f);
+            return result;
+        }
         
         //Note: returns T*R*S where T=translationMatrix, R=rotationMatrix, S=scaleMatrix
         inline Mat4<float> Matrix() {
-    
-            //TODO: if quaternions are prone to decaying then we should just normalize them each time!
-            RUNTIME_ASSERT(Approx(rotation.NormSquared(), 1.f, .01f),
-                           "rotation is not unit quaternion { x: %f, y: %f, z: %f, w: %f | Norm: %f } ",
-                           rotation.x, rotation.y, rotation.z, rotation.w, rotation.Norm());
             
-            //compute T*R*S
-
             // TODO: make sure simd makes 0-value w component in rotation matrix multiply for free and
             //       rotation.Matrix() operations get inlined
             Mat4<float> result = rotation.Matrix();

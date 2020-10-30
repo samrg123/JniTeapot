@@ -42,8 +42,10 @@ void InitGlesState() {
     //NOTE: just for text blending - this should be turned off otherwise
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
+    glDepthFunc(GL_LEQUAL);
+    glClearDepthf(1.f);
 }
 
 void DrawStrings(GlText* glText, float renderTime, float frameTime) {
@@ -139,13 +141,11 @@ void* activityLoop(void* _params) {
     // setup ARCore
     ARWrapper::Get()->InitializeGlContent();
     ARWrapper::Get()->UpdateScreenSize(glContext.Width(), glContext.Height());
-
     
-    //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height())*.01f, 0, 2000));
-    
-    //float fovX = ToRadians(90.f);
-    float fovX = ToRadians(85.f);
-    GlCamera camera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), fovX, 0.f, 2000.f));
+    //TODO: get projection matrix from ARCore
+    //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height())*.001f , 0, 2000));
+    //GlCamera camera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f));
+    GlCamera camera(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
     
     //const Vec3 omega = ToRadians(Vec3(0.f, 10.f, 0.f));
     //const Vec3 omega = ToRadians(Vec3(10.f, 10.f, 10.f));
@@ -178,19 +178,19 @@ void* activityLoop(void* _params) {
                 };
     GlCubemap cubemap(cubemapImages);
 
-    GlObject sphere("meshes/cow.obj",
-                    &camera,
-                    &cubemap,
-                    //GlTransform(Vec3(0.f, 0.f, 5.f), Vec3(1.f, 1.f, 1.f))
-                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.05f, .05f, .05f))
-                    //GlTransform(Vec3(0.f, 0.f, 5.f), Vec3(100.f, 100.f, 100.f))
-             );
-    //
-    //GlObject sphere("meshes/sphere.obj",
+    //GlObject sphere("meshes/cow.obj",
     //                &camera,
     //                &cubemap,
-    //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(500.f, 500.f, 500.f))
-    //               );
+    //                //GlTransform(Vec3(0.f, 0.f, 5.f), Vec3(1.f, 1.f, 1.f))
+    //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.05f, .05f, .05f))
+    //                //GlTransform(Vec3(0.f, 0.f, 5.f), Vec3(100.f, 100.f, 100.f))
+    //         );
+
+    GlObject sphere("meshes/sphere.obj",
+                    &camera,
+                    &cubemap,
+                    GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
+                   );
     
     Timer fpsTimer(true),
           physicsTimer(true);
@@ -203,16 +203,25 @@ void* activityLoop(void* _params) {
         float secElapsed = physicsTimer.LapSec();
 
         ARWrapper::Get()->Update(camera, cubemap);
-        ARWrapper::Get()->DrawCameraBackground();
         
         //udate skybox
         {
-            //GlTransform transform = camera.GetTransform();
-            //transform.Rotate(omega*secElapsed);
-            //camera.SetTransform(transform);
+            static int i = 0;
             
+            //if(i%120 == 0)
+            {
+                //GlTransform transform = camera.GetTransform();
+                //transform.SetRotation(transform.GetRotation().Rotate(Vec3<float>(0.f, ToRadians(180.f), 0.f )));
+                //camera.SetTransform(transform);
+                
+                //skybox.UpdateTextureEGL(ARWrapper::Get()->EglCameraTexture(), &glContext);
+            }
+            i++;
+    
             skybox.Draw();
         }
+    
+        ARWrapper::Get()->DrawCameraBackground();
         
         //Update sphere
         {
@@ -225,7 +234,7 @@ void* activityLoop(void* _params) {
     
             //float r = .5f*(FastSin(mirrorTheta)+1.f);
             float r = .5f;
-    
+            
             sphere.Draw(r);
         }
 

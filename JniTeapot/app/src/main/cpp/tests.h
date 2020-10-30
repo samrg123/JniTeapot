@@ -75,7 +75,7 @@ TEST_FUNC(Quaternion) {
     //test rotation
     {
         Quaternion<float> r(581, 586, 626, -652);
-        r/= Sqrt(r.NormSquared()); //Note: we use accurate Sqrt instead of FastSqrt used in r.Normalize() to avoid error
+        r.Normalize();
         
         Vec3<float> v(7.f, 3.f, 2.f);
         Quaternion<float> q(7.f, 3.f, 2.f, 0.f);
@@ -91,7 +91,7 @@ TEST_FUNC(Quaternion) {
     //test to matrix func
     {
         Quaternion<float> r(581, 586, 626, -652);
-        r/= Sqrt(r.NormSquared()); //Note: we use accurate Sqrt instead of FastSqrt used in r.Normalize() to avoid error
+        r.Normalize();
 
         Mat4<float> rMatrix = r.Matrix();
         TEST_CONDITION(Approx(rMatrix.a1,  0.0182872f));
