@@ -72,7 +72,7 @@ public:
                                                         ""
                                                         "void main() {"
                                                         "    gl_FragColor = texture2D(sTexture, v_TexCoord);"
-                                                        "    gl_FragColor.a = .15;"
+                                                        "    gl_FragColor.a = .4;"
                                                         "}";
 
 
@@ -158,7 +158,7 @@ public:
     
     inline uint32 EglCameraTexture() const { return backgroundTextureId; }
     
-    void Update(GlCamera &cam, GlCubemap &cubemap) {
+    void Update(GlCamera &cam) {
 
         ArSession_setCameraTextureName(arSession, backgroundTextureId);
 
@@ -186,21 +186,13 @@ public:
             ArPose_getPoseRaw(arSession, cameraPose, rawPose.vals);
             ArPose_destroy(cameraPose);
 
-            //Mat4<float> mat;
-            //ArCamera_getViewMatrix(arSession, arCamera, mat.values);
-            //cam.SetViewMatrix(mat);
-
             GlTransform transform = cam.GetTransform();
             transform.SetRotation(rawPose.rotation);
             transform.position = rawPose.position;
             cam.SetTransform(transform);
 
-
             ArCamera_release(arCamera);
         }
-
-        //TODO: in the process of merging with GlSkybox
-        //UpdateCubemap(cubemap, cam);
     }
 
     void DrawCameraBackground(GlCamera& cam) {

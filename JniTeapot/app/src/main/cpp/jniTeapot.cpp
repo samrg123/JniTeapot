@@ -184,16 +184,6 @@ void* activityLoop(void* _params) {
 
         .camera = &camera
     });
-    
-    const char* cubemapImages[] = {
-                    "textures/skymap/px.png",
-                    "textures/skymap/nx.png",
-                    "textures/skymap/py.png",
-                    "textures/skymap/ny.png",
-                    "textures/skymap/pz.png",
-                    "textures/skymap/nz.png"
-                };
-    GlCubemap cubemap(cubemapImages);
 
     //GlObject sphere("meshes/cow.obj",
     //                &camera,
@@ -221,24 +211,23 @@ void* activityLoop(void* _params) {
     
 
         //TODO: only set this when it changes!
-        ARWrapper::Get()->Update(camera, cubemap);
+        ARWrapper::Get()->Update(camera);
         camera.SetProjectionMatrix(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
         
         //udate skybox
         {
-            
             //GlTransform transform = camera.GetTransform();
             //transform.Rotate(Vec3<float>(0.f, ToRadians(10.f)*secElapsed, 0.f));
             //camera.SetTransform(transform);
             
             static int i = 0;
-            //if(i%120 == 0)
+            if(i%120 == 0)
             {
                 //GlTransform transform = camera.GetTransform();
                 //transform.SetRotation(transform.GetRotation().Rotate(Vec3<float>(0.f, ToRadians(180.f), 0.f )));
                 //camera.SetTransform(transform);
                 
-                //skybox.UpdateTextureEGL(ARWrapper::Get()->EglCameraTexture(), &glContext);
+                skybox.UpdateTextureEGL(ARWrapper::Get()->EglCameraTexture(), &glContext);
             }
             i++;
     
