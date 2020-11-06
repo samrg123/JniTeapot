@@ -4,7 +4,7 @@
 #include "GlRenderable.h"
 #include "GlTransform.h"
 #include "GlCamera.h"
-#include "GlCubemap.h"
+#include "GlSkybox.h"
 
 #include "FileManager.h"
 #include "Memory.h"
@@ -17,17 +17,15 @@
 class GlObject : public GlRenderable {
     private:
         
-        GlCubemap* cubemap;
-        
         enum Attribs      { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
         enum TextureUnits { TU_SKY_MAP };
         enum Uniforms     { UNIFORM_MIRROR_CONSTANT, UNIFORM_CAMERA_POSITION, UNIFORM_LIGHT_POSITION };
         enum UBlocks      { UBLOCK_OBJECT };
         
         static inline const StringLiteral kVertexShaderSource =
-            kGlesVersionStr +
+            ShaderVersionStr+
     
-            ShaderUniformBlock(UBLOCK_OBJECT) + "ObjectBlock {" +
+            ShaderUniformBlock(UBLOCK_OBJECT)+ "ObjectBlock {" +
             "  mat4 mvpMatrix;"
             "  mat4 mvMatrix;"
             "};" +
@@ -64,8 +62,8 @@ class GlObject : public GlRenderable {
             "}";
             
         static inline const StringLiteral kFragmentShaderSource =
-            kGlesVersionStr +
-            "precision highp float;" +
+            ShaderVersionStr+
+            "precision highp float;"+
         
             ShaderSampler(TU_SKY_MAP) + "samplerCube cubemapSampler;" +
             ShaderUniform(UNIFORM_MIRROR_CONSTANT) + "float mirrorConstant;" +
@@ -110,7 +108,7 @@ class GlObject : public GlRenderable {
             ""
             //"    fragColor.rgb = (fragColor.rgb*.001) + (.5*(lightDirection + vec3(1.)));"
             ""
-            //Prevenets optimized out uniform error
+            //Prevents optimized out uniform error
             //"    fragColor.rgb = fragColor.rgb + mirrorConstant*.01*cubeColor.rgb;"
             //
             ////NormalColor
@@ -127,6 +125,7 @@ class GlObject : public GlRenderable {
                         mvMatrix;
         };
         
+        const GlSkybox& skybox;
         GlTransform transform;
         Mat4<float> transformMatrix;
         
@@ -431,11 +430,11 @@ class GlObject : public GlRenderable {
 
     public:
         
-        GlObject(const char* objPath, GlCamera* camera, GlCubemap* cubemap = nullptr, const GlTransform& transform = GlTransform()):
+        GlObject(const char* objPath, GlCamera* camera, const GlSkybox& skybox, const GlTransform& transform = GlTransform()):
+                    skybox(skybox),
                     GlRenderable(camera),
                     transform(transform),
-                    flags(FLAG_OBJ_TRANSFORM_UPDATED),
-                    cubemap(cubemap) {
+                    flags(FLAG_OBJ_TRANSFORM_UPDATED) {
             
             SetCamera(camera);
             
@@ -524,8 +523,8 @@ class GlObject : public GlRenderable {
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
     
             glActiveTexture(GL_TEXTURE0+TU_SKY_MAP);
-            glBindSampler(TU_SKY_MAP, cubemap->getCubeSampler());
-            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap->getCubeTexture());
+            glBindSampler(TU_SKY_MAP, skybox.CubeMapSampler());
+            glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.CubeMapTexture());
 
             glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);
 

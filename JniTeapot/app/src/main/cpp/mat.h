@@ -28,6 +28,11 @@ struct Mat4 {
                                                    {v[8],  v[9],  v[10], v[11]},
                                                    {v[12], v[13], v[14], v[15]}} {}
     
+    constexpr Mat4(const T* v):        components{ {v[0],  v[1],  v[2],  v[3]},
+                                                   {v[4],  v[5],  v[6],  v[7]},
+                                                   {v[8],  v[9],  v[10], v[11]},
+                                                   {v[12], v[13], v[14], v[15]}} {}
+    
     //TODO: make sure this SIMD swizzles
     inline Vec4<T> Row1() { return Vec4(a1, a2, a3, a4); }
     inline Vec4<T> Row2() { return Vec4(b1, b2, b3, b4); }

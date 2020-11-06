@@ -5,13 +5,14 @@
 
 class GlCamera {
     private:
-        enum Flags { FLAG_PROJECTION_MATRIX_UPDATED = 1<<1, FLAG_CAM_TRANSFORM_UPDATED = 1<<2,
-                     FLAG_VIEW_MATRIX_SET = 1<<3 //TODO: THIS IS ONLY A TEMPORARY HACK TO GET ARCORE TO PLAY NICE!
+        enum Flags { FLAG_PROJECTION_MATRIX_UPDATED = 1<<0, FLAG_CAM_TRANSFORM_UPDATED = 1<<1,
+                     FLAG_VIEW_MATRIX_SET = 1<<2 //TODO: THIS IS ONLY A TEMPORARY HACK TO GET ARCORE TO PLAY NICE!
         };
 
         GlTransform transform;
         Mat4<float> projectionMatrix,
-                    cameraMatrix, viewMatrix;
+                    cameraMatrix,
+                    viewMatrix;
 
         uint32 flags, matrixId;
 
@@ -24,10 +25,17 @@ class GlCamera {
 
                 
         inline GlTransform GetTransform()        const { return transform; }
-        inline Mat4<float> GetViewMatrix()       const { return viewMatrix; }
         inline Mat4<float> GetProjectionMatrix() const { return projectionMatrix; }
         
-        inline void SetTransform(const GlTransform& t)         { transform = t; ++matrixId; flags|= FLAG_CAM_TRANSFORM_UPDATED; }
+        inline Mat4<float> GetViewMatrix() {
+            if(flags & FLAG_CAM_TRANSFORM_UPDATED) {
+                flags^= FLAG_CAM_TRANSFORM_UPDATED;
+                viewMatrix = transform.InverseMatrix();
+            }
+            return viewMatrix;
+        }
+        
+        inline void SetTransform(const GlTransform& t)         { transform = t;         ++matrixId; flags|= FLAG_CAM_TRANSFORM_UPDATED; }
         inline void SetProjectionMatrix(const Mat4<float>& pm) { projectionMatrix = pm; ++matrixId; flags|= FLAG_PROJECTION_MATRIX_UPDATED; }
         inline void SetViewMatrix(const Mat4<float>& m)        { viewMatrix = m;        ++matrixId; flags|= FLAG_VIEW_MATRIX_SET; }
 

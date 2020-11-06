@@ -28,7 +28,7 @@ class GlTransform {
         }
         
         //Note: returns S'*R'*T' where T'=inverseTranslationMatrix, R'=inverseRotationMatrix, S'=inverseScaleMatrix
-        inline Mat4<float> InverseMatrix() {
+        inline Mat4<float> InverseMatrix() const {
             Vec3<float> inverseTranslation = -position;
             Vec3<float> inverseScale = scale.Inverse();
             
@@ -45,7 +45,7 @@ class GlTransform {
         }
         
         //Note: returns T*R*S where T=translationMatrix, R=rotationMatrix, S=scaleMatrix
-        inline Mat4<float> Matrix() {
+        inline Mat4<float> Matrix() const {
             
             // TODO: make sure simd makes 0-value w component in rotation matrix multiply for free and
             //       rotation.Matrix() operations get inlined
