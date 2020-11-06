@@ -44,7 +44,7 @@ struct Quaternion: Base {
     }
     
     template<typename T2> constexpr Quaternion& operator*= (const Quaternion<T2>& q) {
-        /** Note: using
+        /** Note: using p*q =
               r.x = p.w*q.x + p.x*q.w + p.y*q.z − p.z*q.y
               r.y = p.w*q.y − p.x*q.z + p.y*q.w + p.z*q.x
               r.z = p.w*q.z + p.x*q.y − p.y*q.x + p.z*q.w

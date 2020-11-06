@@ -22,6 +22,8 @@
 
 #define JFunc(jClass, jMethod) JNIEXPORT JNICALL Java_com_eecs487_jniteapot_##jClass##_ ##jMethod
 
+GlContext glContext;
+
 constexpr float kTargetMsFrameTime = 1000.f/60;
 
 struct RenderThreadParams {
@@ -42,10 +44,12 @@ void InitGlesState() {
     //NOTE: just for text blending - this should be turned off otherwise
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+    
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glClearDepthf(1.f);
+    
+    //glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 
 void DrawStrings(GlText* glText, float renderTime, float frameTime) {
@@ -126,8 +130,6 @@ void DrawStrings(GlText* glText, float renderTime, float frameTime) {
 void* activityLoop(void* _params) {
     RenderThreadParams* params = (RenderThreadParams*) _params;
     auto nativeWindow = params->nativeWindow;
-
-    GlContext glContext;
     glContext.Init((ANativeWindow*)nativeWindow);
     
     GlText glText(&glContext, "fonts/xolonium_regular.ttf");
@@ -142,8 +144,9 @@ void* activityLoop(void* _params) {
     ARWrapper::Get()->InitializeGlContent();
     ARWrapper::Get()->UpdateScreenSize(glContext.Width(), glContext.Height());
     
-    //TODO: get projection matrix from ARCore
+    //TODO: right now on startup ArCore gives us a distorted projection matrix? Maybe query the fov and just make our own?
     //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height())*.001f , 0, 2000));
+    //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000)); //TODO: see if we can replace scaling view with scaling camera so glSkymap draws properly
     //GlCamera camera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f));
     GlCamera camera(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
     
@@ -158,12 +161,26 @@ void* activityLoop(void* _params) {
     //               );
     
     GlSkybox skybox({
-        .posX = "textures/skymap/px.png",
-        .negX = "textures/skymap/nx.png",
-        .posY = "textures/skymap/py.png",
-        .negY = "textures/skymap/ny.png",
-        .posZ = "textures/skymap/pz.png",
-        .negZ = "textures/skymap/nz.png",
+        //.posX = "textures/skymap/px.png",
+        //.negX = "textures/skymap/nx.png",
+        //.posY = "textures/skymap/py.png",
+        //.negY = "textures/skymap/ny.png",
+        //.posZ = "textures/skymap/pz.png",
+        //.negZ = "textures/skymap/nz.png",
+        
+        //.posX = "textures/uvGrid.png",
+        //.negX = "textures/uvGrid.png",
+        //.posY = "textures/uvGrid.png",
+        //.negY = "textures/uvGrid.png",
+        //.posZ = "textures/uvGrid.png",
+        //.negZ = "textures/uvGrid.png",
+    
+        .posX = "textures/debugTexture.png",
+        .negX = "textures/debugTexture.png",
+        .posY = "textures/debugTexture.png",
+        .negY = "textures/debugTexture.png",
+        .posZ = "textures/debugTexture.png",
+        .negZ = "textures/debugTexture.png",
 
         .camera = &camera
     });
@@ -188,7 +205,7 @@ void* activityLoop(void* _params) {
 
     GlObject sphere("meshes/sphere.obj",
                     &camera,
-                    &cubemap,
+                    skybox,
                     GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
                    );
     
@@ -201,13 +218,20 @@ void* activityLoop(void* _params) {
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     
         float secElapsed = physicsTimer.LapSec();
+    
 
+        //TODO: only set this when it changes!
         ARWrapper::Get()->Update(camera, cubemap);
+        camera.SetProjectionMatrix(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
         
         //udate skybox
         {
-            static int i = 0;
             
+            //GlTransform transform = camera.GetTransform();
+            //transform.Rotate(Vec3<float>(0.f, ToRadians(10.f)*secElapsed, 0.f));
+            //camera.SetTransform(transform);
+            
+            static int i = 0;
             //if(i%120 == 0)
             {
                 //GlTransform transform = camera.GetTransform();
@@ -221,7 +245,7 @@ void* activityLoop(void* _params) {
             skybox.Draw();
         }
     
-        ARWrapper::Get()->DrawCameraBackground();
+        ARWrapper::Get()->DrawCameraBackground(camera);
         
         //Update sphere
         {
@@ -273,6 +297,23 @@ extern "C" {
         ARWrapper::Get()->InitializeARSession(env, context);
 
         pthread_create(&thread, &threadAttribs, activityLoop, (void*)r);
+    }
+    
+    void JFunc(App, NativeSurfaceRedraw)(JNIEnv* env, jclass clazz,
+                                         int rotation, int width, int height) {
+    
+        RUNTIME_ASSERT(width == glContext.Width(),
+                       "Changing Width not implemented yet! { oldWidth: %d, newWidth: %d }",
+                       glContext.Width(), width);
+
+        RUNTIME_ASSERT(height == glContext.Height(),
+                       "Changing Height not implemented yet! { oldHeight: %d, newHeight: %d }",
+                       glContext.Height(), height);
+    
+        Log("Updating context { rotation: %d, width: %d, height: %d }", rotation, width, height);
+        
+        //ARWrapper::Get()->arSession->
+        //setDisplayGeometry(rotation, width, height);
     }
 
     // TODO: Func to release native window context
