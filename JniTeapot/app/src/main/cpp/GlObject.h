@@ -53,7 +53,7 @@ class GlObject {
                                                      //"  lightColor = vec4(0.85, .95, 1., 200000.);"
                                                      "  lightColor = vec4(0.6784, .7255, .698, 1000000.);"
                                                      "  lightDirection = normalize(lightPosition - worldPosition);"
-                                                     "  cameraDirection = normalize(cameraPosition - worldPosition);"
+                                                     "  cameraDirection = normalize(worldPosition); cameraPosition;"
                                                      "}";
         
         static constexpr const char* kFragmentSource = "#version 310 es\n"
@@ -85,8 +85,8 @@ class GlObject {
                                                        //TODO: this is phong - see if we should do blin-phong instead
                                                        //"    vec3 lightReflection = -reflect(lightDirection, fragNormal);"
                                                        "    vec3 lightReflection = normalize( ((2.*dot(fragNormal, lightDirection)) * fragNormal) - lightDirection);"
-                                                       "    vec3 cubeReflection = (2.*fragNormal) - cameraDirection;"
-                                                       "    vec4 cubeColor = texture(cubemapSampler, normalize(cubeReflection));"
+                                                       "    vec3 cubeReflection = reflect(-cameraDirection, fragNormal);"
+                                                       "    vec4 cubeColor = texture(cubemapSampler, cubeReflection);"
                                                        ""
                                                        "    float lightDistance = fragLightPosition.z - worldPosition.z;"
                                                        "    float invLightDistanceSqaured = 1./(lightDistance*lightDistance);"

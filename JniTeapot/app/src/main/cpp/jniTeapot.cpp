@@ -213,7 +213,7 @@ void* activityLoop(void* _params) {
 
         ARWrapper::Get()->DrawCameraBackground();
 
-        sphere.Draw(1.0f);
+        sphere.Draw(r);
 
         DrawStrings(&glText, loopTimer.ElapsedSec(), fpsTimer.LapSec());
         

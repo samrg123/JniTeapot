@@ -255,6 +255,7 @@ private:
 
     // https://gamedev.stackexchange.com/questions/19461/opengl-glsl-render-to-cube-map
     void DrawCubemapFace(GlCubemap& cubemap, int iFace) {
+        static bool first[6] = {true, true, true, true, true, true};
         const static GLfloat kCameraVerts[] = {-1.0f, -1.0f, +1.0f, -1.0f, -1.0f, +1.0f, +1.0f, +1.0f};
         
         //attach a texture image to a framebuffer object
@@ -276,6 +277,12 @@ private:
         glBindTexture(GL_TEXTURE_EXTERNAL_OES, backgroundTextureId);
         //use our shader to do thing
         glUseProgram(cubemapProgram);
+
+        if (first[iFace]) {
+            glClearColor(0, 0, 0, 1);
+            glClear(GL_COLOR_BUFFER_BIT);
+            first[iFace] = false;
+        }
 
         
         glUniform1i(cubemapCameraTextureUniform, 0);
