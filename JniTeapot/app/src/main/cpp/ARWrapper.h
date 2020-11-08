@@ -5,6 +5,7 @@
 #include "include/arcore_c_api.h"
 #include "jni.h"
 #include "GLES2/gl2ext.h"
+#include <sstream>
 
 class ARWrapper {
 public:
@@ -64,25 +65,52 @@ public:
 
         {
              static constexpr const char* kVertexSource = "attribute vec4 a_Position;"
-                                                        "attribute vec2 a_TexCoord;"
-                                                        "varying vec2 v_TexCoord;"
-                                                        ""
+                                                        // "attribute vec4 a_worldPos;"
+                                                        "uniform mat4 m_viewMat;"
+                                                        "varying vec4 viewPos;"
+                                                        "uniform int i_face;"
                                                         "void main() {"
                                                         "   gl_Position = a_Position;"
-                                                        "   v_TexCoord = a_TexCoord;"
+                                                        "   vec4 fakeWorldPos;"
+                                                        "   if (i_face == 0) { fakeWorldPos = vec4(1.f, -a_Position.y, -a_Position.x, 0.f); }"
+                                                        "   if (i_face == 1) { fakeWorldPos = vec4(-1.f, -a_Position.y, a_Position.x, 0.f); }"
+                                                        "   if (i_face == 2) { fakeWorldPos = vec4(a_Position.x, 1.f, a_Position.y, 0.f); }" // befre just -x
+                                                        "   if (i_face == 3) { fakeWorldPos = vec4(a_Position.x, -1.f, -a_Position.y, 0.f); }"
+                                                        "   if (i_face == 4) { fakeWorldPos = vec4(a_Position.x, -a_Position.y, 1.f, 0.f); }"  
+                                                        "   if (i_face == 5) { fakeWorldPos = vec4(-a_Position.x, -a_Position.y, -1.f, 0.f); }"
+
+
+                                                        "   viewPos = m_viewMat * vec4(fakeWorldPos.rgb, 0.f);"
                                                         "}";
             static constexpr const char* kFragmentSource = "#extension GL_OES_EGL_image_external : require\n"
                                                         ""
                                                         "precision mediump float;"
-                                                        "varying vec2 v_TexCoord;"
                                                         "uniform samplerExternalOES sTexture;"
+                                                        "uniform mat4 m_viewMat;"
+                                                        "varying vec4 viewPos;"
                                                         ""
                                                         "void main() {"
-                                                        "    gl_FragColor = vec4(0.85f, 0.4f, 0.53f, 1.0f);"
+                                                        "    if (viewPos.x > -1.f && viewPos.x < 1.f && viewPos.y > -1.f && viewPos.y < 1.f && viewPos.z > 0.f) {"
+                                                        "        vec2 cameraTexCoord = vec2((viewPos.x + 1.f)/2.f, (1.0f - (viewPos.y + 1.f)/2.f));"
+                                                        "        gl_FragColor = texture2D(sTexture, cameraTexCoord);"
+                                                        "    } else {"
+                                                        "        gl_FragColor = vec4(0.f);"
+                                                        "    }"
+                                                        // "    gl_FragColor += vec4(abs(viewPos.rgb), 1.0f);"
                                                         "}";
 
 
             cubemapProgram = GlContext::CreateGlProgram(kVertexSource, kFragmentSource);
+            
+            cubemapCameraTextureUniform = glGetUniformLocation(cubemapProgram, "sTexture");
+
+
+            // glBindAttribLocation(cubemapProgram, cubemapWorldPositionAttrib, "worldPos");
+            // glBindAttribLocation(cubemapProgram, cubemapScreenPositionAttrib, "screenPos");
+            cubemapScreenPositionAttrib = glGetAttribLocation(cubemapProgram, "a_Position");
+            // cubemapWorldPositionAttrib = glGetAttribLocation(cubemapProgram, "a_worldPos");
+            cubemapCameraMatrixUniform = glGetUniformLocation(cubemapProgram, "m_viewMat");
+            cubemapFaceNumberUniform = glGetUniformLocation(cubemapProgram, "i_face");
         }
 
     }
@@ -112,8 +140,6 @@ public:
         ArCamera_getPose(arSession, arCamera, cameraPose);
         ArPose_getPoseRaw(arSession, cameraPose, poseRaw);
 
-        Mat4<float> viewMat;
-        Mat4<float> projMat;
         ArCamera_getViewMatrix(arSession, arCamera, viewMat.values);
         ArCamera_getProjectionMatrix(arSession, arCamera,
                 /*near=*/0.1f, /*far=*/100.f,
@@ -170,6 +196,15 @@ private:
     GLuint cameraTexCoordAtrrib;
     GLuint cameraTextureUniform;
 
+    GLuint cubemapWorldPositionAttrib;
+    GLuint cubemapScreenPositionAttrib;
+    GLuint cubemapCameraMatrixUniform;
+    GLuint cubemapCameraTextureUniform;
+    GLuint cubemapFaceNumberUniform;
+
+    Mat4<float> viewMat;
+    Mat4<float> projMat;
+
     GLuint cubemapProgram;
     GLuint cubemapFbo;
 
@@ -220,6 +255,8 @@ private:
 
     // https://gamedev.stackexchange.com/questions/19461/opengl-glsl-render-to-cube-map
     void DrawCubemapFace(GlCubemap& cubemap, int iFace) {
+        const static GLfloat kCameraVerts[] = {-1.0f, -1.0f, +1.0f, -1.0f, -1.0f, +1.0f, +1.0f, +1.0f};
+        
         //attach a texture image to a framebuffer object
         glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
                                 GL_TEXTURE_CUBE_MAP_POSITIVE_X + iFace, 
@@ -231,32 +268,130 @@ private:
         if(status != GL_FRAMEBUFFER_COMPLETE) {
             Log("Status error: %08x\n", status);
         }
+
+        glDepthMask(GL_FALSE);
+        glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        
+        glBindTexture(GL_TEXTURE_EXTERNAL_OES, backgroundTextureId);
+        //use our shader to do thing
+        glUseProgram(cubemapProgram);
+
+        
+        glUniform1i(cubemapCameraTextureUniform, 0);
+
+        glUniform1i(cubemapFaceNumberUniform, iFace);
+
+
+        glVertexAttribPointer(cubemapScreenPositionAttrib, 2, GL_FLOAT, false, 0, kCameraVerts);
+        glEnableVertexAttribArray(cubemapScreenPositionAttrib);
+        
+        // glEnableVertexAttribArray(cubemapWorldPositionAttrib);
+        Mat4<float> viewProj = projMat * viewMat;
+        glUniformMatrix4fv(cubemapCameraMatrixUniform, 1, GL_FALSE, viewProj.values);
+       
+        GlAssertNoError("Error drawing before draw");
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        GlAssertNoError("Error drawing after draw");
+
+
+        // glDisableVertexAttribArray(cubemapWorldPositionAttrib);
+        glDisableVertexAttribArray(cubemapScreenPositionAttrib);
+
+        glUseProgram(0);
+        glDepthMask(GL_TRUE);
+
+
+        //DrawCameraBackground();
         
 
-        //use our shader to do thing
-        // glUseProgram(cubemapProgram);
-        DrawCameraBackground();
-        
-        // //but not really
-        // if (iFace % 2) {
-        //     glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-        // }
-        // else {
-        //     glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-        // }
         
         // glClear(GL_COLOR_BUFFER_BIT);
         GlAssertNoError("Error drawing cCLEARED OR WHATEVER");
 
         
         //activate texture and bind it
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.getCubeTexture());
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.getCubeTexture());
 
         // glUseProgram(0);
 
         GlAssertNoError("Error drawing cubemap face");
     }
+    
+    void setCubemapVerts(int iFace){
+        //GLfloat cubemapVerts[12];
+        // +x , -x , +y, -y, +z, -z
+        switch(iFace) {
+            case 0: // +x
+                {
+                const static GLfloat cubemapVerts[12] = {
+                    +1.0f, -1.0f, -1.0f,
+                    +1.0f, +1.0f, -1.0f,
+                    +1.0f, -1.0f, +1.0f,
+                    +1.0f, +1.0f, +1.0f
+                };
+                glVertexAttribPointer(cubemapWorldPositionAttrib, 3, GL_FLOAT, false, 0, cubemapVerts);
+                break;
+                }
+            case 1: // -x
+                {
+                const static GLfloat cubemapVerts[12] = {
+                    -1.0f, -1.0f, -1.0f,
+                    -1.0f, +1.0f, -1.0f,
+                    -1.0f, -1.0f, +1.0f,
+                    -1.0f, +1.0f, +1.0f
+                };
+                glVertexAttribPointer(cubemapWorldPositionAttrib, 3, GL_FLOAT, false, 0, cubemapVerts);
+                break;
+                }
+             case 2: // +y
+                {
+                const static GLfloat cubemapVerts[12] = {
+                    -1.0f, +1.0f, -1.0f,
+                    +1.0f, +1.0f, -1.0f,
+                    -1.0f, +1.0f, +1.0f,
+                    +1.0f, +1.0f, +1.0f
+                };
+                glVertexAttribPointer(cubemapWorldPositionAttrib, 3, GL_FLOAT, false, 0, cubemapVerts);
+                break;
+                }
+             case 3: // -y
+                {
+                const static GLfloat cubemapVerts[12] = {
+                    -1.0f, -1.0f, -1.0f,
+                    +1.0f, -1.0f, -1.0f,
+                    -1.0f, -1.0f, +1.0f,
+                    +1.0f, -1.0f, +1.0f
+                };
+                glVertexAttribPointer(cubemapWorldPositionAttrib, 3, GL_FLOAT, false, 0, cubemapVerts);
+                break;
+                }
+             case 4: // +z
+                {
+                const static GLfloat cubemapVerts[12] = {
+                    -1.0f, -1.0f, +1.0f,
+                    +1.0f, -1.0f, +1.0f,
+                    -1.0f, +1.0f, +1.0f,
+                    +1.0f, +1.0f, +1.0f
+                };
+                glVertexAttribPointer(cubemapWorldPositionAttrib, 3, GL_FLOAT, false, 0, cubemapVerts);
+                break;
+                }
+             case 5: // -z
+                {
+                const static GLfloat cubemapVerts[12] = {
+                    -1.0f, -1.0f, -1.0f,
+                    +1.0f, -1.0f, -1.0f,
+                    -1.0f, +1.0f, -1.0f,
+                    +1.0f, +1.0f, -1.0f
+                };  
+                glVertexAttribPointer(cubemapWorldPositionAttrib, 3, GL_FLOAT, false, 0, cubemapVerts);
+                break;
+                }
+        }
+    } 
 };
 
 ARWrapper* ARWrapper::instance = nullptr;

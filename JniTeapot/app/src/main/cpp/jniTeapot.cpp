@@ -170,7 +170,7 @@ void* activityLoop(void* _params) {
                 };
     GlCubemap cubemap(cubemapImages);
 
-    GlObject sphere("meshes/cow.obj",
+    GlObject sphere("meshes/sphere.obj",
                     &camera,
                     &cubemap,
                     GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.05f, .05f, .05f))
@@ -213,7 +213,7 @@ void* activityLoop(void* _params) {
 
         ARWrapper::Get()->DrawCameraBackground();
 
-        sphere.Draw(r);
+        sphere.Draw(1.0f);
 
         DrawStrings(&glText, loopTimer.ElapsedSec(), fpsTimer.LapSec());
         
