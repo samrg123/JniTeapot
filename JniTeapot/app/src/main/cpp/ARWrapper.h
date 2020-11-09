@@ -72,15 +72,15 @@ public:
                                                         "void main() {"
                                                         "   gl_Position = a_Position;"
                                                         "   vec4 fakeWorldPos;"
-                                                        "   if (i_face == 0) { fakeWorldPos = vec4(1.f, -a_Position.y, -a_Position.x, 0.f); }"
-                                                        "   if (i_face == 1) { fakeWorldPos = vec4(-1.f, -a_Position.y, a_Position.x, 0.f); }"
-                                                        "   if (i_face == 2) { fakeWorldPos = vec4(a_Position.x, 1.f, a_Position.y, 0.f); }" // befre just -x
-                                                        "   if (i_face == 3) { fakeWorldPos = vec4(a_Position.x, -1.f, -a_Position.y, 0.f); }"
-                                                        "   if (i_face == 4) { fakeWorldPos = vec4(a_Position.x, -a_Position.y, 1.f, 0.f); }"  
-                                                        "   if (i_face == 5) { fakeWorldPos = vec4(-a_Position.x, -a_Position.y, -1.f, 0.f); }"
+                                                        "   if (i_face == 0) { fakeWorldPos = vec4(1., -a_Position.y, -a_Position.x, 0.); }"
+                                                        "   if (i_face == 1) { fakeWorldPos = vec4(-1., -a_Position.y, a_Position.x, 0.); }"
+                                                        "   if (i_face == 2) { fakeWorldPos = vec4(a_Position.x, 1., a_Position.y, 0.); }" // befre just -x
+                                                        "   if (i_face == 3) { fakeWorldPos = vec4(a_Position.x, -1., -a_Position.y, 0.); }"
+                                                        "   if (i_face == 4) { fakeWorldPos = vec4(a_Position.x, -a_Position.y, 1., 0.); }"
+                                                        "   if (i_face == 5) { fakeWorldPos = vec4(-a_Position.x, -a_Position.y, -1., 0.); }"
 
 
-                                                        "   viewPos = m_viewMat * vec4(fakeWorldPos.rgb, 0.f);"
+                                                        "   viewPos = m_viewMat * vec4(fakeWorldPos.rgb, 0.);"
                                                         "}";
             static constexpr const char* kFragmentSource = "#extension GL_OES_EGL_image_external : require\n"
                                                         ""
@@ -90,11 +90,11 @@ public:
                                                         "varying vec4 viewPos;"
                                                         ""
                                                         "void main() {"
-                                                        "    if (viewPos.x > -1.f && viewPos.x < 1.f && viewPos.y > -1.f && viewPos.y < 1.f && viewPos.z > 0.f) {"
-                                                        "        vec2 cameraTexCoord = vec2((viewPos.x + 1.f)/2.f, (1.0f - (viewPos.y + 1.f)/2.f));"
+                                                        "    if (viewPos.x > -1. && viewPos.x < 1. && viewPos.y > -1. && viewPos.y < 1. && viewPos.z > 0.) {"
+                                                        "        vec2 cameraTexCoord = vec2((viewPos.x + 1.)/2., (1.0 - (viewPos.y + 1.)/2.));"
                                                         "        gl_FragColor = texture2D(sTexture, cameraTexCoord);"
                                                         "    } else {"
-                                                        "        gl_FragColor = vec4(0.f);"
+                                                        "        gl_FragColor = vec4(0.);"
                                                         "    }"
                                                         // "    gl_FragColor += vec4(abs(viewPos.rgb), 1.0f);"
                                                         "}";
