@@ -4,7 +4,7 @@
 #include "GlRenderable.h"
 #include "GlTransform.h"
 #include "GlCamera.h"
-#include "GlCubemap.h"
+#include "GlSkybox.h"
 
 #include "FileManager.h"
 #include "Memory.h"
@@ -17,56 +17,58 @@
 class GlObject : public GlRenderable {
     private:
         
-        GlCubemap* cubemap;
-        
         enum Attribs      { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
         enum TextureUnits { TU_SKY_MAP };
         enum Uniforms     { UNIFORM_MIRROR_CONSTANT, UNIFORM_CAMERA_POSITION, UNIFORM_LIGHT_POSITION };
         enum UBlocks      { UBLOCK_OBJECT };
         
         static inline const StringLiteral kVertexShaderSource =
-            kGlesVersionStr +
-    
-            ShaderUniformBlock(UBLOCK_OBJECT) + "ObjectBlock {" +
+            ShaderVersionStr+
+
+            ShaderUniformBlock(UBLOCK_OBJECT)+ "ObjectBlock {" +
             "  mat4 mvpMatrix;"
-            "  mat4 mvMatrix;"
+            "  mat4 modelMatrix;"
             "};" +
 
             ShaderUniform(UNIFORM_MIRROR_CONSTANT) + "float mirrorConstant;" +
             ShaderUniform(UNIFORM_CAMERA_POSITION) + "vec3 cameraPosition;" +
             ShaderUniform(UNIFORM_LIGHT_POSITION)  + "vec3 lightPosition;" +
-        
+
             ShaderIn(ATTRIB_GEO_VERT)    + "vec3 position;" +
             ShaderIn(ATTRIB_NORMAL_VERT) + "vec3 normal;" +
             ShaderIn(ATTRIB_UV_VERT)     + "vec2 uv;" +
-            
+
             ShaderOut(0) + "vec3 lightDirection;" +
             ShaderOut(1) + "vec3 fragNormal;" +
             ShaderOut(2) + "vec3 cameraDirection;" +
             ShaderOut(3) + "vec4 lightColor;" +
             ShaderOut(4) + "vec3 worldPosition;" +
             ShaderOut(5) + "vec3 fragLightPosition;" +
-            
-            "void main() {"
-            "  vec4 v4Position = vec4(position, 1.);"
-            "  gl_Position = mvpMatrix*v4Position;"
-            ""
-            "  fragNormal = normalize((mvMatrix * vec4(normal, 0.)).xyz);"
-            "  worldPosition = (mvMatrix * v4Position).xyz;"
-            "  fragLightPosition = lightPosition;"
-            ""
-            //"  lightColor = vec4(0., 1., 0., .3);"
-            //"  lightColor = vec4(1., 1., 1., 300000.);"
-            //"  lightColor = vec4(0.85, .95, 1., 200000.);"
-            "  lightColor = vec4(0.6784, .7255, .698, 1000000.);"
-            "  lightDirection = normalize(lightPosition - worldPosition);"
-            "  cameraDirection = normalize(cameraPosition - worldPosition);"
-            "}";
-            
+
+            STRINGIFY(
+                void main() {
+                    vec4 v4Position = vec4(position, 1.);
+                    gl_Position = mvpMatrix*v4Position;
+                    
+                    
+                    fragNormal = mat3(transpose(inverse(modelMatrix)))*normal;
+                    worldPosition = (modelMatrix * v4Position).xyz;
+                    
+                    fragLightPosition = lightPosition;
+                    
+                    //  lightColor = vec4(0., 1., 0., .3);
+                    //  lightColor = vec4(1., 1., 1., 300000.);
+                    //  lightColor = vec4(0.85, .95, 1., 200000.);
+                    lightColor = vec4(0.6784, .7255, .698, 1000000.);
+                    lightDirection = normalize(lightPosition - worldPosition);
+                    cameraDirection = normalize(cameraPosition - worldPosition);
+            }
+        );
+
         static inline const StringLiteral kFragmentShaderSource =
-            kGlesVersionStr +
-            "precision highp float;" +
-        
+            ShaderVersionStr+
+            "precision highp float;"+
+
             ShaderSampler(TU_SKY_MAP) + "samplerCube cubemapSampler;" +
             ShaderUniform(UNIFORM_MIRROR_CONSTANT) + "float mirrorConstant;" +
 
@@ -76,46 +78,52 @@ class GlObject : public GlRenderable {
             ShaderIn(3) + "vec4 lightColor;" +
             ShaderIn(4) + "vec3 worldPosition;" +
             ShaderIn(5) + "vec3 fragLightPosition;" +
-            
+
             ShaderOut(0) + "vec4 fragColor;" +
-            
-            "void main() {"
-            " "
-            "    vec4 diffuseColor = vec4(.9, .9, .9, 1.);"
-            "    vec4 ambientColor = vec4(.4471, .4486, .3464, 1.);"
-            ""
-            "    float reflectivity = mirrorConstant;"
-            "    float diffuseness = 1. - mirrorConstant;"
-            //"    float specularPower  = 16.;" //Note: smaller numbers = more reflective
-            "    float specularPower  = 8.;" //Note: smaller numbers = more reflective
-            "    "
-            ""
-            //TODO: this is phong - see if we should do blin-phong instead
-            //"    vec3 lightReflection = -reflect(lightDirection, fragNormal);"
-            "    vec3 lightReflection = normalize( ((2.*dot(fragNormal, lightDirection)) * fragNormal) - lightDirection);"
-            "    vec3 cubeReflection = (2.*fragNormal) - cameraDirection;"
-            "    vec4 cubeColor = texture(cubemapSampler, normalize(cubeReflection));"
-            ""
-            "    float lightDistance = fragLightPosition.z - worldPosition.z;"
-            "    float invLightDistanceSqaured = 1./(lightDistance*lightDistance);"
-            ""
-            "    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((diffuseness*ambientColor.rgb) + (reflectivity*cubeColor.rgb));"
-            //"    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((.999*ambientColor.rgb) + (.001*cubeColor.rgb));"
-            "    vec3 diffuseTerm =   diffuseness * diffuseColor.rgb * max(0., dot(fragNormal, lightDirection));"
-            "    float specularTerm = reflectivity * pow(max(0., dot(cameraDirection, lightReflection)), specularPower);"
-            "    vec3 lightTerm = lightColor.w * lightColor.rgb * invLightDistanceSqaured*(diffuseTerm + specularTerm);"
-            " "
-            "    fragColor.rgb = ambientTerm + lightTerm;"
-            "    fragColor.a = diffuseColor.a;"
-            ""
-            //"    fragColor.rgb = (fragColor.rgb*.001) + (.5*(lightDirection + vec3(1.)));"
-            ""
-            //Prevenets optimized out uniform error
-            //"    fragColor.rgb = fragColor.rgb + mirrorConstant*.01*cubeColor.rgb;"
-            
-            ////NormalColor
-            //"    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));"
-            "}";
+
+            STRINGIFY(
+                void main() {
+    
+                    vec4 diffuseColor = vec4(.9, .9, .9, 1.);
+                    vec4 ambientColor = vec4(.4471, .4486, .3464, 1.);
+        
+                    float reflectivity = mirrorConstant;
+                    float diffuseness = 1. - mirrorConstant;
+                    //    float specularPower  = 16.; //Note: smaller numbers = more reflective
+                    float specularPower  = 8.; //Note: smaller numbers = more reflective
+        
+        
+                    //TODO: this is phong - see if we should do blin-phong instead
+                    //    vec3 lightReflection = -reflect(lightDirection, fragNormal);
+                    vec3 lightReflection = normalize( ((2.*dot(fragNormal, lightDirection)) * fragNormal) - lightDirection);
+    
+                    //TODO: make sure this matches phong shading model
+                    vec3 cubeReflection = ((2.* dot(cameraDirection, fragNormal))*fragNormal) - cameraDirection;
+                    //vec3 cubeReflection = reflect(-cameraDirection, fragNormal);
+                    
+                    vec4 cubeColor = texture(cubemapSampler, cubeReflection);
+        
+                    float lightDistance = fragLightPosition.z - worldPosition.z;
+                    float invLightDistanceSqaured = 1./(lightDistance*lightDistance);
+        
+                    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((diffuseness*ambientColor.rgb) + (reflectivity*cubeColor.rgb));
+                    //    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((.999*ambientColor.rgb) + (.001*cubeColor.rgb));
+                    vec3 diffuseTerm =   diffuseness * diffuseColor.rgb * max(0., dot(fragNormal, lightDirection));
+                    float specularTerm = reflectivity * pow(max(0., dot(cameraDirection, lightReflection)), specularPower);
+                    vec3 lightTerm = lightColor.w * lightColor.rgb * invLightDistanceSqaured*(diffuseTerm + specularTerm);
+        
+                    fragColor.rgb = ambientTerm + lightTerm;
+                    fragColor.a = diffuseColor.a;
+        
+                    //    fragColor.rgb = (fragColor.rgb*.001) + (.5*(lightDirection + vec3(1.)));
+        
+                    //Prevents optimized out uniform error
+                    //    fragColor.rgb = fragColor.rgb + mirrorConstant*.01*cubeColor.rgb;
+                    //
+                    ////NormalColor
+                    //    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));
+                }
+         );
             
         enum Flag {
             FLAG_NORMAL = 1<<0, FLAG_UV = 1<<1,
@@ -124,9 +132,10 @@ class GlObject : public GlRenderable {
         
         struct alignas(16) UniformObjectBlock {
             Mat4<float> mvpMatrix,
-                        mvMatrix;
+                        modelMatrix;
         };
         
+        const GlSkybox& skybox;
         GlTransform transform;
         Mat4<float> transformMatrix;
         
@@ -139,6 +148,8 @@ class GlObject : public GlRenderable {
         
         GLuint vao;
         GLuint glProgram;
+        
+        //TODO: merge with cubemap
         GLuint cubeSampler, cubemapTexture;
         
         uint32 flags;
@@ -429,11 +440,11 @@ class GlObject : public GlRenderable {
 
     public:
         
-        GlObject(const char* objPath, GlCamera* camera, GlCubemap* cubemap = nullptr, const GlTransform& transform = GlTransform()):
+        GlObject(const char* objPath, GlCamera* camera, const GlSkybox& skybox, const GlTransform& transform = GlTransform()):
+                    skybox(skybox),
                     GlRenderable(camera),
                     transform(transform),
-                    flags(FLAG_OBJ_TRANSFORM_UPDATED),
-                    cubemap(cubemap) {
+                    flags(FLAG_OBJ_TRANSFORM_UPDATED) {
             
             SetCamera(camera);
             
@@ -442,7 +453,7 @@ class GlObject : public GlRenderable {
             
             glGenBuffers(ArrayCount(glBuffers), glBuffers);
             GlAssertNoError("Failed to create glBuffers");
-            
+        
             glProgram = GlContext::CreateGlProgram(kVertexShaderSource.str, kFragmentShaderSource.str);
             
             //Debugging
@@ -465,7 +476,7 @@ class GlObject : public GlRenderable {
         ~GlObject() {
             glDeleteVertexArrays(1, &vao);
             glDeleteBuffers(ArrayCount(glBuffers), glBuffers);
-            glDeleteSamplers(1, &cubeSampler);
+            //glDeleteSamplers(1, &cubeSampler);
             glDeleteProgram(glProgram);
         }
         
@@ -477,13 +488,11 @@ class GlObject : public GlRenderable {
             //check if the object matrix updated
             bool updateUniformObjectBlock;
             if(flags&FLAG_OBJ_TRANSFORM_UPDATED) {
-                flags^= FLAG_OBJ_TRANSFORM_UPDATED;
-                transformMatrix = transform.Matrix();
                 updateUniformObjectBlock = true;
-
+                transformMatrix = transform.Matrix();
             } else {
                 //check if camera updated
-                updateUniformObjectBlock = DidCameraUpdate();
+                updateUniformObjectBlock = CameraUpdated();
             }
         
             //update mvpMatrix
@@ -494,18 +503,19 @@ class GlObject : public GlRenderable {
                 UniformObjectBlock* uniformObjectBlock = (UniformObjectBlock*)glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(UniformObjectBlock), GL_MAP_WRITE_BIT);
                 GlAssert(uniformObjectBlock, "Failed to map uniformObjectBlock");
     
+                //upload mvpMatrix
                 uniformObjectBlock->mvpMatrix = camera->Matrix() * transformMatrix;
-                if(flags&FLAG_OBJ_TRANSFORM_UPDATED) uniformObjectBlock->mvMatrix = transformMatrix;
+                
+                //upload mvMatrix
+                if(flags&FLAG_OBJ_TRANSFORM_UPDATED) {
+                    flags^= FLAG_OBJ_TRANSFORM_UPDATED;
+                    uniformObjectBlock->modelMatrix = transformMatrix;
+                }
 
                 glUnmapBuffer(GL_UNIFORM_BUFFER);
             }
             
-            //TODO: This
-            //      Bind sampler
-            //      Bind texture
-            
             glUseProgram(glProgram);
-            
             
             //TODO: DEBUG CODE
             {
@@ -523,8 +533,8 @@ class GlObject : public GlRenderable {
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
     
             glActiveTexture(GL_TEXTURE0+TU_SKY_MAP);
-            glBindSampler(TU_SKY_MAP, cubemap->getCubeSampler());
-            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap->getCubeTexture());
+            glBindSampler(TU_SKY_MAP, skybox.CubeMapSampler());
+            glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.CubeMapTexture());
 
             glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);
 

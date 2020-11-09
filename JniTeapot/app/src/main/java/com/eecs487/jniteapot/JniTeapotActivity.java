@@ -1,14 +1,21 @@
 package com.eecs487.jniteapot;
 
 import android.app.Activity;
+import android.graphics.Rect;
+import android.hardware.display.DisplayManager;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.WindowMetrics;
 
 public class JniTeapotActivity extends Activity
                                implements SurfaceHolder.Callback2 {
+
+	private WindowManager windowManager;
+	private Display display;
 
 	public void onCreate(Bundle savedState) {
 		super.onCreate(savedState);
@@ -33,13 +40,21 @@ public class JniTeapotActivity extends Activity
 		// give us control of surface updates (only one thread can draw to a surface)
 		window.takeSurface(this);
 
+		//
+		// windowManager = getSystemService(WindowManager.class);
+		// display = getDisplay();
+
 		//Force the screen to stay on
 		window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 	}
 
 	@Override
 	public void surfaceRedrawNeeded(SurfaceHolder surfaceHolder) {
-		App.Log("Surface Needs Redraw");
+
+		// //TODO: see if there is an easier way to get width and height... maybe in native?
+		// WindowMetrics metrics = windowManager.getCurrentWindowMetrics();
+		// Rect bounds = metrics.getBounds();
+		// App.NativeSurfaceRedraw(display.getRotation(), bounds.width(), bounds.height());
 	}
 	@Override
 	public void surfaceCreated(SurfaceHolder surfaceHolder) {

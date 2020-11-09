@@ -130,8 +130,8 @@ class GlContext {
 
     public:
 
-        inline int Width() { return eglWidth; }
-        inline int Height() { return eglHeight; }
+        inline int Width()  const { return eglWidth; }
+        inline int Height() const { return eglHeight; }
         
         inline
         void static PrintVariables(GLuint glProgram) {
@@ -208,14 +208,14 @@ class GlContext {
                 static char glCompileErrorStr[KB(1)];
                 GlAssertTrue( (glGetShaderiv(shader, GL_COMPILE_STATUS, &status), status),
                              "Failed to compile gl shader {"
-                             GL_ASSERT_INDENT "\ttype: %d"
+                             GL_ASSERT_INDENT "\ttype: %s [%d]"
                              GL_ASSERT_INDENT "\tsource: ["
                              "\n%.100s..." //Note: android logging caps out at 4k so 100 limit prevents chopping off info string
                              GL_ASSERT_INDENT "\t]"
                              GL_ASSERT_INDENT "\tInfo: %s"
                              GL_ASSERT_INDENT "}",
                              
-                             type,
+                             (type == GL_VERTEX_SHADER ? "VertexShader" : type == GL_FRAGMENT_SHADER ? "FragmentShader" : "Unknown"), type,
                              source,
                              (glGetShaderInfoLog(shader, sizeof(glCompileErrorStr), NULL, glCompileErrorStr), glCompileErrorStr)
                 );

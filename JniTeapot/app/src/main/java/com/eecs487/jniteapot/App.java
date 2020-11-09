@@ -2,6 +2,7 @@ package com.eecs487.jniteapot;
 
 import android.app.Activity;
 import android.content.Context;
+import android.provider.SyncStateContract;
 import android.util.Log;
 import android.view.Surface;
 import android.content.res.AssetManager;
@@ -13,6 +14,7 @@ public class App {
 	}
 
 	public static native void NativeOnSurfaceCreated(Surface surface, AssetManager assets, Context context, Activity activity );
+	public static native void NativeSurfaceRedraw(int rotation, int width, int height);
 
 	public static void Log(String msg)   { Log.i(LogPrefixStr("MSG"), msg); }
 	public static void Warn(String msg)  { Log.w(LogPrefixStr("WARN"), msg); }

@@ -9,7 +9,10 @@ android {
     clean
     defaultConfig {
         applicationId "com.eecs487.jniteapot"
-        minSdkVersion 21 // Note: gles 3.1 requires sdk 21+, gles 3.2/vulkan 1.0 requires 24+, vulkan 1.1 requires 28+, egl 1.5 implemented in 29
+
+        //TODO: consider lowering API requirement and grabbing display a different way
+        //Note: SDK 23+ has getSystemService(DisplayManager.class).getDisplay(Display.DISPLAY_DEFAULT)
+        minSdkVersion 23 // Note: gles 3.1 requires sdk 21+, gles 3.2/vulkan 1.0 requires 24+, vulkan 1.1 requires 28+, egl 1.5 implemented in 29
         targetSdkVersion 30
         versionCode 1
         versionName "1.0"

@@ -20,10 +20,15 @@ struct Mat4 {
         T values[16];
     };
     
-    constexpr Mat4(){}
+    constexpr Mat4() = default;
     
     //TODO: replace this with 4xsimd move
     constexpr Mat4(const T (&v)[16] ): components{ {v[0],  v[1],  v[2],  v[3]},
+                                                   {v[4],  v[5],  v[6],  v[7]},
+                                                   {v[8],  v[9],  v[10], v[11]},
+                                                   {v[12], v[13], v[14], v[15]}} {}
+    
+    constexpr Mat4(const T* v):        components{ {v[0],  v[1],  v[2],  v[3]},
                                                    {v[4],  v[5],  v[6],  v[7]},
                                                    {v[8],  v[9],  v[10], v[11]},
                                                    {v[12], v[13], v[14], v[15]}} {}
@@ -74,14 +79,152 @@ struct Mat4 {
         Mat4<decltype(a1*m.a1)> result(*this);
         return result*= m;
     }
+    
+    //Note: this code was borrowed from the mesa library
+    //TODO: read through this and clean it up a bit
+    constexpr Mat4 Inverse() const {
 
-    static inline Mat4 Identity = Mat4({1, 0, 0, 0,
+        Mat4 inverse;
+
+        const T* m = values;
+        T* inv = inverse.values;
+        
+        inv[0] =   m[5]  * m[10] * m[15] -
+                   m[5]  * m[11] * m[14] -
+                   m[9]  * m[6]  * m[15] +
+                   m[9]  * m[7]  * m[14] +
+                   m[13] * m[6]  * m[11] -
+                   m[13] * m[7]  * m[10];
+    
+        inv[4] =  -m[4]  * m[10] * m[15] +
+                   m[4]  * m[11] * m[14] +
+                   m[8]  * m[6]  * m[15] -
+                   m[8]  * m[7]  * m[14] -
+                   m[12] * m[6]  * m[11] +
+                   m[12] * m[7]  * m[10];
+    
+        inv[8] =   m[4]  * m[9] * m[15] -
+                   m[4]  * m[11] * m[13] -
+                   m[8]  * m[5] * m[15] +
+                   m[8]  * m[7] * m[13] +
+                   m[12] * m[5] * m[11] -
+                   m[12] * m[7] * m[9];
+    
+        inv[12] = -m[4]  * m[9] * m[14] +
+                   m[4]  * m[10] * m[13] +
+                   m[8]  * m[5] * m[14] -
+                   m[8]  * m[6] * m[13] -
+                   m[12] * m[5] * m[10] +
+                   m[12] * m[6] * m[9];
+    
+        inv[1] =  -m[1]  * m[10] * m[15] +
+                   m[1]  * m[11] * m[14] +
+                   m[9]  * m[2] * m[15] -
+                   m[9]  * m[3] * m[14] -
+                   m[13] * m[2] * m[11] +
+                   m[13] * m[3] * m[10];
+    
+        inv[5] =   m[0]  * m[10] * m[15] -
+                   m[0]  * m[11] * m[14] -
+                   m[8]  * m[2] * m[15] +
+                   m[8]  * m[3] * m[14] +
+                   m[12] * m[2] * m[11] -
+                   m[12] * m[3] * m[10];
+    
+        inv[9] =  -m[0]  * m[9] * m[15] +
+                   m[0]  * m[11] * m[13] +
+                   m[8]  * m[1] * m[15] -
+                   m[8]  * m[3] * m[13] -
+                   m[12] * m[1] * m[11] +
+                   m[12] * m[3] * m[9];
+    
+        inv[13] =  m[0]  * m[9] * m[14] -
+                   m[0]  * m[10] * m[13] -
+                   m[8]  * m[1] * m[14] +
+                   m[8]  * m[2] * m[13] +
+                   m[12] * m[1] * m[10] -
+                   m[12] * m[2] * m[9];
+    
+        inv[2] =   m[1]  * m[6] * m[15] -
+                   m[1]  * m[7] * m[14] -
+                   m[5]  * m[2] * m[15] +
+                   m[5]  * m[3] * m[14] +
+                   m[13] * m[2] * m[7] -
+                   m[13] * m[3] * m[6];
+    
+        inv[6] =  -m[0]  * m[6] * m[15] +
+                   m[0]  * m[7] * m[14] +
+                   m[4]  * m[2] * m[15] -
+                   m[4]  * m[3] * m[14] -
+                   m[12] * m[2] * m[7] +
+                   m[12] * m[3] * m[6];
+    
+        inv[10] =  m[0]  * m[5] * m[15] -
+                   m[0]  * m[7] * m[13] -
+                   m[4]  * m[1] * m[15] +
+                   m[4]  * m[3] * m[13] +
+                   m[12] * m[1] * m[7] -
+                   m[12] * m[3] * m[5];
+    
+        inv[14] = -m[0]  * m[5] * m[14] +
+                   m[0]  * m[6] * m[13] +
+                   m[4]  * m[1] * m[14] -
+                   m[4]  * m[2] * m[13] -
+                   m[12] * m[1] * m[6] +
+                   m[12] * m[2] * m[5];
+    
+        inv[3] =  -m[1] * m[6] * m[11] +
+                   m[1] * m[7] * m[10] +
+                   m[5] * m[2] * m[11] -
+                   m[5] * m[3] * m[10] -
+                   m[9] * m[2] * m[7] +
+                   m[9] * m[3] * m[6];
+    
+        inv[7] =   m[0] * m[6] * m[11] -
+                   m[0] * m[7] * m[10] -
+                   m[4] * m[2] * m[11] +
+                   m[4] * m[3] * m[10] +
+                   m[8] * m[2] * m[7] -
+                   m[8] * m[3] * m[6];
+    
+        inv[11] = -m[0] * m[5] * m[11] +
+                   m[0] * m[7] * m[9] +
+                   m[4] * m[1] * m[11] -
+                   m[4] * m[3] * m[9] -
+                   m[8] * m[1] * m[7] +
+                   m[8] * m[3] * m[5];
+    
+        inv[15] =  m[0] * m[5] * m[10] -
+                   m[0] * m[6] * m[9] -
+                   m[4] * m[1] * m[10] +
+                   m[4] * m[2] * m[9] +
+                   m[8] * m[1] * m[6] -
+                   m[8] * m[2] * m[5];
+    
+        //Note: computing the determinate after save 68 multiplications
+        float det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+        if(det == 0.) return zero;
+        det = 1.0 / det;
+    
+        inverse.column[0]*= det;
+        inverse.column[1]*= det;
+        inverse.column[2]*= det;
+        inverse.column[3]*= det;
+        
+        return inverse;
+    }
+
+    static inline Mat4 identity = Mat4({1, 0, 0, 0,
                                         0, 1, 0, 0,
                                         0, 0, 1, 0,
                                         0, 0, 0, 1});
     
-    static inline Mat4 Zero = Mat4({});
-    static inline Mat4 One = Mat4({1, 1, 1, 1,
+    static inline Mat4 zero = Mat4({0, 0, 0, 0,
+                                    0, 0, 0, 0,
+                                    0, 0, 0, 0,
+                                    0, 0, 0, 0});
+    
+    static inline Mat4 one = Mat4({1, 1, 1, 1,
                                    1, 1, 1, 1,
                                    1, 1, 1, 1,
                                    1, 1, 1, 1});
@@ -89,8 +232,9 @@ struct Mat4 {
     static
     inline Mat4 Orthogonal(const Vec2<float>& view, float nearPlane, float farPlane) {
         
-        float iD = 1.f/(farPlane - nearPlane),
-              oD = -(farPlane + nearPlane)*iD;
+        //Note: this is right handed use '-iD, -oD for left handed'
+        float iD = 1.f/(nearPlane - farPlane),
+              oD = (farPlane + nearPlane)*iD;
         
         return Mat4({  2.f/view.x, 0,          0,    0,
                        0,          2.f/view.y, 0,    0,
@@ -102,20 +246,21 @@ struct Mat4 {
     static
     inline Mat4 Perspective(float aspect, float fovX, float nearPlane, float farPlane) {
         
-        float tanX = FastTan(.5f*fovX);
+        float negTanX = -FastTan(.5f*fovX);
         
+        //Note: this is right handed
         float iD = 1.f/(farPlane - nearPlane),
-              sD = tanX*(farPlane + nearPlane)*iD,
-              oD = -2.f*farPlane*nearPlane*iD;
-        
+              sD = negTanX*(farPlane + nearPlane)*iD,
+              oD = 2.f*negTanX*farPlane*nearPlane*iD;
+    
         return Mat4({  1,     0,      0,   0,
                        0,     aspect, 0,   0,
-                       0,     0,      sD,  tanX,
-                       0,     0,      oD,  1
+                       0,     0,      sD,  negTanX,
+                       0,     0,      oD,  0
                     });
     }
     
-    //Note rotates matrix in thata.z, theta.y, theta.x order
+    //Note rotates matrix in theta.z, theta.y, theta.x order
     inline Mat4& Rotate(const Vec3<float>& theta) {
     
         //TODO: make sure this SIMD sin/cos
@@ -160,18 +305,16 @@ struct Mat4 {
 
         return *this;
     }
-    
+
     inline Mat4& Scale(const Vec3<float>& s) {
-        (Vec3<float>&)column[0]*= s.x;
-        (Vec3<float>&)column[1]*= s.y;
-        (Vec3<float>&)column[2]*= s.z;
+        column[0]*= s;
+        column[1]*= s;
+        column[2]*= s;
         return *this;
     }
     
     inline Mat4& Translate(const Vec3<float>& delta) {
-        d1 = delta.Dot((Vec3<float>&)column[0]);
-        d2 = delta.Dot((Vec3<float>&)column[1]);
-        d3 = delta.Dot((Vec3<float>&)column[2]);
+        column[3]+= delta;
         return *this;
     }
 };

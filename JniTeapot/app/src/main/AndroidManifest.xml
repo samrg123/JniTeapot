@@ -2,7 +2,8 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.eecs487.jniteapot"
 >
-    <uses-feature android:glEsVersion="0x00030001" />
+    <uses-feature android:glEsVersion="0x00030001"              android:required="true" />
+    <uses-feature android:name="android.hardware.camera"        android:required="true" />
 
     <application
         android:name="com.eecs487.jniteapot.JniTeapotApplication"

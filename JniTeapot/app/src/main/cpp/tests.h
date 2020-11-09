@@ -55,6 +55,67 @@ TEST_FUNC(Mat4Mul) {
 }
 
 
+#include "Quaternion.h"
+#include "mathUtil.h"
+TEST_FUNC(Quaternion) {
+    
+    //test multiplication
+    {
+        //Note: quaternions are (i,j,k, real)
+        Quaternion<float> q1(9, 7, 8, 3),
+                          q2(39, 36, 29, 61);
+
+        Quaternion r = q1*q2;
+        TEST_CONDITION(r.x == 581);
+        TEST_CONDITION(r.y == 586);
+        TEST_CONDITION(r.z == 626);
+        TEST_CONDITION(r.w == -652);
+    }
+
+    //test rotation
+    {
+        Quaternion<float> r(581, 586, 626, -652);
+        r.Normalize();
+        
+        Vec3<float> v(7.f, 3.f, 2.f);
+        Quaternion<float> q(7.f, 3.f, 2.f, 0.f);
+    
+        Vec3 vPrime = r.ApplyRotation(v);
+        Quaternion qPrime = r*q*r.Inverse();
+        TEST_CONDITION(Approx(vPrime.x, qPrime.x));
+        TEST_CONDITION(Approx(vPrime.y, qPrime.y));
+        TEST_CONDITION(Approx(vPrime.z, qPrime.z));
+        TEST_CONDITION(qPrime.w == 0); //just a sanity check, not part of test
+    }
+    
+    //test to matrix func
+    {
+        Quaternion<float> r(581, 586, 626, -652);
+        r.Normalize();
+
+        Mat4<float> rMatrix = r.Matrix();
+        TEST_CONDITION(Approx(rMatrix.a1,  0.0182872f));
+        TEST_CONDITION(Approx(rMatrix.a2,  0.9995320f));
+        TEST_CONDITION(Approx(rMatrix.a3, -0.0245217f));
+        TEST_CONDITION(rMatrix.a4 == 0.0000000f);
+    
+        TEST_CONDITION(Approx(rMatrix.b1, -0.0903723f));
+        TEST_CONDITION(Approx(rMatrix.b2,  0.0260779f));
+        TEST_CONDITION(Approx(rMatrix.b3,  0.9955665f));
+        TEST_CONDITION(rMatrix.b4 == 0.0000000f);
+    
+        TEST_CONDITION(Approx(rMatrix.c1,  0.9957401f));
+        TEST_CONDITION(Approx(rMatrix.c2, -0.0159900f));
+        TEST_CONDITION(Approx(rMatrix.c3,  0.0908069f));
+        TEST_CONDITION(rMatrix.c4 == 0.0000000f);
+    
+        TEST_CONDITION(rMatrix.d1 == 0.f);
+        TEST_CONDITION(rMatrix.d2 == 0.f);
+        TEST_CONDITION(rMatrix.d3 == 0.f);
+        TEST_CONDITION(rMatrix.d4 == 1.f);
+    }
+}
+
 
 static CrtGlobalPreTestFunc InitTests() {
     Log("Testing code...");

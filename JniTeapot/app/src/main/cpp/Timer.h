@@ -66,6 +66,13 @@ class Timer {
             
             // sleep up to granularity intervals
             timeRef = QueryTime();
+    
+            if(timeRef >= endTime) {
+                uint64 endTimeDelta = timeRef-endTime;
+                Warn("Skipping Sleep { sleepTime: %f ms | endTimeDelta: %f ms }", (.1E-6f*ns), (.1E-6f*endTimeDelta));
+                return;
+            }
+            
             if(timeRef <= endSleepTime) {
                 useconds_t usSleepTime = useconds_t((endSleepTime - timeRef)/1000);
                 usleep(usSleepTime);
@@ -76,8 +83,7 @@ class Timer {
             
             uint64 endTimeDelta = timeRef-endTime;
             if(endTimeDelta > nsSleepGranularityCycles) {
-            //if(endTimeDelta) {
-                Warn("BurnLoop overshot sleep granularity { endTimeDelta: %f ms [%llu ns] }", (.1E-6f*endTimeDelta), endTimeDelta);
+                Error("BurnLoop overshot sleep granularity { endTimeDelta: %f ms }", (.1E-6f*endTimeDelta));
             }
         }
         
