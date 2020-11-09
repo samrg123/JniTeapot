@@ -147,8 +147,8 @@ void* activityLoop(void* _params) {
     //TODO: right now on startup ArCore gives us a distorted projection matrix? Maybe query the fov and just make our own?
     //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height())*.001f , 0, 2000));
     //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000)); //TODO: see if we can replace scaling view with scaling camera so glSkymap draws properly
-    //GlCamera camera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f));
-    GlCamera camera(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
+    GlCamera camera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f), GlTransform(Vec3(0.f, 0.f, 1.f)));
+    //GlCamera camera(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
     
     //const Vec3 omega = ToRadians(Vec3(0.f, 10.f, 0.f));
     //const Vec3 omega = ToRadians(Vec3(10.f, 10.f, 10.f));
@@ -161,12 +161,13 @@ void* activityLoop(void* _params) {
     //               );
     
     GlSkybox skybox({
-        //.posX = "textures/skymap/px.png",
-        //.negX = "textures/skymap/nx.png",
-        //.posY = "textures/skymap/py.png",
-        //.negY = "textures/skymap/ny.png",
-        //.posZ = "textures/skymap/pz.png",
-        //.negZ = "textures/skymap/nz.png",
+
+        .posX = "textures/skymap/px.png",
+        .negX = "textures/skymap/nx.png",
+        .posY = "textures/skymap/py.png",
+        .negY = "textures/skymap/ny.png",
+        .posZ = "textures/skymap/pz.png",
+        .negZ = "textures/skymap/nz.png",
         
         //.posX = "textures/uvGrid.png",
         //.negX = "textures/uvGrid.png",
@@ -175,12 +176,12 @@ void* activityLoop(void* _params) {
         //.posZ = "textures/uvGrid.png",
         //.negZ = "textures/uvGrid.png",
     
-        .posX = "textures/debugTexture.png",
-        .negX = "textures/debugTexture.png",
-        .posY = "textures/debugTexture.png",
-        .negY = "textures/debugTexture.png",
-        .posZ = "textures/debugTexture.png",
-        .negZ = "textures/debugTexture.png",
+        //.posX = "textures/debugTexture.png",
+        //.negX = "textures/debugTexture.png",
+        //.posY = "textures/debugTexture.png",
+        //.negY = "textures/debugTexture.png",
+        //.posZ = "textures/debugTexture.png",
+        //.negZ = "textures/debugTexture.png",
 
         .camera = &camera
     });
@@ -196,7 +197,8 @@ void* activityLoop(void* _params) {
     GlObject sphere("meshes/sphere.obj",
                     &camera,
                     skybox,
-                    GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
+                    //GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
+                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
                    );
     
     Timer fpsTimer(true),
@@ -211,30 +213,42 @@ void* activityLoop(void* _params) {
     
 
         //TODO: only set this when it changes!
-        ARWrapper::Get()->Update(camera);
-        camera.SetProjectionMatrix(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
+        //ARWrapper::Get()->Update(camera);
+        //camera.SetProjectionMatrix(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
         
         //udate skybox
         {
-            //GlTransform transform = camera.GetTransform();
-            //transform.Rotate(Vec3<float>(0.f, ToRadians(10.f)*secElapsed, 0.f));
-            //camera.SetTransform(transform);
+            GlTransform transform = camera.GetTransform();
+
+            static float totalTime = 0.f;
+            totalTime+= secElapsed;
+
+            float theta = ToRadians(10.f)*totalTime;
+            
+            transform.position = Vec3(FastCos(theta), 0.f, FastSin(theta)) * .3f;
+            //transform.position = Vec3(0.f, 0.f, -FastCos(theta));
+            //transform.Translate() * (.5f*secElapsed) );
+ 
+            Quaternion<float> rotation(Vec3(0.f, -theta, 0.f));
+            transform.SetRotation(rotation);
+            
+            camera.SetTransform(transform);
             
             static int i = 0;
-            if(i%120 == 0)
+            //if(i%120 == 0)
             {
                 //GlTransform transform = camera.GetTransform();
                 //transform.SetRotation(transform.GetRotation().Rotate(Vec3<float>(0.f, ToRadians(180.f), 0.f )));
                 //camera.SetTransform(transform);
                 
-                skybox.UpdateTextureEGL(ARWrapper::Get()->EglCameraTexture(), &glContext);
+                //skybox.UpdateTextureEGL(ARWrapper::Get()->EglCameraTexture(), &glContext);
             }
             i++;
     
             skybox.Draw();
         }
     
-        ARWrapper::Get()->DrawCameraBackground(camera);
+        //ARWrapper::Get()->DrawCameraBackground(camera);
         
         //Update sphere
         {
