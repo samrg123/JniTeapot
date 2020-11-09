@@ -162,19 +162,19 @@ void* activityLoop(void* _params) {
     
     GlSkybox skybox({
 
-        .posX = "textures/skymap/px.png",
-        .negX = "textures/skymap/nx.png",
-        .posY = "textures/skymap/py.png",
-        .negY = "textures/skymap/ny.png",
-        .posZ = "textures/skymap/pz.png",
-        .negZ = "textures/skymap/nz.png",
+        //.posX = "textures/skymap/px.png",
+        //.negX = "textures/skymap/nx.png",
+        //.posY = "textures/skymap/py.png",
+        //.negY = "textures/skymap/ny.png",
+        //.posZ = "textures/skymap/pz.png",
+        //.negZ = "textures/skymap/nz.png",
         
-        //.posX = "textures/uvGrid.png",
-        //.negX = "textures/uvGrid.png",
-        //.posY = "textures/uvGrid.png",
-        //.negY = "textures/uvGrid.png",
-        //.posZ = "textures/uvGrid.png",
-        //.negZ = "textures/uvGrid.png",
+        .posX = "textures/uvGrid.png",
+        .negX = "textures/uvGrid.png",
+        .posY = "textures/uvGrid.png",
+        .negY = "textures/uvGrid.png",
+        .posZ = "textures/uvGrid.png",
+        .negZ = "textures/uvGrid.png",
     
         //.posX = "textures/debugTexture.png",
         //.negX = "textures/debugTexture.png",
@@ -197,8 +197,8 @@ void* activityLoop(void* _params) {
     GlObject sphere("meshes/sphere.obj",
                     &camera,
                     skybox,
-                    //GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
-                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
+                    GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
+                    //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
                    );
     
     Timer fpsTimer(true),
@@ -213,26 +213,26 @@ void* activityLoop(void* _params) {
     
 
         //TODO: only set this when it changes!
-        //ARWrapper::Get()->Update(camera);
-        //camera.SetProjectionMatrix(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
+        ARWrapper::Get()->Update(camera);
+        camera.SetProjectionMatrix(ARWrapper::Get()->ProjectionMatrix(.01f, 1000.f));
         
         //udate skybox
         {
-            GlTransform transform = camera.GetTransform();
-
-            static float totalTime = 0.f;
-            totalTime+= secElapsed;
-
-            float theta = ToRadians(10.f)*totalTime;
-            
-            transform.position = Vec3(FastCos(theta), 0.f, FastSin(theta)) * .3f;
-            //transform.position = Vec3(0.f, 0.f, -FastCos(theta));
-            //transform.Translate() * (.5f*secElapsed) );
- 
-            Quaternion<float> rotation(Vec3(0.f, -theta, 0.f));
-            transform.SetRotation(rotation);
-            
-            camera.SetTransform(transform);
+            //GlTransform transform = camera.GetTransform();
+            //
+            //static float totalTime = 0.f;
+            //totalTime+= secElapsed;
+            //
+            //float theta = ToRadians(10.f)*totalTime;
+            //
+            //transform.position = Vec3(FastCos(theta), 0.f, FastSin(theta)) * .3f;
+            ////transform.position = Vec3(0.f, 0.f, -FastCos(theta));
+            ////transform.Translate() * (.5f*secElapsed) );
+            //
+            //Quaternion<float> rotation(Vec3(0.f, -theta, 0.f));
+            //transform.SetRotation(rotation);
+            //
+            //camera.SetTransform(transform);
             
             static int i = 0;
             //if(i%120 == 0)
@@ -241,7 +241,7 @@ void* activityLoop(void* _params) {
                 //transform.SetRotation(transform.GetRotation().Rotate(Vec3<float>(0.f, ToRadians(180.f), 0.f )));
                 //camera.SetTransform(transform);
                 
-                //skybox.UpdateTextureEGL(ARWrapper::Get()->EglCameraTexture(), &glContext);
+                skybox.UpdateTextureEGL(ARWrapper::Get()->EglCameraTexture(), &glContext);
             }
             i++;
     
