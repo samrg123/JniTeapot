@@ -210,7 +210,7 @@ class GlContext {
                              "Failed to compile gl shader {"
                              GL_ASSERT_INDENT "\ttype: %s [%d]"
                              GL_ASSERT_INDENT "\tsource: ["
-                             "\n%.100s..." //Note: android logging caps out at 4k so 100 limit prevents chopping off info string
+                             "\n%.1024..." //Note: android logging caps out at 4k so 1024 limit prevents chopping off info string
                              GL_ASSERT_INDENT "\t]"
                              GL_ASSERT_INDENT "\tInfo: %s"
                              GL_ASSERT_INDENT "}",
@@ -242,17 +242,16 @@ class GlContext {
                 GlAssertTrue((glGetProgramiv(glProgram, GL_LINK_STATUS, &status), status),
                              "Failed to Link glProgram {"
                              GL_ASSERT_INDENT "\tglProgram: %d"
-                             GL_ASSERT_INDENT "\tGL_LINK_STATUS: %d",
-                             GL_ASSERT_INDENT "\tVertex Source [",
-                             "\n%s\n"
-                             GL_ASSERT_INDENT "\t]",
+                             GL_ASSERT_INDENT "\tGL_LINK_STATUS: %d"
+                             GL_ASSERT_INDENT "\tVertex Source ["
+                             "\n%.256s...\n"
+                             GL_ASSERT_INDENT "\t]"
                              GL_ASSERT_INDENT "\tFragment Source ["
-                             "\n%s\n",
-                             GL_ASSERT_INDENT "\t]",
+                             "\n%.256s...\n"
+                             GL_ASSERT_INDENT "\t]"
                              GL_ASSERT_INDENT "\tLinkInfo: %s"
                              GL_ASSERT_INDENT "}",
-                             
-                             
+                            
                              glProgram,
                              status,
                              vertexSource,
