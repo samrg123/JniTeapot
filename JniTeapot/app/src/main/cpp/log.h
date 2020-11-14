@@ -3,12 +3,12 @@
 #define LOG_ENABLED 1
 #if LOG_ENABLED
 	
-	#include <android/log.h>
-	#include <stdio.h>
-
+	#include "macros.h"
 	#include "util.h"
 	#include "types.h"
-	#include "macros.h"
+
+	#include <android/log.h>
+	#include <stdio.h>
 	
 	enum LogLevel:  uint8 { LOG_LEVEL_MSG = 1, LOG_LEVEL_WARN, LOG_LEVEL_ERROR };
 	enum LogOption: uint8 { LOG_OPT_FLUSH = 1 };

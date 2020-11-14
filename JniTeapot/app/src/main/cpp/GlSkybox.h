@@ -36,7 +36,7 @@ class GlSkybox : public GlRenderable {
             ShaderVersionStr +
             " in layout(location=0) vec4 a_Position;"
              // "attribute vec4 a_worldPos;"
-             "uniform layout(location = 2) mat4 m_viewMat;"
+             "uniform layout(location = 2) highp mat4 m_viewMat;"
              "out vec4 viewPos;"
              "uniform layout(location = 1) int i_face;"
              "void main() {"
@@ -61,13 +61,13 @@ class GlSkybox : public GlRenderable {
              "   viewPos = m_viewMat * vec4(fakeWorldPos.xyz, 0.);"
              "}";
         static inline const StringLiteral kFragmentShaderSourceWrite =
-            ShaderVersionStr+
+            ShaderVersionStr +
             ShaderExtension("GL_OES_EGL_image_external") +
             ShaderExtension("GL_OES_EGL_image_external_essl3") +
            ""
            "precision mediump float;"
            "uniform layout(location=0, binding = 0) samplerExternalOES sTexture;"
-           "uniform layout(location=2) mat4 m_viewMat;"
+           "uniform layout(location=2) highp mat4 m_viewMat;"
            "in vec4 viewPos;"
            ""
            "out vec4 fragColor;"
@@ -120,7 +120,7 @@ class GlSkybox : public GlRenderable {
             STRINGIFY(
                 void main() {
                     fragColor = texture(cubemap, cubeCoord);
-                };
+                }
             );
         
         //static inline const StringLiteral kVertexShaderSourceWrite =

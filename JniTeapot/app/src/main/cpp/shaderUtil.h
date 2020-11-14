@@ -3,7 +3,13 @@
 #include "StringLiteral.h"
 #include "macros.h"
 
-const StringLiteral ShaderVersionStr("#version 310 es\n");
+#define DEBUG_SHADER_VERSION 1
+
+#if DEBUG_SHADER_VERSION
+    #define ShaderVersionStr StringLiteral("/*\n" __FILE__  ":" STRINGIFY(__LINE__) "\n*///\n#version 310 es\n")
+#else
+    const StringLiteral ShaderVersionStr("#version 310 es\n");
+#endif
 
 #define ShaderExtension(x) "#extension " x ":require\n"
 
