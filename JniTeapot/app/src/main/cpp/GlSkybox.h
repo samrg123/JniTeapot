@@ -422,7 +422,8 @@ class GlSkybox : public GlRenderable {
             //TODO: only do this once -- make an interface in glContext
             int maxCubeMapSize;
             glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxCubeMapSize);
-    
+            Log("Max maxCubeMapSize { %d }", maxCubeMapSize);
+            
             glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
             
             Memory::Region tmpRegion = Memory::temporaryArena.CreateRegion();
@@ -448,7 +449,6 @@ class GlSkybox : public GlRenderable {
                 RUNTIME_ASSERT(height < maxCubeMapSize,
                                "Cubemap height is too large { maxCubeMapSize: %d, side: %d, assetPath: '%s', width: %u, height: %u }",
                                maxCubeMapSize, i, params.images[i], width, height);
-                
                 
                 //TODO: pass in desired width and height so that we can use small initial texture
                 //      but still render to the camera texture at camera resolution
