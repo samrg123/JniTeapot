@@ -58,6 +58,29 @@ class GlTransform {
             return result;
         }
         
+        // returns a matrix such that normal vector n = (x, y, z 0) will be oriented in right direction
+        // n' = (NormalMatrix()*n).xyz = (x', y', z', 0) where ...
+        inline Mat4<float> NormalMatrix() const {
+
+            //Note: this returns the equivalent to Inverse().Transpose() without translations
+            
+            //Note: inverse rotationMatrix is orthogonal so R^-1 = R^t and (R^-1)^t = R
+            Vec3 inverseScale = scale.Inverse();
+            
+            Mat4<float> result = rotation.Matrix();
+            result.column[0]*= inverseScale.x;
+            result.column[1]*= inverseScale.y;
+            result.column[2]*= inverseScale.z;
+    
+            ////Note: this would be the math used to include translations
+            //Vec3 inversePosition = -position;
+            //result.d1 = result.column[0].Dot(inversePosition);
+            //result.d2 = result.column[1].Dot(inversePosition);
+            //result.d3 = result.column[2].Dot(inversePosition);
+            
+            return result;
+        }
+        
         inline GlTransform& Scale(const Vec3<float>& s)         { scale+= s; return *this; }
         inline GlTransform& Rotate(const Vec3<float> theta)     { rotation.Rotate(theta); return *this; }
         inline GlTransform& Translate(const Vec3<float>& delta) { position+= delta; return *this; }

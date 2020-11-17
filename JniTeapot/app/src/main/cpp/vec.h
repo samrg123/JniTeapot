@@ -1,5 +1,7 @@
 #pragma once
 
+//TODO: TYPEDEF TEMPLATES!!!!!!!
+
 template<auto kNumDims_>
 struct Vec {
     static constexpr auto kNumDims = kNumDims_;

@@ -24,12 +24,14 @@
 
 #define ShaderUniformBlock(x) StringLiteral("layout(std140, binding=")+ToString((unsigned int)x)+") uniform "
 
-const StringLiteral ShaderConstants = STRINGIFY(
-    float Pi() { return 3.1415926535897932; }
+const StringLiteral ShaderIncludeConstants(
+    STRINGIFY(
+        float Pi() { return 3.1415926535897932; }
+    )
 );
 
 const StringLiteral ShaderIncludeQuaternion(
-    ShaderConstants +
+    ShaderIncludeConstants+
     STRINGIFY(
         vec4 qIdentity() { return vec4(0, 0, 0, 1); }
         vec4 qConjugate(vec4 q) { return vec4(-q.xyz, q.w); }
@@ -123,7 +125,6 @@ const StringLiteral ShaderIncludeQuaternion(
         }
     )
 );
-
 
 //TODO: this is math to convert ndc to world space -- might be useful sometime later
 //"   float tz2 = projectionMatrix[2][2];"
