@@ -4,6 +4,7 @@
 #include "log.h"
 
 #include "types.h"
+#include "mathUtil.h"
 
 #define TESTS_ENABLED 1
 #if TESTS_ENABLED
@@ -16,47 +17,87 @@
 #define TEST_FUNC(name) static CrtGlobalTestFunc Test_##name()
 
 #include "mat.h"
-TEST_FUNC(Mat4Mul) {
+TEST_FUNC(Mat4) {
     
-    Mat4<float> m1({
-                       1, 5, 9,  13,
-                       2, 6, 10, 14,
-                       3, 7, 11, 15,
-                       4, 8, 12, 16
-                   });
-    
-    Mat4<float> m2({
-                       11, 13, 2, 3,
-                       15, 5,  5, 1,
-                       16, 7,  4, 8,
-                       12, 8,  6, 6
-                   });
-    
-    Mat4 m3 = m1*m2;
-    TEST_CONDITION(m3.a1 == 55);
-    TEST_CONDITION(m3.a2 == 44);
-    TEST_CONDITION(m3.a3 == 74);
-    TEST_CONDITION(m3.a4 == 70);
-    
-    TEST_CONDITION(m3.b1 == 171);
-    TEST_CONDITION(m3.b2 == 148);
-    TEST_CONDITION(m3.b3 == 214);
-    TEST_CONDITION(m3.b4 == 198);
-    
-    TEST_CONDITION(m3.c1 == 287);
-    TEST_CONDITION(m3.c2 == 252);
-    TEST_CONDITION(m3.c3 == 354);
-    TEST_CONDITION(m3.c4 == 326);
-    
-    TEST_CONDITION(m3.d1 == 403);
-    TEST_CONDITION(m3.d2 == 356);
-    TEST_CONDITION(m3.d3 == 494);
-    TEST_CONDITION(m3.d4 == 454);
+    //Test mul
+    {
+        Mat4<float> m1({
+                           1, 5, 9, 13,
+                           2, 6, 10, 14,
+                           3, 7, 11, 15,
+                           4, 8, 12, 16
+                       }
+                      );
+        
+        Mat4<float> m2({
+                           11, 13, 2, 3,
+                           15, 5, 5, 1,
+                           16, 7, 4, 8,
+                           12, 8, 6, 6
+                       }
+                      );
+        
+        Mat4 m3=m1*m2;
+        TEST_CONDITION(m3.a1 == 55);
+        TEST_CONDITION(m3.a2 == 44);
+        TEST_CONDITION(m3.a3 == 74);
+        TEST_CONDITION(m3.a4 == 70);
+        
+        TEST_CONDITION(m3.b1 == 171);
+        TEST_CONDITION(m3.b2 == 148);
+        TEST_CONDITION(m3.b3 == 214);
+        TEST_CONDITION(m3.b4 == 198);
+        
+        TEST_CONDITION(m3.c1 == 287);
+        TEST_CONDITION(m3.c2 == 252);
+        TEST_CONDITION(m3.c3 == 354);
+        TEST_CONDITION(m3.c4 == 326);
+        
+        TEST_CONDITION(m3.d1 == 403);
+        TEST_CONDITION(m3.d2 == 356);
+        TEST_CONDITION(m3.d3 == 494);
+        TEST_CONDITION(m3.d4 == 454);
+    }
 }
 
+#include "GlTransform.h"
+#include "mat.h"
+TEST_FUNC(GlTransform) {
+
+    //Test NormalMatrix
+    {
+        GlTransform transform(Vec3(150.f, 767.f, 361.f),
+                              Vec3(755.f, 373.f, 442.f),
+                              Vec3(25.f,  433.f, 496.f));
+        
+        Mat4<float> nMatrix = transform.NormalMatrix();
+        Mat4<float> nMatrixAns = transform.Matrix().Inverse().Transpose();
+
+        //Note: NormalMatrix() ignores translation so we skip the check of d row
+        
+        TEST_CONDITION(Approx(nMatrix.a1, nMatrixAns.a1));
+        TEST_CONDITION(Approx(nMatrix.b1, nMatrixAns.b1));
+        TEST_CONDITION(Approx(nMatrix.c1, nMatrixAns.c1));
+        //TEST_CONDITION(Approx(nMatrix.d1, nMatrixAns.d1));
+        
+        TEST_CONDITION(Approx(nMatrix.a2, nMatrixAns.a2));
+        TEST_CONDITION(Approx(nMatrix.b2, nMatrixAns.b2));
+        TEST_CONDITION(Approx(nMatrix.c2, nMatrixAns.c2));
+        //TEST_CONDITION(Approx(nMatrix.d2, nMatrixAns.d2));
+        
+        TEST_CONDITION(Approx(nMatrix.a3, nMatrixAns.a3));
+        TEST_CONDITION(Approx(nMatrix.b3, nMatrixAns.b3));
+        TEST_CONDITION(Approx(nMatrix.c3, nMatrixAns.c3));
+        //TEST_CONDITION(Approx(nMatrix.d3, nMatrixAns.d3));
+    
+        TEST_CONDITION(Approx(nMatrix.a4, nMatrixAns.a4));
+        TEST_CONDITION(Approx(nMatrix.b4, nMatrixAns.b4));
+        TEST_CONDITION(Approx(nMatrix.c4, nMatrixAns.c4));
+        //TEST_CONDITION(Approx(nMatrix.d4, nMatrixAns.d4));
+    }
+}
 
 #include "Quaternion.h"
-#include "mathUtil.h"
 TEST_FUNC(Quaternion) {
     
     //test multiplication

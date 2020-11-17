@@ -26,62 +26,54 @@ class GlObject : public GlRenderable {
             ShaderVersionStr+
 
             ShaderUniformBlock(UBLOCK_OBJECT)+ "ObjectBlock {" +
-            "  mat4 mvpMatrix;"
-            "  mat4 modelMatrix;"
+            "   mat4 mvpMatrix;"
+            "   mat4 modelMatrix;"
+            "   mat4 normalMatrix;"
             "};" +
-
-            ShaderUniform(UNIFORM_MIRROR_CONSTANT) + "float mirrorConstant;" +
-            ShaderUniform(UNIFORM_CAMERA_POSITION) + "vec3 cameraPosition;" +
-            ShaderUniform(UNIFORM_LIGHT_POSITION)  + "vec3 lightPosition;" +
 
             ShaderIn(ATTRIB_GEO_VERT)    + "vec3 position;" +
             ShaderIn(ATTRIB_NORMAL_VERT) + "vec3 normal;" +
             ShaderIn(ATTRIB_UV_VERT)     + "vec2 uv;" +
-
-            ShaderOut(0) + "vec3 lightDirection;" +
-            ShaderOut(1) + "vec3 fragNormal;" +
-            ShaderOut(2) + "vec3 cameraDirection;" +
-            ShaderOut(3) + "vec4 lightColor;" +
-            ShaderOut(4) + "vec3 worldPosition;" +
-            ShaderOut(5) + "vec3 fragLightPosition;" +
+    
+            ShaderOut(0) + "vec3 fragNormal;" +
+            ShaderOut(1) + "vec3 fragWorldPosition;" +
+            ShaderOut(2) + "vec4 fragLightColor;" +
 
             STRINGIFY(
                 void main() {
+
                     vec4 v4Position = vec4(position, 1.);
                     gl_Position = mvpMatrix*v4Position;
+    
+                    fragNormal = mat3(normalMatrix) * normal;
+                    fragWorldPosition = (modelMatrix * v4Position).xyz;
                     
-                    
-                    fragNormal = mat3(transpose(inverse(modelMatrix)))*normal;
-                    worldPosition = (modelMatrix * v4Position).xyz;
-                    
-                    fragLightPosition = lightPosition;
-                    
-                    //  lightColor = vec4(0., 1., 0., .3);
-                    //  lightColor = vec4(1., 1., 1., 300000.);
-                    //  lightColor = vec4(0.85, .95, 1., 200000.);
-                    lightColor = vec4(0.6784, .7255, .698, 1000000.);
-                    lightDirection = normalize(lightPosition - worldPosition);
-                    cameraDirection = normalize(cameraPosition - worldPosition);
+                    //  fragLightColor = vec4(0., 1., 0., .3);
+                    //  fragLightColor = vec4(1., 1., 1., 300000.);
+                    //  fragLightColor = vec4(0.85, .95, 1., 200000.);
+                    fragLightColor = vec4(0.6784, .7255, .698, 100.);
             }
         );
 
         static inline const StringLiteral kFragmentShaderSource =
-            ShaderVersionStr+
-            "precision highp float;"+
-
+            ShaderVersionStr +
+            "precision highp float;" +
+            
             ShaderSampler(TU_SKY_MAP) + "samplerCube cubemapSampler;" +
+ 
             ShaderUniform(UNIFORM_MIRROR_CONSTANT) + "float mirrorConstant;" +
-
-            ShaderIn(0) + "vec3 lightDirection;" +
-            ShaderIn(1) + "vec3 fragNormal;" +
-            ShaderIn(2) + "vec3 cameraDirection;" +
-            ShaderIn(3) + "vec4 lightColor;" +
-            ShaderIn(4) + "vec3 worldPosition;" +
-            ShaderIn(5) + "vec3 fragLightPosition;" +
+            ShaderUniform(UNIFORM_CAMERA_POSITION) + "vec3 cameraPosition;" +
+            ShaderUniform(UNIFORM_LIGHT_POSITION)  + "vec3 lightPosition;" +
+    
+            ShaderIn(0) + "vec3 fragNormal;" +
+            ShaderIn(1) + "vec3 fragWorldPosition;" +
+            ShaderIn(2) + "vec4 fragLightColor;" +
 
             ShaderOut(0) + "vec4 fragColor;" +
 
             STRINGIFY(
+
+                //TODO: this is phong - see if we should do blin-phong instead
                 void main() {
     
                     vec4 diffuseColor = vec4(.9, .9, .9, 1.);
@@ -89,39 +81,39 @@ class GlObject : public GlRenderable {
         
                     float reflectivity = mirrorConstant;
                     float diffuseness = 1. - mirrorConstant;
-                    //    float specularPower  = 16.; //Note: smaller numbers = more reflective
                     float specularPower  = 8.; //Note: smaller numbers = more reflective
-        
-        
-                    //TODO: this is phong - see if we should do blin-phong instead
-                    //    vec3 lightReflection = -reflect(lightDirection, fragNormal);
-                    vec3 lightReflection = normalize( ((2.*dot(fragNormal, lightDirection)) * fragNormal) - lightDirection);
+                    
+                    vec3 lightToVertex = lightPosition - fragWorldPosition;
+                    float invLightDistanceSquared = 1./dot(lightToVertex, lightToVertex);
     
-                    //TODO: make sure this matches phong shading model
-                    vec3 cubeReflection = ((2.* dot(cameraDirection, fragNormal))*fragNormal) - cameraDirection;
-                    //vec3 cubeReflection = reflect(-cameraDirection, fragNormal);
+                    //Note: normal is not normalized!
+                    vec3 normal = normalize(fragNormal);
+                    vec3 lightDirection  = normalize(lightToVertex);
+                    vec3 cameraDirection = normalize(cameraPosition - fragWorldPosition);
+    
+                    ////TODO: why doesn't glsl reflect() work? we have to do it oursleves or else we get a bug?
+                    vec3 lightReflection = ((2.*dot(lightDirection, normal)) * normal) - lightDirection;
+                    //vec3 lightReflection = -reflect(normal, lightDirection);
+    
+                    ////TODO: make sure this matches phong shading model
+                    //vec3 cubeReflection = ((2.*dot(cameraDirection, normal))*normal) - cameraDirection;
+                    vec3 cubeReflection = -reflect(cameraDirection, normal);
+                    cubeReflection.x = -cubeReflection.x;
                     
                     vec4 cubeColor = texture(cubemapSampler, cubeReflection);
         
-                    float lightDistance = fragLightPosition.z - worldPosition.z;
-                    float invLightDistanceSqaured = 1./(lightDistance*lightDistance);
-        
                     vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((diffuseness*ambientColor.rgb) + (reflectivity*cubeColor.rgb));
-                    //    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((.999*ambientColor.rgb) + (.001*cubeColor.rgb));
-                    vec3 diffuseTerm =   diffuseness * diffuseColor.rgb * max(0., dot(fragNormal, lightDirection));
+                    vec3 diffuseTerm = diffuseness * diffuseColor.rgb * max(0., dot(normal, lightDirection));
+
                     float specularTerm = reflectivity * pow(max(0., dot(cameraDirection, lightReflection)), specularPower);
-                    vec3 lightTerm = lightColor.w * lightColor.rgb * invLightDistanceSqaured*(diffuseTerm + specularTerm);
-        
+                    vec3 lightTerm = fragLightColor.w * fragLightColor.rgb * (diffuseTerm+specularTerm) * invLightDistanceSquared;
+                    
                     fragColor.rgb = ambientTerm + lightTerm;
                     fragColor.a = diffuseColor.a;
-        
-                    //    fragColor.rgb = (fragColor.rgb*.001) + (.5*(lightDirection + vec3(1.)));
-        
-                    //Prevents optimized out uniform error
-                    //    fragColor.rgb = fragColor.rgb + mirrorConstant*.01*cubeColor.rgb;
-                    //
-                    ////NormalColor
-                    //    fragColor.rgb = (.001*fragColor.rgb) + .5*(fragNormal + vec3(1.));
+                    
+                    //NormalColor
+                    //fragColor.rgb = (.001*fragColor.rgb) + .999*(.5*(normal + vec3(1.)));
+                    //fragColor.rgb = (.001*fragColor.rgb) + .999*(.5*(cubeReflection + vec3(1.)));
                 }
          );
             
@@ -132,7 +124,8 @@ class GlObject : public GlRenderable {
         
         struct alignas(16) UniformObjectBlock {
             Mat4<float> mvpMatrix,
-                        modelMatrix;
+                        modelMatrix,
+                        normalMatrix;
         };
         
         const GlSkybox& skybox;
@@ -509,7 +502,9 @@ class GlObject : public GlRenderable {
                 //upload mvMatrix
                 if(flags&FLAG_OBJ_TRANSFORM_UPDATED) {
                     flags^= FLAG_OBJ_TRANSFORM_UPDATED;
+
                     uniformObjectBlock->modelMatrix = transformMatrix;
+                    uniformObjectBlock->normalMatrix = transform.NormalMatrix();
                 }
 
                 glUnmapBuffer(GL_UNIFORM_BUFFER);
@@ -524,7 +519,7 @@ class GlObject : public GlRenderable {
                 Vec3<float> cameraPosition = camera->GetTransform().position;
                 glUniform3fv(UNIFORM_CAMERA_POSITION, 1, cameraPosition.component);
     
-                Vec3<float> lightPosition = Vec3(1500.f, 1000.f, -1500.f);
+                Vec3<float> lightPosition = Vec3(10.f, 5.f, -10.f);
                 glUniform3fv(UNIFORM_LIGHT_POSITION, 1, lightPosition.component);
             }
             

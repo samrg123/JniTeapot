@@ -210,7 +210,7 @@ class GlContext {
                              "Failed to compile gl shader {"
                              GL_ASSERT_INDENT "\ttype: %s [%d]"
                              GL_ASSERT_INDENT "\tsource: ["
-                             "\n%.1024..." //Note: android logging caps out at 4k so 1024 limit prevents chopping off info string
+                             "\n%.512s..." //Note: android logging caps out at 4k so 512 limit prevents chopping off info string
                              GL_ASSERT_INDENT "\t]"
                              GL_ASSERT_INDENT "\tInfo: %s"
                              GL_ASSERT_INDENT "}",

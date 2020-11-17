@@ -112,7 +112,7 @@ void DrawStrings(GlText* glText, float renderTime, float frameTime) {
         textBaseline+= kLineAdvance;
     }
     
-    #ifdef ENABLE_MEMORY_STATS && 1
+    #ifdef ENABLE_MEMORY_STATS
         glText->PushString(textBaseline, "Memory Bytes: %u | Blocks: %u | Reserve Blocks: %u", Memory::memoryBytes, Memory::memoryBlockCount, Memory::memoryBlockReserveCount);
         textBaseline+= kLineAdvance;
     
@@ -155,10 +155,6 @@ void* activityLoop(void* _params) {
     const Vec3 omega = ToRadians(Vec3(0.f, 0.f, 0.f));
     const float mirrorOmega = ToRadians( 180.f / 10.f);
     
-    //GlObject sphere("meshes/triangle.obj",
-    //                &camera,
-    //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(110.f, 110.f, 110.f))
-    //               );
     
     GlSkybox skybox({
 
@@ -169,30 +165,28 @@ void* activityLoop(void* _params) {
         //.posZ = "textures/skymap/pz.png",
         //.negZ = "textures/skymap/nz.png",
         
-        .posX = "textures/uvGrid.png",
-        .negX = "textures/uvGrid.png",
-        .posY = "textures/uvGrid.png",
-        .negY = "textures/uvGrid.png",
-        .posZ = "textures/uvGrid.png",
-        .negZ = "textures/uvGrid.png",
+        //.posX = "textures/uvGrid.png",
+        //.negX = "textures/uvGrid.png",
+        //.posY = "textures/uvGrid.png",
+        //.negY = "textures/uvGrid.png",
+        //.posZ = "textures/uvGrid.png",
+        //.negZ = "textures/uvGrid.png",
     
-        //.posX = "textures/debugTexture.png",
-        //.negX = "textures/debugTexture.png",
-        //.posY = "textures/debugTexture.png",
-        //.negY = "textures/debugTexture.png",
-        //.posZ = "textures/debugTexture.png",
-        //.negZ = "textures/debugTexture.png",
+        .posX = "textures/debugTexture.png",
+        .negX = "textures/debugTexture.png",
+        .posY = "textures/debugTexture.png",
+        .negY = "textures/debugTexture.png",
+        .posZ = "textures/debugTexture.png",
+        .negZ = "textures/debugTexture.png",
 
         .camera = &camera
     });
 
     //GlObject sphere("meshes/cow.obj",
     //                &camera,
-    //                &cubemap,
-    //                //GlTransform(Vec3(0.f, 0.f, 5.f), Vec3(1.f, 1.f, 1.f))
-    //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.05f, .05f, .05f))
-    //                //GlTransform(Vec3(0.f, 0.f, 5.f), Vec3(100.f, 100.f, 100.f))
-    //         );
+    //                skybox,
+    //                GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.03f, .03f, .03f))
+    //                );
 
     GlObject sphere("meshes/sphere.obj",
                     &camera,
@@ -200,6 +194,12 @@ void* activityLoop(void* _params) {
                     GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
                     //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
                    );
+    
+    //GlObject sphere("meshes/triangle.obj",
+    //                &camera,
+    //                skybox,
+    //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.2f, .2f, .2f))
+    //               );
     
     Timer fpsTimer(true),
           physicsTimer(true);
@@ -218,33 +218,31 @@ void* activityLoop(void* _params) {
         
         //udate skybox
         {
-            //GlTransform transform = camera.GetTransform();
-            //
-            //static float totalTime = 0.f;
-            //totalTime+= secElapsed;
-            //
-            //float theta = ToRadians(10.f)*totalTime;
-            //
-            //transform.position = Vec3(FastCos(theta), 0.f, FastSin(theta)) * .3f;
-            ////transform.position = Vec3(0.f, 0.f, -FastCos(theta));
-            ////transform.Translate() * (.5f*secElapsed) );
-            //
-            //Quaternion<float> rotation(Vec3(0.f, -theta, 0.f));
-            //transform.SetRotation(rotation);
-            //
-            //camera.SetTransform(transform);
+            
+            //rotate camera
+            if(false)
+            {
+                GlTransform transform = camera.GetTransform();
+                
+                static float totalTime = 0.f;
+                totalTime+= secElapsed;
+                float theta = ToRadians(10.f)*totalTime;
+                while(theta >= 2.*Pi()) theta-= 2.*Pi();
+                
+                transform.position = Vec3(FastCos(theta), 0.f, FastSin(theta)) * .3f;
+                
+                Quaternion<float> rotation = Quaternion<float>::LookAt(transform.position, sphere.GetTransform().position);
+                transform.SetRotation(rotation);
+                
+                camera.SetTransform(transform);
+            }
             
             static int i = 0;
-            //if(i%120 == 0)
+            //if((i++)%120 == 0)
             {
-                //GlTransform transform = camera.GetTransform();
-                //transform.SetRotation(transform.GetRotation().Rotate(Vec3<float>(0.f, ToRadians(180.f), 0.f )));
-                //camera.SetTransform(transform);
-                
                 skybox.UpdateTextureEGL(ARWrapper::Get()->EglCameraTexture(), &glContext);
             }
-            i++;
-    
+
             skybox.Draw();
         }
     

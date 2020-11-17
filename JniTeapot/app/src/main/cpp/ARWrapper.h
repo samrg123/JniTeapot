@@ -168,6 +168,7 @@ public:
         }
 
         //update camera
+        //if(false)
         {
             ArFrame_acquireCamera(arSession, arFrame, &arCamera);
 

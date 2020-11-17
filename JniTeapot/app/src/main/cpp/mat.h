@@ -80,6 +80,13 @@ struct Mat4 {
         return result*= m;
     }
     
+    constexpr Mat4 Transpose() const {
+        return Mat4({a1, a2, a3, a4,
+                     b1, b2, b3, b4,
+                     c1, c2, c3, c4,
+                     d1, d2, d3, d4});
+    }
+    
     //Note: this code was borrowed from the mesa library
     //TODO: read through this and clean it up a bit
     constexpr Mat4 Inverse() const {
@@ -260,7 +267,7 @@ struct Mat4 {
                     });
     }
     
-    //Note rotates matrix in theta.z, theta.y, theta.x order
+    //Note rotates matrix representing 3D transform in theta.z, theta.y, theta.x order
     inline Mat4& Rotate(const Vec3<float>& theta) {
     
         //TODO: make sure this SIMD sin/cos
@@ -305,14 +312,16 @@ struct Mat4 {
 
         return *this;
     }
-
+    
+    //Note scales matrix representing 3D transform by s
     inline Mat4& Scale(const Vec3<float>& s) {
         column[0]*= s;
         column[1]*= s;
         column[2]*= s;
         return *this;
     }
-    
+
+    //Note translates matrix representing 3D transform by s
     inline Mat4& Translate(const Vec3<float>& delta) {
         column[3]+= delta;
         return *this;
