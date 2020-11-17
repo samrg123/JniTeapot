@@ -8,7 +8,8 @@ class Timer {
     private:
 
         static constexpr uint64 nsSleepGranularityCycles = 5000000ULL; //5ms Just a guess - don't really know how to poll this on linux
-
+        static constexpr bool kEnableLagDebugging = false;
+        
         static inline
         uint64 TimespecToTimeRef(const timespec& ts) { return 1000000000ULL*ts.tv_sec + ts.tv_nsec; }
 
@@ -64,15 +65,18 @@ class Timer {
             uint64  endTime = timeRef + ns,
                     endSleepTime = endTime - nsSleepGranularityCycles;
             
-            // sleep up to granularity intervals
             timeRef = QueryTime();
     
-            if(timeRef >= endTime) {
-                uint64 endTimeDelta = timeRef-endTime;
-                Warn("Skipping Sleep { sleepTime: %f ms | endTimeDelta: %f ms }", (.1E-6f*ns), (.1E-6f*endTimeDelta));
-                return;
+            if constexpr(kEnableLagDebugging) {
+                if(timeRef >= endTime) {
+                    uint64 endTimeDelta=timeRef-endTime;
+                    Warn("Skipping Sleep { sleepTime: %f ms | endTimeDelta: %f ms }", (.1E-6f*ns),
+                         (.1E-6f*endTimeDelta));
+                    return;
+                }
             }
-            
+    
+            // sleep up to granularity intervals
             if(timeRef <= endSleepTime) {
                 useconds_t usSleepTime = useconds_t((endSleepTime - timeRef)/1000);
                 usleep(usSleepTime);
@@ -81,9 +85,12 @@ class Timer {
             // burn loop until ready
             while(timeRef < endTime) timeRef = QueryTime();
             
-            uint64 endTimeDelta = timeRef-endTime;
-            if(endTimeDelta > nsSleepGranularityCycles) {
-                Error("BurnLoop overshot sleep granularity { endTimeDelta: %f ms }", (.1E-6f*endTimeDelta));
+            if constexpr(kEnableLagDebugging) {
+                uint64 endTimeDelta=timeRef-endTime;
+                if(endTimeDelta > nsSleepGranularityCycles) {
+                    Error("BurnLoop overshot sleep granularity { endTimeDelta: %f ms }",
+                          (.1E-6f*endTimeDelta));
+                }
             }
         }
         

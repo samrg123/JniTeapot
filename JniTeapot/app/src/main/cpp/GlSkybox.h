@@ -1,7 +1,7 @@
 #pragma once
 
-#include <glm.hpp>
-#include "glm/gtc/type_ptr.hpp"
+//#include <glm.hpp>
+//#include "glm/gtc/type_ptr.hpp"
 
 #include "GlContext.h"
 #include "GLES2/gl2ext.h"
@@ -27,6 +27,7 @@ class GlSkybox : public GlRenderable {
             "};";
         
         
+        //TODO: merge these out
         int cubemapCameraTextureUniform = 0;
         int cubemapFaceNumberUniform = 1;
         int cubemapScreenPositionAttrib = 0;
@@ -60,6 +61,7 @@ class GlSkybox : public GlRenderable {
              
              "   viewPos = m_viewMat * vec4(fakeWorldPos.xyz, 0.);"
              "}";
+        
         static inline const StringLiteral kFragmentShaderSourceWrite =
             ShaderVersionStr +
             ShaderExtension("GL_OES_EGL_image_external") +
@@ -83,6 +85,7 @@ class GlSkybox : public GlRenderable {
            // "    gl_FragColor += vec4(abs(viewPos.rgb), 1.0f);"
            "}";
 
+        
         static inline const StringLiteral kVertexShaderSourceDraw =
             ShaderVersionStr+
             kSkyBoxStr +
@@ -348,6 +351,9 @@ class GlSkybox : public GlRenderable {
         GLuint writeFrameBuffer, uniformBuffer;
         GLuint sampler;
         
+        GLuint texture;
+        GLint textureSize;
+        
         inline void UpdateUniformBlock() {
             if(CameraUpdated()) {
                 ApplyCameraUpdate();
@@ -371,8 +377,6 @@ class GlSkybox : public GlRenderable {
         }
 
     public:
-        GLuint texture;
-        
         struct SkyboxParams {
             union {
                 struct {
@@ -413,20 +417,21 @@ class GlSkybox : public GlRenderable {
             glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, (params.generateMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
             GlAssertNoError("Failed to create sampler: %u", sampler);
             
             glGenTextures(1, &texture);
             GlAssertNoError("Failed to create texture");
     
-            //TODO: only do this once -- make an interface in glContext
+            //TODO: only do this once -- make an interface in glContext that we can query and doesn't rely on static
             int maxCubeMapSize;
             glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxCubeMapSize);
-            Log("Max maxCubeMapSize { %d }", maxCubeMapSize);
+            Log("maxCubeMapSize { %d }", maxCubeMapSize);
             
             glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
             
             Memory::Region tmpRegion = Memory::temporaryArena.CreateRegion();
+            
             for(int i = 0; i < ArrayCount(params.images); ++i) {
                 
                 FileManager::AssetBuffer* pngBuffer = FileManager::OpenAsset(params.images[i], &Memory::temporaryArena);
@@ -437,10 +442,9 @@ class GlSkybox : public GlRenderable {
                                       pngBuffer->data, pngBuffer->size,
                                       LodePNGColorType::LCT_RGBA, 8);
                 
-                
                 RUNTIME_ASSERT(width == height,
-                              "Cubemap width must equal height. { maxCubeMapSize: %d, side: %d, assetPath: '%s', width: %u, height: %u }",
-                               maxCubeMapSize, i, params.images[i], width, height);
+                              "Cubemap width must equal height. { side: %d, assetPath: '%s', width: %u, height: %u }",
+                               i, params.images[i], width, height);
                 
                 RUNTIME_ASSERT(width < maxCubeMapSize,
                                "Cubemap width is too large { maxCubeMapSize: %d, side: %d, assetPath: '%s', width: %u, height: %u }",
@@ -449,6 +453,13 @@ class GlSkybox : public GlRenderable {
                 RUNTIME_ASSERT(height < maxCubeMapSize,
                                "Cubemap height is too large { maxCubeMapSize: %d, side: %d, assetPath: '%s', width: %u, height: %u }",
                                maxCubeMapSize, i, params.images[i], width, height);
+
+                RUNTIME_ASSERT(i == 0 || textureSize == width,
+                              "Cubmap must be cube complete (all textures in cubemap have same dimensions). Current image doesn't match textureSize: %d "
+                              "{ side: %d, assetPath: '%s', width: %u, height: %u }",
+                              textureSize, i, params.images[i], width, height);
+                
+                textureSize = width;
                 
                 //TODO: pass in desired width and height so that we can use small initial texture
                 //      but still render to the camera texture at camera resolution
@@ -464,16 +475,20 @@ class GlSkybox : public GlRenderable {
                              GL_UNSIGNED_BYTE, //input type
                              bitmap);
                 
-                Log("Cubemap Size { i: %d, w: %d, h: %d }", i, width, height);
-                
                 GlAssertNoError("Failed to set cubemap image { maxCubeMapSize: %d, side: %d, assetPath: '%s', width: %u, height: %u }",
                                 maxCubeMapSize, i, params.images[i], width, height);
                 
                 free(bitmap);
                 Memory::temporaryArena.FreeBaseRegion(tmpRegion);
+    
+                Log("Loaded cubemap { i: %d, size: %d, assetPath: %s }", i, textureSize, params.images[i]);
             }
             
-            if(params.generateMipmaps) glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+            if(params.generateMipmaps) {
+                glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+                GlAssertNoError("Failed to generate cubemap mipmaps");
+                Log("Generated cubemap mipmaps");
+            }
         }
         
         ~GlSkybox() {
@@ -495,7 +510,7 @@ class GlSkybox : public GlRenderable {
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cubemapFbo);
             GlAssertNoError("Failed to bind fbo");
     
-            glViewport(0, 0, 1024, 1024);
+            glViewport(0, 0, textureSize, textureSize);
             GlAssertNoError("Failed to set viewport");
             
             for(int iFace = 0; iFace < 6; ++iFace) {

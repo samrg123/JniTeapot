@@ -179,25 +179,26 @@ void* activityLoop(void* _params) {
         .posZ = "textures/debugTexture.png",
         .negZ = "textures/debugTexture.png",
 
-        .camera = &camera
+        .camera = &camera,
+        .generateMipmaps = true, //Note: used for object roughness parameter
     });
 
     //GlObject sphere("meshes/cow.obj",
     //                &camera,
-    //                skybox,
+    //                &skybox,
     //                GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.03f, .03f, .03f))
     //                );
 
     GlObject sphere("meshes/sphere.obj",
                     &camera,
-                    skybox,
+                    &skybox,
                     GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
                     //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
                    );
     
     //GlObject sphere("meshes/triangle.obj",
     //                &camera,
-    //                skybox,
+    //                &skybox,
     //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.2f, .2f, .2f))
     //               );
     
