@@ -51,7 +51,7 @@ class GlObject : public GlRenderable {
                     //  fragLightColor = vec4(0., 1., 0., .3);
                     //  fragLightColor = vec4(1., 1., 1., 300000.);
                     //  fragLightColor = vec4(0.85, .95, 1., 200000.);
-                    fragLightColor = vec4(0.6784, .7255, .698, 100.);
+                    fragLightColor = vec4(0.6784, .7255, .698, 1000.);
             }
         );
 
@@ -91,12 +91,8 @@ class GlObject : public GlRenderable {
                     vec3 lightDirection  = normalize(lightToVertex);
                     vec3 cameraDirection = normalize(cameraPosition - fragWorldPosition);
     
-                    ////TODO: why doesn't glsl reflect() work? we have to do it oursleves or else we get a bug?
-                    vec3 lightReflection = ((2.*dot(lightDirection, normal)) * normal) - lightDirection;
-                    //vec3 lightReflection = -reflect(normal, lightDirection);
-    
-                    ////TODO: make sure this matches phong shading model
-                    //vec3 cubeReflection = ((2.*dot(cameraDirection, normal))*normal) - cameraDirection;
+                    //TODO: play around with the direction vectors to cut down on the number of negations
+                    vec3 lightReflection = -reflect(lightDirection, normal);
                     vec3 cubeReflection = -reflect(cameraDirection, normal);
                     cubeReflection.x = -cubeReflection.x;
                     
@@ -111,9 +107,8 @@ class GlObject : public GlRenderable {
                     fragColor.rgb = ambientTerm + lightTerm;
                     fragColor.a = diffuseColor.a;
                     
-                    //NormalColor
+                    ////uncomment to view NormalColor
                     //fragColor.rgb = (.001*fragColor.rgb) + .999*(.5*(normal + vec3(1.)));
-                    //fragColor.rgb = (.001*fragColor.rgb) + .999*(.5*(cubeReflection + vec3(1.)));
                 }
          );
             
