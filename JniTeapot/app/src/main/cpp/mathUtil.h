@@ -106,7 +106,9 @@ inline bool InRange(const T1& n, const T2& min, const T3& max) { return n >= min
 template<typename T>
 inline T Pow2RoundUp(T n) {
     --n;
-    
+
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wshift-count-overflow"
     switch(sizeof(T)) {
         case 8: n|= n>>32;
         case 4: n|= n>>16;
@@ -117,6 +119,7 @@ inline T Pow2RoundUp(T n) {
             n|= n>>1;
         }
     }
+    #pragma clang diagnostic pop
     
     ++n;
     return n;

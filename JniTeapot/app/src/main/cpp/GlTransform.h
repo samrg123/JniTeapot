@@ -9,16 +9,10 @@ class GlTransform {
     public:
         Vec3<float> position, scale;
         
-        constexpr GlTransform(Vec3<float> position = Vec3<float>::zero,
-                              Vec3<float> scale = Vec3<float>::one,
-                              Vec3<float> theta = Vec3<float>::zero):
-            rotation(theta),
-            position(position),
-            scale(scale) {}
         
         inline Quaternion <float> GetRotation() const { return rotation; }
         inline void SetRotation(const Quaternion<float>& r) {
-        
+            
             //TODO: if quaternions are prone to decaying then we should just normalize them each time!
             RUNTIME_ASSERT(Approx(r.NormSquared(), 1.f, .01f),
                            "rotation is not unit quaternion { x: %f, y: %f, z: %f, w: %f | Norm: %f } ",
@@ -26,6 +20,18 @@ class GlTransform {
             
             rotation = r;
         }
+        
+        constexpr GlTransform(Vec3<float> position = Vec3<float>::zero,
+                              Vec3<float> scale = Vec3<float>::one,
+                              Quaternion<float> rotation = Quaternion<float>::identity): position(position),
+                                                                                         scale(scale) {
+            SetRotation(rotation);
+        }
+        
+        constexpr GlTransform(Vec3<float> position, Vec3<float> scale, Vec3<float> theta): rotation(theta),
+                                                                                           position(position),
+                                                                                           scale(scale) {}
+        
         
         //Note: returns S'*R'*T' where T'=inverseTranslationMatrix, R'=inverseRotationMatrix, S'=inverseScaleMatrix
         inline Mat4<float> InverseMatrix() const {
@@ -63,6 +69,9 @@ class GlTransform {
         inline Mat4<float> NormalMatrix() const {
 
             //Note: this returns the equivalent to Inverse().Transpose() without translations
+            //Note: Inverse().Transpose = ((T*R*S)^-1)^T = (T^-1 * R^-1 * S^-1)^T = (S^-1 * R * T^(-1T))
+            //      Because normal vectors are translation invarient n.w = 0 and we can simplify
+            //      the normal Matrix to: (S^-1 * R) [Note: T^(-1T) = [I | [-x, -y, -z, 1]], and R is a 3x3 matrix]
             
             //Note: inverse rotationMatrix is orthogonal so R^-1 = R^t and (R^-1)^t = R
             Vec3 inverseScale = scale.Inverse();

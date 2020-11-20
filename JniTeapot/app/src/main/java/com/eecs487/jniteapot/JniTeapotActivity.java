@@ -1,15 +1,12 @@
 package com.eecs487.jniteapot;
 
 import android.app.Activity;
-import android.graphics.Rect;
-import android.hardware.display.DisplayManager;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.WindowMetrics;
 
 public class JniTeapotActivity extends Activity
                                implements SurfaceHolder.Callback2 {

@@ -58,6 +58,8 @@ class GlText {
         enum SharedBlocks { SBlockVertexGlyphData, SBlockStringAttribData };
         enum TextureUnits { TUnitFont };
     
+        
+        //TODO: update shaders to use shaderUtil
         static constexpr const char* kVertexShaderSource =  "#version 310 es\n"
                                                             "struct VertexGlyphData {"
                                                             "   highp vec2 textureCoordinates;"
@@ -822,8 +824,7 @@ class GlText {
                                       [&](void *chunk, uint32 chunkBytes) {
                                           CopyMemory(attributeBuffer, chunk, chunkBytes);
                                           attributeBuffer+=chunkBytes;
-                                      }
-                                     );
+                                      });
     
                 glUnmapBuffer(GL_ARRAY_BUFFER);
             }
