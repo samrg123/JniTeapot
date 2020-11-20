@@ -1,10 +1,11 @@
 apply plugin: 'com.android.application'
 
+def arcore_version = "1.19.0"
 def arcore_libpath = "${buildDir}/arcore-native"
 configurations { natives }
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 29
     buildToolsVersion "30.0.2"
     clean
     defaultConfig {
@@ -12,12 +13,13 @@ android {
 
         //TODO: consider lowering API requirement and grabbing display a different way
         //Note: SDK 23+ has getSystemService(DisplayManager.class).getDisplay(Display.DISPLAY_DEFAULT)
-        minSdkVersion 23 // Note: gles 3.1 requires sdk 21+, gles 3.2/vulkan 1.0 requires 24+, vulkan 1.1 requires 28+, egl 1.5 implemented in 29
-        targetSdkVersion 30
+        //Note: SDK 30  has support for ANative_setFrameRate
+        minSdkVersion 29 // Note: gles 3.1 requires sdk 21+, gles 3.2/vulkan 1.0 requires 24+, vulkan 1.1 requires 28+, egl 1.5 implemented in 29
+        targetSdkVersion 29
         versionCode 1
         versionName "1.0"
 
-        ndkVersion "21.3.6528147"
+        ndkVersion "22.0.6917172"
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_TOOLCHAIN=clang",
@@ -25,7 +27,8 @@ android {
 //                          "-DCMAKE_BUILD_TYPE=Release"
                           "-DCMAKE_BUILD_TYPE=Debug",
                         "-DARCORE_LIBPATH=${arcore_libpath}/jni",
-                        "-DARCORE_INCLUDE=${project.rootDir}/app/src/main/cpp/include",
+                        "-DARCORE_INCLUDE=${project.rootDir}/app/src/main/cpp/arcore${arcore_version}",
+                        "-DARCORE_HEADER=${project.rootDir}/app/src/main/cpp/arcore${arcore_version}/arcore_c_api.h",
                         "-DGLM_INCLUDE=${project.rootDir}/app/src/main/cpp/glm"
             }
         }
@@ -51,17 +54,20 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    ndkVersion '21.3.6528147'
 }
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
 
-    implementation 'com.google.ar:core:1.19.0'
-    natives 'com.google.ar:core:1.19.0'
+    implementation "com.google.ar:core:${arcore_version}"
+    natives "com.google.ar:core:${arcore_version}"
 
     task extractNativeLibraries() {
+
         // Always extract, this insures the native libs are updated if the version changes.
         outputs.upToDateWhen { false }
+
         doFirst {
             configurations.natives.files.each { f ->
                 copy {

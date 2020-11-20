@@ -1,7 +1,11 @@
 #pragma once
 
-#define ASSERT_RUNTIME_ENABLED 1
 #define ASSERT_COMPILETIME_ENABLED 1
+#if OPTIMIZED_BUILD
+	#define ASSERT_RUNTIME_ENABLED 0
+#else
+	#define ASSERT_RUNTIME_ENABLED 1
+#endif
 
 #if ASSERT_COMPILETIME_ENABLED
 	#define COMPILE_ASSERT(condition, ...) static_assert(condition, ##__VA_ARGS__)
@@ -23,5 +27,6 @@
 	// Note: included after definition so log can still use assertions
 	#include "log.h"
 #else
-	#define RUNTIME_ASSERT(condition, ...)
+    //Note: __builtin_assume doesn't evaluate condition so we do it beforehand;
+	#define RUNTIME_ASSERT(condition, ...) { bool condition_ = (condition);  __builtin_assume(condition_); }
 #endif

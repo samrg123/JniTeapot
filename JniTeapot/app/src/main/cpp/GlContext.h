@@ -91,7 +91,7 @@ class GlContext {
             
             return config;
         }
-
+        
         static inline
         EGLContext CreateAndBindEglContext(const EGLDisplay& display, const EGLConfig& config, const EGLSurface& surface) {
             const EGLint contexAttribs[] = {
@@ -103,7 +103,7 @@ class GlContext {
             EGLContext context = eglCreateContext(display, config, NULL, contexAttribs);
             EglAssert(context != EGL_NO_CONTEXT, "Failed to make eglContext { display: %d, config: %p }", display, config);
     
-            // bind egl to our thread
+            // bind egl to our thread - needs to be done to set swap interval
             EglAssertTrue(eglMakeCurrent(display, surface, surface, context), "Failed to bind egl surface to thread");
             
             // set swap interval
@@ -172,6 +172,7 @@ class GlContext {
                 eglDisplay = GetEglDisplay();
                 eglConfig = GetEglConfig(eglDisplay);
                 eglSurface = CreateEglSurface(eglDisplay, eglConfig, &eglWidth, &eglHeight);
+                
                 eglContext = CreateAndBindEglContext(eglDisplay, eglConfig, eglSurface);
                 
                 Log("Finished Initializing GLES version: %s", (const char*)glGetString(GL_VERSION));

@@ -114,7 +114,6 @@ struct Quaternion: Base {
                         v1*z - v2*y + v3*x + v4*w);
     }
     
-    
     //TODO: FIX THIS... bug when camera rotating around stationary object! --- IF THERE IS A BUG FIX IT IN ShaderUtil too!
     inline static Quaternion RotateTo(Vec3<float> source, Vec3<float> destination) {
         float cosTheta = source.Dot(destination);

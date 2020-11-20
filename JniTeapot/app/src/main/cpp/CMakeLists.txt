@@ -1,20 +1,15 @@
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.10)
 project(JniTeapot LANGUAGES C CXX)
 
 # TODO: DOES'T LOOK LIKE THIS IS WORKING
-#if(NOT CMAKE_BUILD_TYPE)
-#    set(CMAKE_BUILD_TYPE Debug)
-#endif()
-#
 #set(CMAKE_CXX_FLAGS_DEBUG "-g")
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # set up common compile options
-#set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -std=c++2a -fno-exceptions -fno-rtti -fdeclspec -O3")
-set(CMAKE_CXX_FLAGS  "-Wall -std=c++2a -fno-exceptions -fno-rtti -fdeclspec -fno-threadsafe-statics -ftemplate-depth=4096 -g -Od")
+set(CMAKE_VERBOSE_MAKEFILE on )
+set(CMAKE_CXX_FLAGS "-DARCORE_HEADER=\"\\\"${ARCORE_HEADER}\\\"\" -Wall -std=c++2a -fno-exceptions -fno-rtti -fdeclspec -fno-threadsafe-statics -ftemplate-depth=4096 -g -Od -DOPTIMIZED_BUILD=0")
 
-# build app libd
-#set(SOURCES JniTeapotActivity.h )
+# build app
 set(SOURCES jniTeapot.cpp lodepng/lodepng.cpp)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 set_target_properties(${PROJECT_NAME}
@@ -38,12 +33,12 @@ set_target_properties(arcore PROPERTIES IMPORTED_LOCATION
 add_library( glm INTERFACE )
 set_target_properties( glm PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${GLM_INCLUDE})
 
-
 ## link libs
 target_link_libraries(
     ${PROJECT_NAME}
-    log # android log
-    android # android jni internals
+    log          # android log
+    android      # android jni internals
+    nativewindow # used for ANativeWindow_setFrameRate
     EGL
     GLESv3
     ${FREETYPE_LIB}

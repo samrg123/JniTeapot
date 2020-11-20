@@ -64,5 +64,5 @@ template<> struct GlAttributeInfo<uint16> { static constexpr uint32 kSize = 1; s
 template<> struct GlAttributeInfo<uint32> { static constexpr uint32 kSize = 1; static constexpr GLenum kType = GL_UNSIGNED_INT; };
 
 //Note: specialization for Vec types
-template<> template<typename T, template<typename, typename...> class VecTemplate>
+template<typename T, template<typename, typename...> class VecTemplate>
 struct GlAttributeInfo<VecTemplate<T>> { static constexpr uint32 kSize = VecTemplate<T>::kNumDims; static constexpr GLenum kType = GlAttributeInfo<T>::kType; };

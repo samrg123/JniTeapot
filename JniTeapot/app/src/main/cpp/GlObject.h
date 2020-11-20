@@ -433,8 +433,8 @@ class GlObject : public GlRenderable {
     public:
         
         GlObject(const char* objPath, GlCamera* camera, const GlSkybox* skybox, const GlTransform& transform = GlTransform()):
-                    skybox(skybox),
                     GlRenderable(camera),
+                    skybox(skybox),
                     transform(transform),
                     flags(FLAG_OBJ_TRANSFORM_UPDATED) {
             
