@@ -6,7 +6,13 @@
 #include "types.h"
 #include "mathUtil.h"
 
-#define TESTS_ENABLED 1
+
+#if OPTIMIZED_BUILD
+    #define TESTS_ENABLED 0
+#else
+    #define TESTS_ENABLED 1
+#endif
+
 #if TESTS_ENABLED
 
 //Disable unused functions warnings in ide (ide doesn't know about crt init table)
