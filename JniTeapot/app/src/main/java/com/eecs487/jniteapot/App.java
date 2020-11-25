@@ -13,7 +13,7 @@ public class App {
 		System.loadLibrary("JniTeapot");
 	}
 
-	public static native void NativeOnSurfaceCreated(Surface surface, AssetManager assets, Context context, Activity activity );
+	public static native void NativeStartApp(Surface surface, AssetManager assets, Activity activity);
 	public static native void NativeSurfaceRedraw(int rotation, int width, int height);
 
 	public static void Log(String msg)   { Log.i(LogPrefixStr("MSG"), msg); }

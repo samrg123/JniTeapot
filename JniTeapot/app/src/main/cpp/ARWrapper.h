@@ -67,27 +67,27 @@ class ARWrapper {
             height = height_;
         }
         
-        void InitializeARWrapper(void* jniEnv, jobject jactivity, jobject jcontext) {
+        void InitializeARWrapper(void* jniEnv, jobject jActivity) {
             RUNTIME_ASSERT(!arSession, "arSession already Initialized { arSession: %p }", arSession);
             
             ArAvailability arCoreAvailability;
-            ArCoreApk_checkAvailability(jniEnv, jcontext, &arCoreAvailability);
+            ArCoreApk_checkAvailability(jniEnv, jActivity, &arCoreAvailability);
     
             if(arCoreAvailability != AR_AVAILABILITY_SUPPORTED_INSTALLED) {
                 Log("Installing ArCore { arCoreAvailability: %d }", arCoreAvailability);
         
                 ArInstallStatus installStatus;
-                ArCoreApk_requestInstall(jniEnv, jactivity, 1, &installStatus);
+                ArCoreApk_requestInstall(jniEnv, jActivity, 1, &installStatus);
         
                 //If ArCore was installed from open play store prompt update the install status
                 if(installStatus == AR_INSTALL_STATUS_INSTALL_REQUESTED) {
-                    ArCoreApk_requestInstall(jniEnv, jactivity, 0, &installStatus);
+                    ArCoreApk_requestInstall(jniEnv, jActivity, 0, &installStatus);
                 }
         
                 RUNTIME_ASSERT(installStatus == AR_INSTALL_STATUS_INSTALLED, "Failed to install ArCore { installStatus: %d }", installStatus);
             }
     
-            RUNTIME_ASSERT(ArSession_create(jniEnv, jcontext, &arSession) == AR_SUCCESS, "Failed to create arSession");
+            RUNTIME_ASSERT(ArSession_create(jniEnv, jActivity, &arSession) == AR_SUCCESS, "Failed to create arSession");
     
             ConfigureSession();
     

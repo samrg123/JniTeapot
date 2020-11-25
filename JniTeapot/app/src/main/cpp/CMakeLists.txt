@@ -39,9 +39,10 @@ target_link_libraries(
     log          # android log
     android      # android jni internals
     nativewindow # used for ANativeWindow_setFrameRate
+#    camera2ndk   # unsed for ACamera
     EGL
     GLESv3
     ${FREETYPE_LIB}
-    glm
+    glm         # glm - TODO: depreciate this
     arcore
 )
