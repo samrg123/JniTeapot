@@ -300,14 +300,13 @@ void* activityLoop(void* params_) {
 
 extern "C" {
 
-    void JFunc(App, NativeOnSurfaceCreated)(JNIEnv* jniEnv, jclass clazz,
-                                            jobject surface, jobject jAssetManager, jobject jContext, jobject jActivity) {
+    void JFunc(App, NativeStartApp)(JNIEnv* jniEnv, jclass clazz, jobject surface, jobject jAssetManager, jobject jActivity) {
         
         RUNTIME_ASSERT(surface, "Surface Is NULL!");
 
         FileManager::Init(jniEnv, jAssetManager);
     
-    ARWrapper::Instance()->InitializeARWrapper(jniEnv, jActivity, jContext);
+        ARWrapper::Instance()->InitializeARWrapper(jniEnv, jActivity);
         
         ANativeWindow* androidNativeWindow = ANativeWindow_fromSurface(jniEnv, surface);
         //ANativeWindow_setFrameRate(nativeWindow,

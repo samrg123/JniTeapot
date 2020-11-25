@@ -1,18 +1,26 @@
 package com.eecs487.jniteapot;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.Display;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+
+import java.util.ArrayList;
 
 public class JniTeapotActivity extends Activity
                                implements SurfaceHolder.Callback2 {
 
 	private WindowManager windowManager;
 	private Display display;
+	private Surface surface;
+
+	private enum PermissionRequestCode {StartupRequest, FailedRequest}
 
 	public void onCreate(Bundle savedState) {
 		super.onCreate(savedState);
@@ -37,12 +45,33 @@ public class JniTeapotActivity extends Activity
 		// give us control of surface updates (only one thread can draw to a surface)
 		window.takeSurface(this);
 
-		//
 		// windowManager = getSystemService(WindowManager.class);
 		// display = getDisplay();
 
 		//Force the screen to stay on
 		window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+	}
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResult) {
+		ArrayList<String> failedRequests = new ArrayList<String>(permissions.length);
+
+		for(int i = 0; i < permissions.length; ++i) {
+			if(grantResult[i] != PackageManager.PERMISSION_GRANTED) {
+				App.Warn("Requested permission not granted. Will Request again { permission: "+permissions[i]+", grantResult: "+grantResult[i]+", requestCode: "+requestCode+" }");
+				failedRequests.add(permissions[i]);
+			}
+		}
+
+		if(failedRequests.isEmpty()) {
+
+			//we have all permissions - start the native app
+			App.NativeStartApp(surface, getAssets(), this);
+
+		} else {
+			requestPermissions(failedRequests.toArray(new String[failedRequests.size()]),
+			                   PermissionRequestCode.FailedRequest.ordinal());
+		}
 	}
 
 	@Override
@@ -56,8 +85,21 @@ public class JniTeapotActivity extends Activity
 	@Override
 	public void surfaceCreated(SurfaceHolder surfaceHolder) {
 		App.Log("Surface Created!");
-		App.NativeOnSurfaceCreated(surfaceHolder.getSurface(), getAssets(), getApplicationContext(), this);
+		surface = surfaceHolder.getSurface();
+
+		//request camera permissions if we don't have them
+		if(checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+
+			App.Log("Requesting Camera permissions");
+			requestPermissions(new String[]{ Manifest.permission.CAMERA }, PermissionRequestCode.StartupRequest.ordinal());
+
+		} else {
+
+			//we have all permissions - start the native app
+			App.NativeStartApp(surface, getAssets(), this);
+		}
 	}
+
 	@Override
 	public void surfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
 		App.Log("Surface Changed!");
