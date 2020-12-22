@@ -16,7 +16,9 @@
 
 #include "GlObject.h"
 #include "GlSkybox.h"
+
 #include "ARWrapper.h"
+#include "Camera.h"
 
 #include <android/native_window_jni.h>
 
@@ -51,7 +53,7 @@ void InitGlesState() {
 }
 
 inline
-Vec2<float> DrawMemoyStats(GlText* glText, Vec2<float> textBaseline, Vec2<float> lineAdvance) {
+Vec2<float> DrawMemoryStats(GlText* glText, Vec2<float> textBaseline, Vec2<float> lineAdvance) {
     #ifdef ENABLE_MEMORY_STATS
         glText->PushString(textBaseline, "Memory Bytes: %u | Blocks: %u | Reserve Blocks: %u", Memory::memoryBytes, Memory::memoryBlockCount, Memory::memoryBlockReserveCount);
         textBaseline+= lineAdvance;
@@ -107,10 +109,10 @@ Vec2<float> DrawFPS(GlText* glText, float renderTime, float frameTime,
     
     //compute average - TODO: correct for initial buffer being filled with zeros and artificially low average
     constexpr float avgNormalizer = 1.f/kAverageFrames;
-    float avgRenderTime     = avgNormalizer * cumulativeInfo.renderTime,
-        avgFrameTime      = avgNormalizer * cumulativeInfo.frameTime,
-        avgMaxFPS         = avgNormalizer * cumulativeInfo.maxFPS,
-        avgRealFPS        = avgNormalizer * cumulativeInfo.realFPS;
+    float   avgRenderTime     = avgNormalizer * cumulativeInfo.renderTime,
+            avgFrameTime      = avgNormalizer * cumulativeInfo.frameTime,
+            avgMaxFPS         = avgNormalizer * cumulativeInfo.maxFPS,
+            avgRealFPS        = avgNormalizer * cumulativeInfo.realFPS;
     
     glText->PushString(textBaseline,
                        "frameTime: %03.3fms | renderTime: %03.3fms | FPS: %03.3f | maxFPS: %03.3f",
@@ -125,7 +127,7 @@ inline
 void DrawStrings(GlText* glText, float renderTime, float frameTime,
                  Vec2<float> textBaseline, Vec2<float> lineAdvance) {
 
-    textBaseline = DrawMemoyStats(glText, textBaseline, lineAdvance);
+    textBaseline =DrawMemoryStats(glText, textBaseline, lineAdvance);
     textBaseline = DrawFPS(glText, renderTime, frameTime, textBaseline, lineAdvance);
     
     glText->Draw();
@@ -152,19 +154,26 @@ void* activityLoop(void* params_) {
     
     InitGlesState();
     
-    //TODO: right now on startup ArCore gives us a distorted projection matrix? Maybe query the fov and just make our own?
-    //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height())*.001f , 0, 2000));
-    //GlCamera camera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000)); //TODO: see if we can replace scaling view with scaling camera so glSkymap draws properly
-    //GlCamera camera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f), GlTransform(Vec3(0.f, 0.f, 1.f)));
-    GlCamera camera;
+    //GlCamera backCamera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height())*.001f , 0, 2000));
+    //GlCamera backCamera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000)); //TODO: see if we can replace scaling view with scaling camera so glSkymap draws properly
+    //GlCamera backCamera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f), GlTransform(Vec3(0.f, 0.f, 1.f)));
+    GlCamera backCamera, frontCamera;
     
     //Note: bind camera texture to arCore
     //Warn: Order dependent.
     //      We must call SetEglCameraTexture before we update the frame
     //      we also only want to query the ArWrapper ProjectionMatrix after the frame is updated
-    ARWrapper::Instance()->SetEglCameraTexture(camera.EglTexture());
-    camera.SetTransform(ARWrapper::Instance()->UpdateFrame());
-    camera.SetProjectionMatrix(ARWrapper::Instance()->ProjectionMatrix(.01f, 1000.f));
+    ARWrapper::Instance()->SetEglCameraTexture(backCamera.EglTexture());
+    backCamera.SetTransform(ARWrapper::Instance()->UpdateFrame());
+    backCamera.SetProjectionMatrix(ARWrapper::Instance()->ProjectionMatrix(.01f, 1000.f));
+    
+    
+    {
+        Camera camera(Camera::FRONT_CAMERA);
+    
+    
+    }
+    
     
     const Vec3 omega = ToRadians(Vec3(0.f, 0.f, 0.f));
     const float mirrorOmega = ToRadians( 180.f / 10.f);
@@ -192,7 +201,7 @@ void* activityLoop(void* params_) {
         //.posZ = "textures/debugTexture.png",
         //.negZ = "textures/debugTexture.png",
 
-        .camera = &camera,
+        .camera = &backCamera,
         .generateMipmaps = true, //Note: used for object roughness parameter
     });
 
@@ -203,14 +212,14 @@ void* activityLoop(void* params_) {
     //                );
 
     GlObject sphere("meshes/sphere.obj",
-                    &camera,
+                    &backCamera,
                     &skybox,
                     GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
                     //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
                    );
     
     //GlObject sphere("meshes/triangle.obj",
-    //                &camera,
+    //                &backCamera,
     //                &skybox,
     //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.2f, .2f, .2f))
     //               );
@@ -222,7 +231,7 @@ void* activityLoop(void* params_) {
 
         float secElapsed = physicsTimer.LapSec();
         
-        camera.SetTransform(ARWrapper::Instance()->UpdateFrame());
+        backCamera.SetTransform(ARWrapper::Instance()->UpdateFrame());
         
         // TODO: POLL ANDROID MESSAGE LOOP
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -233,7 +242,7 @@ void* activityLoop(void* params_) {
             //rotate camera
             if(false)
             {
-                GlTransform transform = camera.GetTransform();
+                GlTransform transform = backCamera.GetTransform();
                 
                 static float totalTime = 0.f;
                 totalTime+= secElapsed;
@@ -245,23 +254,19 @@ void* activityLoop(void* params_) {
                 Quaternion<float> rotation = Quaternion<float>::LookAt(transform.position, sphere.GetTransform().position);
                 transform.SetRotation(rotation);
                 
-                camera.SetTransform(transform);
+                backCamera.SetTransform(transform);
             }
             
-            static int i = 0;
-            //if((i++)%120 == 0)
-            {
-                
-                Timer cameraTimer(true);
-                int cameraInvocations = 1; // TODO: set to 100 for benchmarking
-                for(int i = 0; i < cameraInvocations; ++i) {
-                    skybox.UpdateTexture(&glContext);
-                    glFinish();
-                }
 
-                float cameraMs = cameraTimer.ElapsedMs();
-                glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invokation)", cameraMs, cameraMs/cameraInvocations);
+            Timer cameraTimer(true);
+            int cameraInvocations = 1; // TODO: set to 100 for benchmarking
+            for(int i = 0; i < cameraInvocations; ++i) {
+                skybox.UpdateTexture(&glContext);
+                glFinish();
             }
+
+            float cameraMs = cameraTimer.ElapsedMs();
+            glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invokation)", cameraMs, cameraMs/cameraInvocations);
 
             skybox.Draw();
         }
@@ -309,11 +314,6 @@ extern "C" {
         ARWrapper::Instance()->InitializeARWrapper(jniEnv, jActivity);
         
         ANativeWindow* androidNativeWindow = ANativeWindow_fromSurface(jniEnv, surface);
-        //ANativeWindow_setFrameRate(nativeWindow,
-        //                           100000.f,
-        //                           //kTargetFPS,
-        //                           ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_DEFAULT //don't limit framerate to screen refresh rate
-        //                           );
         
         // Spin off render thread
         pthread_t thread;

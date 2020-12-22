@@ -88,7 +88,6 @@ class ARWrapper {
             }
     
             RUNTIME_ASSERT(ArSession_create(jniEnv, jActivity, &arSession) == AR_SUCCESS, "Failed to create arSession");
-    
             ConfigureSession();
     
             ArFrame_create(arSession, &arFrame);

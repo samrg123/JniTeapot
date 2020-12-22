@@ -1,8 +1,5 @@
 #pragma once
 
-//#include <glm.hpp>
-//#include "glm/gtc/type_ptr.hpp"
-
 #include "GlContext.h"
 #include "GLES2/gl2ext.h"
 #include "GlRenderable.h"
@@ -106,7 +103,7 @@ class GlSkybox : public GlRenderable {
 
                     //reflect x axis to translate right handed world space into left handed cubemap space
                     fakeWorldPos.x = -fakeWorldPos.x;
-
+                    
                     viewPos = mat3(viewMatrix) * fakeWorldPos;
 
                     gl_Position = vec4(a_Position, 1., 1.);

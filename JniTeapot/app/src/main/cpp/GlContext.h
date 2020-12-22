@@ -271,7 +271,7 @@ class GlContext {
                 return glProgram;
             }
     
-            static inline void VertexAttribPointerArray(GLuint attribIndex, GLuint dataType, uint32 bytes, const void* pointer) {
+                static inline void VertexAttribPointerArray(GLuint attribIndex, GLuint dataType, uint32 bytes, const void* pointer) {
     
                 //Note: gl spec makes all attributes aligned to 4 bytes
                 //      and allows us to set 4 attributes in a single call
