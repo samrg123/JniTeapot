@@ -34,7 +34,7 @@ class GlCamera {
             glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             GlAssertNoError("Failed to create sampler");
         }
-
+        
         inline GLuint EglTexture()        const { return eglTexture; }
         inline GLuint EglTextureSampler() const { return sampler; }
         

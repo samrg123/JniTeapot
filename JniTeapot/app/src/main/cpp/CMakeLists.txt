@@ -39,7 +39,7 @@ target_link_libraries(
     log          # android log
     android      # android jni internals
     nativewindow # used for ANativeWindow_setFrameRate
-#    camera2ndk   # unsed for ACamera
+    camera2ndk   # unsed for ACamera
     EGL
     GLESv3
     ${FREETYPE_LIB}

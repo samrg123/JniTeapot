@@ -76,6 +76,7 @@ public class JniTeapotActivity extends Activity
 
 	@Override
 	public void surfaceRedrawNeeded(SurfaceHolder surfaceHolder) {
+		App.Log("Surface Redraw Needed");
 
 		// //TODO: see if there is an easier way to get width and height... maybe in native?
 		// WindowMetrics metrics = windowManager.getCurrentWindowMetrics();
