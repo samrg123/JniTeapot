@@ -102,8 +102,21 @@ class ARWrapper {
         inline GlTransform UpdateFrame() {
             RUNTIME_ASSERT(arSession, "arSession not Initialized");
             RUNTIME_ASSERT(eglCameraTexture, "eglCameraTexture not set");
-            
-            RUNTIME_ASSERT(ArSession_update(arSession, arFrame) == AR_SUCCESS, "Failed to update arFrame");
+    
+            /*TODO: fix AR_ERROR_FATAL error when updating session of galaxy s9
+             *      ################### Stack Trace Begin ################
+                    ARCoreError: third_party/arcore/ar/core/session.cc:1627	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/session.cc?g=0&l=1627
+                    ARCoreError: third_party/arcore/ar/core/c_api/session_lite_c_api.cc:75	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/c_api/session_lite_c_api.cc?g=0&l=75
+                    ################### Stack Trace End #################
+                    
+                    ################### Undecorated Trace Begin  #################
+                    UNKNOWN:
+                    ARCoreError: third_party/arcore/ar/core/session.cc:1627
+                    ACameraCaptureSession_setRepeatingRequest ACAMERA_ERROR_UNKNOWN
+                    ################### Undecorated Trace End  #################
+             *
+             */
+            RUNTIME_ASSERT(ArSession_update(arSession, arFrame) == AR_SUCCESS, "Failed to update arFrame: status: %d", status);
 
             union RawPose {
                 struct {
