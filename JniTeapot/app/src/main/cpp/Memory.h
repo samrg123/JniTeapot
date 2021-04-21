@@ -329,7 +329,7 @@ class Memory {
 					Pack();
 				}
 		
-				//Note: translates whole arena to contiguous buffer using 'translator(void* regionElement, void* bufferElement)'
+                //Note: translates whole arena to contiguous buffer using 'translator(void* regionElement, void* bufferElement)'
 				template <typename TranslatorFuncT>
 				inline void TranslateToBuffer(uint32 numElements, void* buffer,
 											  uint32 regionStride, uint32 bufferStride,
