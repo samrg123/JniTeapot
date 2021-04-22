@@ -116,7 +116,7 @@ class ARWrapper {
                     ################### Undecorated Trace End  #################
              *
              */
-            RUNTIME_ASSERT(ArSession_update(arSession, arFrame) == AR_SUCCESS, "Failed to update arFrame: status: %d", status);
+            RUNTIME_ASSERT(ArSession_update(arSession, arFrame) == AR_SUCCESS, "Failed to update arFrame: status: %d");
 
             union RawPose {
                 struct {
