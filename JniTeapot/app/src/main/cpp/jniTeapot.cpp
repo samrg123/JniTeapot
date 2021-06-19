@@ -205,18 +205,18 @@ void* activityLoop(void* params_) {
         .generateMipmaps = true, //Note: used for object roughness parameter
     });
 
-    //GlObject sphere("meshes/cow.obj",
-    //                &camera,
-    //                &skybox,
-    //                GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.03f, .03f, .03f))
-    //                );
-
-    GlObject sphere("meshes/sphere.obj",
+    GlObject sphere("meshes/cow.obj",
                     &backCamera,
                     &skybox,
-                    GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
-                    //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
-                   );
+                    GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.03f, .03f, .03f))
+                    );
+
+    //GlObject sphere("meshes/sphere.obj",
+    //                &backCamera,
+    //                &skybox,
+    //                GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
+    //                //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
+    //               );
     
     //GlObject sphere("meshes/triangle.obj",
     //                &backCamera,
@@ -268,10 +268,10 @@ void* activityLoop(void* params_) {
             float cameraMs = cameraTimer.ElapsedMs();
             glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invokation)", cameraMs, cameraMs/cameraInvocations);
 
-            skybox.Draw();
+            //skybox.Draw();
         }
     
-        //ARWrapper::Instance()->DrawCameraBackground(camera);
+        backCamera.Draw();
         
         //Update sphere
         {
