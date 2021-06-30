@@ -2,90 +2,95 @@
 
 #define LOG_ENABLED 1
 #if LOG_ENABLED
-	
-	#include "macros.h"
-	#include "util.h"
-	#include "types.h"
 
-	#include <android/log.h>
-	#include <stdio.h>
-	
-	enum LogLevel:  uint8 { LOG_LEVEL_MSG = 1, LOG_LEVEL_WARN, LOG_LEVEL_ERROR };
-	enum LogOption: uint8 { LOG_OPT_FLUSH = 1 };
+#include "macros.h"
+#include "util.h"
+#include "types.h"
 
-	constexpr uint32 LogType(LogLevel logLevel, uint8 options = 0, uint16 payload = 0) {
-		return (uint32(logLevel)<<24) | (uint32(options)<<16) | payload;
-	}
+#include <android/log.h>
+#include <stdio.h>
 
-	constexpr android_LogPriority AndroidLogPriority(uint32 logType) {
-	    return (logType>>24 == LOG_LEVEL_ERROR) ?  ANDROID_LOG_ERROR :
-               (logType>>24 == LOG_LEVEL_WARN)  ?  ANDROID_LOG_WARN :
-                                                   ANDROID_LOG_INFO;
-	}
+enum LogLevel : uint8 {
+    LOG_LEVEL_MSG = 1, LOG_LEVEL_WARN, LOG_LEVEL_ERROR
+};
+enum LogOption : uint8 {
+    LOG_OPT_FLUSH = 1
+};
 
-	constexpr uint32 kLogTypeEnableMask_ = LogType(LOG_LEVEL_ERROR) | LogType(LOG_LEVEL_WARN) | LogType(LOG_LEVEL_MSG);
+constexpr uint32 LogType(LogLevel logLevel, uint8 options = 0, uint16 payload = 0) {
+    return (uint32(logLevel) << 24) | (uint32(options) << 16) | payload;
+}
 
-	constexpr const char* LogLevelStr(uint32 logType) {
-		return 	(logType>>24) == LOG_LEVEL_MSG 	 ? "MSG" :
-				(logType>>24) == LOG_LEVEL_WARN  ? "WARN" :
-				(logType>>24) == LOG_LEVEL_ERROR ? "ERROR" : "UNKNOWN";
-	}
+constexpr android_LogPriority AndroidLogPriority(uint32 logType) {
+    return (logType >> 24 == LOG_LEVEL_ERROR) ? ANDROID_LOG_ERROR :
+           (logType >> 24 == LOG_LEVEL_WARN) ? ANDROID_LOG_WARN :
+           ANDROID_LOG_INFO;
+}
+
+constexpr uint32 kLogTypeEnableMask_ =
+        LogType(LOG_LEVEL_ERROR) | LogType(LOG_LEVEL_WARN) | LogType(LOG_LEVEL_MSG);
+
+constexpr const char *LogLevelStr(uint32 logType) {
+    return (logType >> 24) == LOG_LEVEL_MSG ? "MSG" :
+           (logType >> 24) == LOG_LEVEL_WARN ? "WARN" :
+           (logType >> 24) == LOG_LEVEL_ERROR ? "ERROR" : "UNKNOWN";
+}
 
 
-	#define LOG_FMT_(callSiteFmt, fmtStr) callSiteFmt " - %s: { " fmtStr " }\n"
-	#define LOG_ARGS_(funcStr, typeStr, ...) funcStr, typeStr, ##__VA_ARGS__
+#define LOG_FMT_(callSiteFmt, fmtStr) callSiteFmt " - %s: { " fmtStr " }\n"
+#define LOG_ARGS_(funcStr, typeStr, ...) funcStr, typeStr, ##__VA_ARGS__
 
-	class Logger;
-	extern Logger logger_;
+class Logger {
+private:
+    static constexpr bool kLogOutputDebug_ = true;
 
-	#define LogEx(type, fmtStr, ...) {											            \
-		static constexpr char kFmtStr_[] = LOG_FMT_(CALL_SITE_FMT, fmtStr);		            \
-		logger_.PushLogStr<ArrayCount(kFmtStr_), kFmtStr_>(__func__, type, ##__VA_ARGS__);	\
-	}
+    template<typename ...ArgsT>
+    void LogStr(uint32 type, const ArgsT &... args) {
 
-	#define Log(fmt, ...)	LogEx(LogType(LOG_LEVEL_MSG), 	fmt, ##__VA_ARGS__)
-	#define Warn(fmt, ...)	LogEx(LogType(LOG_LEVEL_WARN), 	fmt, ##__VA_ARGS__)
-	#define Error(fmt, ...) LogEx(LogType(LOG_LEVEL_ERROR), fmt, ##__VA_ARGS__)
+        //TODO: add more logging options
 
-	class Logger {
-		private:
-            static constexpr bool kLogOutputDebug_ 	= true;
+        if constexpr(kLogOutputDebug_) {
+            __android_log_print(AndroidLogPriority(type), " => JNI Native Logger", args...);
+        }
+    }
 
-			template<typename ...ArgsT>
-			void LogStr(uint32 type, const ArgsT&... args) {
+public:
 
-				//TODO: add more logging options
+    //TODO: introduce Log queue system and run logging on seperate thread - that way we won't introduce as much lag into sound system for example
+    template<size_t nFmt, const char (&kLogFmt)[nFmt], typename ...ArgsT>
+    void PushLogStr(const char *kFuncStr, uint32 type, const ArgsT &... args) {
 
-				if constexpr(kLogOutputDebug_) {
-				    __android_log_print(AndroidLogPriority(type), " => JNI Native Logger", args...);
-				}
-			}
+        if (type & kLogTypeEnableMask_) {
+            // TODO: enable lock when logger runs a seperate thread
+            // _logState.mtx.lock();
 
-		public:
+            LogStr(type, kLogFmt, LOG_ARGS_(kFuncStr, LogLevelStr(type), args...));
 
-			//TODO: introduce Log queue system and run logging on seperate thread - that way we won't introduce as much lag into sound system for example
-			template<size_t nFmt, const char (&kLogFmt)[nFmt], typename ...ArgsT>
-			void PushLogStr(const char* kFuncStr, uint32 type, const ArgsT&... args) {
+            // _logState.mtx.unlock();
+        }
+    }
 
-				if(type & kLogTypeEnableMask_) {
-					// TODO: enable lock when logger runs a seperate thread
-					// _logState.mtx.lock();
+};
 
-                    LogStr(type, kLogFmt, LOG_ARGS_(kFuncStr, LogLevelStr(type), args...));
+extern Logger logger_;
 
-					// _logState.mtx.unlock();
-				}
-			}
+#define LogEx(type, fmtStr, ...) {                                                        \
+        static constexpr char kFmtStr_[] = LOG_FMT_(CALL_SITE_FMT, fmtStr);                    \
+        logger_.PushLogStr<ArrayCount(kFmtStr_), kFmtStr_>(__func__, type, ##__VA_ARGS__);    \
+    }
 
-	} logger_;
+#define Log(fmt, ...)    LogEx(LogType(LOG_LEVEL_MSG),    fmt, ##__VA_ARGS__)
+#define Warn(fmt, ...)    LogEx(LogType(LOG_LEVEL_WARN),    fmt, ##__VA_ARGS__)
+#define Error(fmt, ...) LogEx(LogType(LOG_LEVEL_ERROR), fmt, ##__VA_ARGS__)
+
 
 #else
-	#define LogEx(...) 		{}
-	#define Log(fmt, ...) 	{}
-	#define Warn(fmt, ...) 	{}
-	#define Error(fmt, ...) {}
+#define LogEx(...) 		{}
+#define Log(fmt, ...) 	{}
+#define Warn(fmt, ...) 	{}
+#define Error(fmt, ...) {}
 #endif
 
 
 template<typename T>
-inline void LogType() { Log("\n\t-- TYPE: %s --\n", __PRETTY_FUNCTION__ ); }
+inline void LogType() {Log("\n\t-- TYPE: %s --\n", __PRETTY_FUNCTION__); }

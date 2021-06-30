@@ -20,6 +20,9 @@ public class App {
 	public static void Warn(String msg)  { Log.w(LogPrefixStr("WARN"), msg); }
 	public static void Error(String msg) { Log.e(LogPrefixStr("ERROR"), msg); }
 
+
+	public static native void onTouched(long nativeApplication, float x, float y);
+
 	public static void Panic(String msg) {
 		Error(msg);
 		System.exit(1);

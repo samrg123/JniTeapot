@@ -11,10 +11,10 @@ class GlCamera {
         enum Uniforms { UProjectionMatrix = 0 };
         static inline const StringLiteral kVertexShaderSourceDraw =
             ShaderVersionStr+
-    
+
             ShaderUniform(UProjectionMatrix)+"mat4 projectionMatrix;"+
             ShaderOut(0)+"vec2 textureCord;"+
-    
+
             STRINGIFY(
                 void main() {
                     const vec2[4] vertices = vec2[](
@@ -25,21 +25,21 @@ class GlCamera {
                     );
 
                     vec2 vert = vertices[gl_VertexID];
-                    
+
                     //Note: opengl is left handed so we set depth to 1 (farthest away)
                     gl_Position = vec4(vert, 1., 1.);
-    
+
                     float tx = (gl_VertexID&2) == 0 ? 1. : 0.;
                     float ty = (gl_VertexID&1) == 0 ? 1. : 0.;
-                    
+
                     //TODO: FIX THIS... Camera should use projection matrix? Probably just pass through vect2 of aspect ratio!
-                    textureCord = vec2(tx, ty) + .0001*projectionMatrix[0][0];
-                    
-                    //mat2 newProjMat = mat2(projectionMatrix[0][0], projectionMatrix[0][1],
-                    //                       projectionMatrix[1][0], projectionMatrix[1][1]);
-                    //textureCord = newProjMat * vec2(tx, ty);
+                    //textureCord = vec2(tx, ty);
+
+                    mat2 newProjMat = mat2(projectionMatrix[0][0], projectionMatrix[0][1],
+                                           projectionMatrix[1][0], projectionMatrix[1][1]);
+                    textureCord = newProjMat*0.001*vec2(tx, ty);
                 });
-        
+
         static inline const StringLiteral kFragmentShaderSourceDraw =
             ShaderVersionStr +
             ShaderExtension("GL_OES_EGL_image_external")+
@@ -52,6 +52,7 @@ class GlCamera {
             STRINGIFY(
                 void main() {
                     fragColor = texture(sampler, textureCord);
+                    fragColor = vec4(1,0,0,1);
                 }
              );
         
@@ -137,7 +138,6 @@ class GlCamera {
         //TODO: add Render() that can render objects and project them on to the EGLTexture
         
         void Draw() {
-    
             glBindSampler(TU_EGLTexture, sampler);
             glActiveTexture(GL_TEXTURE0 + TU_EGLTexture);
             glBindTexture(GL_TEXTURE_EXTERNAL_OES, eglTexture);
