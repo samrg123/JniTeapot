@@ -21,6 +21,7 @@
 
 #include "background_renderer.h"
 #include "plane_renderer.h"
+#include "point_cloud_renderer.h"
 
 #include <android/native_window_jni.h>
 #include "FBO.h"
@@ -253,6 +254,8 @@ void *activityLoop(void *params_) {
     int32_t plane_count;
     plane_renderer.InitializeGlContent(FileManager::assetManager);
 
+    PointCloudRenderer point_cloud_renderer;
+    point_cloud_renderer.InitializeGlContent(FileManager::assetManager);
     Timer fpsTimer(true), physicsTimer(true);
 
     for (Timer loopTimer(true);; loopTimer.SleepLapMs(kTargetMsFrameTime)) {
@@ -306,6 +309,15 @@ void *activityLoop(void *params_) {
         //backCamera.Draw();
         //background_renderer.Draw(arSession, arFrame, false, backCamera);
 
+        // Update and render point cloud.
+        ArPointCloud* ar_point_cloud = nullptr;
+        ArStatus point_cloud_status = ArFrame_acquirePointCloud(arSession, arFrame, &ar_point_cloud);
+        if (point_cloud_status == AR_SUCCESS) {
+            point_cloud_renderer.Draw(projection_matrix * view_matrix, arSession,
+                                       ar_point_cloud);
+            ArPointCloud_release(ar_point_cloud);
+        }
+
         {
             ArTrackableList* plane_list = nullptr;
             ArTrackableList_create(arSession, &plane_list);
@@ -340,7 +352,7 @@ void *activityLoop(void *params_) {
                     continue;
                 }
 
-                plane_renderer.Draw(projection_matrix, view_matrix, *arSession, *ar_plane);
+                //plane_renderer.Draw(projection_matrix, view_matrix, *arSession, *ar_plane);
                 ArTrackable_release(ar_trackable);
             }
 
@@ -366,16 +378,16 @@ void *activityLoop(void *params_) {
         }
 
         Vec3<float> coordinates = backCamera.GetTransform().position;
-        Log("Coordinates: (%7.3f, %7.3f, %7.3f)",
-                    coordinates.x, coordinates.y, coordinates.z);
+//        Log("Coordinates: (%7.3f, %7.3f, %7.3f)",
+//                    coordinates.x, coordinates.y, coordinates.z);
 //        InitGlesState();
-        DrawStrings(&glText,
-                    backCamera.GetTransform().position,
-                    loopTimer.ElapsedSec(),
-                    fpsTimer.LapSec(),
-                    Vec2(50.f, 50.f), //textBaseline
-                    Vec2(0.f, 50.f)   //textAdvance
-        );
+//        DrawStrings(&glText,
+//                    backCamera.GetTransform().position,
+//                    loopTimer.ElapsedSec(),
+//                    fpsTimer.LapSec(),
+//                    Vec2(50.f, 50.f), //textBaseline
+//                    Vec2(0.f, 50.f)   //textAdvance
+//        );
 
         // present back buffer
         if (!glContext.SwapBuffers()) InitGlesState();
@@ -435,4 +447,4 @@ JNIEXPORT void JNICALL
 Java_com_eecs487_jniteapot_App_onTouched(JNIEnv *env, jclass clazz, jlong native_application,
                                          jfloat x, jfloat y) {
     Log("touched");
-}
+}  

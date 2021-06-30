@@ -10,7 +10,7 @@ set(CMAKE_VERBOSE_MAKEFILE on )
 set(CMAKE_CXX_FLAGS "-DARCORE_HEADER=\"\\\"${ARCORE_HEADER}\\\"\" -Wall -std=c++2a -fno-exceptions -fno-rtti -fdeclspec -fno-threadsafe-statics -ftemplate-depth=4096 -g -Od -DOPTIMIZED_BUILD=0")
 
 # build app
-set(SOURCES log.cpp util.cpp plane_renderer.cpp jniTeapot.cpp lodepng/lodepng.cpp)
+set(SOURCES log.cpp util.cpp plane_renderer.cpp point_cloud_renderer.cpp jniTeapot.cpp lodepng/lodepng.cpp)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 set_target_properties(${PROJECT_NAME}
     PROPERTIES
