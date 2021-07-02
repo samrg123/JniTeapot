@@ -1,0 +1,26 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "gradle",
+			"id": "c:\\Users\\Sam\\Desktop\\School\\EECS 487 - Mobile GPU\\MobileLabs\\JniTeapotapp:buildapp",
+			"script": "app:build",
+			"description": "Assembles and tests this project.",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"project": "app",
+			"buildFile": "C:\\Users\\Sam\\Desktop\\School\\EECS 487 - Mobile GPU\\MobileLabs\\JniTeapot\\app\\build.gradle",
+			"rootProject": "JniTeapot",
+			"projectFolder": "c:\\Users\\Sam\\Desktop\\School\\EECS 487 - Mobile GPU\\MobileLabs\\JniTeapot",
+			"workspaceFolder": "c:\\Users\\Sam\\Desktop\\School\\EECS 487 - Mobile GPU\\MobileLabs\\JniTeapot",
+			"args": "",
+			"javaDebug": false,
+			"problemMatcher": [
+				"$gradle"
+			],
+			"label": "gradle: app:build"
+		}
+	]
+}
