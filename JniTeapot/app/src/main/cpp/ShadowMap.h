@@ -7,23 +7,26 @@
 #include "FBO.h"
 
 #include "glUtil.h"
-#include <GLES/gl3.h>
+#include <GLES3/gl3.h>
 #include "android/asset_manager.h"
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 class ShadowMap {
+public:
     unsigned int SHADOW_WIDTH, SHADOW_HEIGHT;
     FBO shadow_depth_fbo;
     GLuint shadow_depth;
-    Gluint shadow_program;
-    const char* kShadowVert = "shaders/shadow.vert";
-    const char* kShadowFrag = "shaders/shadow.frag";
+    GLuint shadow_program;
+    const char* kShadowVert = "shaders/simple_shadow.vert";
+    const char* kShadowFrag = "shaders/simple_shadow.frag";
     glm::mat4 light_space;
     glm::mat4 model;
+    GLint light_space_loc;
+    GLint model_loc;
 
     ShadowMap(unsigned int width=1024, unsigned int height=1024) : SHADOW_WIDTH(width), SHADOW_HEIGHT(height) {}
     ~ShadowMap() {}
 
     void init_gl(AAssetManager* asset_manager);
-    void update_map();
+    void confgure_for_rendering();
 };

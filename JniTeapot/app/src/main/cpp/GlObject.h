@@ -15,7 +15,7 @@
 
 
 class GlObject : public GlRenderable {
-    private:
+    public:
         
         enum Attribs      { ATTRIB_GEO_VERT, ATTRIB_NORMAL_VERT, ATTRIB_UV_VERT };
         enum TextureUnits { TU_SKY_MAP };

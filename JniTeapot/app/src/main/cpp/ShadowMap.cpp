@@ -3,10 +3,13 @@
 //
 
 #include "ShadowMap.h"
-#include <glm/gtc/matrix_transform.hpp>
+#include <gtc/matrix_transform.hpp>
+#include "gtc/type_ptr.hpp"
 
 void ShadowMap::init_gl(AAssetManager* asset_manager) {
     shadow_program = util::CreateProgram(kShadowVert, kShadowFrag, asset_manager);
+    light_space_loc = glGetUniformLocation(shadow_program, "light_space");
+    model_loc = glGetUniformLocation(shadow_program, "model");
     glGenTextures(1, &shadow_depth);
     glBindTexture(GL_TEXTURE_2D, shadow_depth);
     shadow_depth_fbo.create();
@@ -22,9 +25,13 @@ void ShadowMap::init_gl(AAssetManager* asset_manager) {
     glReadBuffer(GL_NONE);
     FBO::use_defualt();
 
-    light_space = glm::ortho(-10, 10, -10, 10, 1, 1000) * glm::lookAt(glm::vec3(-2, -2, -2), glm::vec3(0,0,0), glm::vec3(0, 1, 0));
+    light_space = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 1000.0f) * glm::lookAt(glm::vec3(-2.0f, 4, -2), glm::vec3(0,0,0), glm::vec3(0, 1, 0));
 }
 
-void ShadowMap::bind_fbo() {
+void ShadowMap::confgure_for_rendering() {
+    glViewport(0,0,SHADOW_WIDTH, SHADOW_HEIGHT);
     shadow_depth_fbo.use();
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glUseProgram(shadow_program);
+    glUniformMatrix4fv(light_space_loc, 1, GL_FALSE, glm::value_ptr(light_space));
 }

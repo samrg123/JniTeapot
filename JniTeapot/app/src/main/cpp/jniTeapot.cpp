@@ -25,6 +25,7 @@
 
 #include <android/native_window_jni.h>
 #include "FBO.h"
+#include "ShadowMap.h"
 
 #define JFunc(jClass, jMethod) JNIEXPORT JNICALL Java_com_eecs487_jniteapot_##jClass##_ ##jMethod
 
@@ -256,6 +257,10 @@ void *activityLoop(void *params_) {
 
     PointCloudRenderer point_cloud_renderer;
     point_cloud_renderer.InitializeGlContent(FileManager::assetManager);
+
+    ShadowMap shadow_map(1024, 1024);
+    shadow_map.init_gl(FileManager::assetManager);
+
     Timer fpsTimer(true), physicsTimer(true);
 
     for (Timer loopTimer(true);; loopTimer.SleepLapMs(kTargetMsFrameTime)) {
@@ -269,6 +274,18 @@ void *activityLoop(void *params_) {
 
         // TODO: POLL ANDROID MESSAGE LOOP
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // first render depth of scene to shadow map
+        {
+            shadow_map.confgure_for_rendering();
+            glUniformMatrix4fv(shadow_map.model_loc, 1, GL_FALSE, &sphere.transformMatrix.values[0]);
+            glBindVertexArray(sphere.vao);
+            glBindBuffer(GL_ARRAY_BUFFER, sphere.vbo);
+            glDrawElements(GL_TRIANGLES, sphere.numIndices, sphere.elementType, 0);
+            FBO::use_defualt();
+            glViewport(0,0,glContext.Width(), glContext.Height());
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        }
 
         //udate skybox
         {
@@ -303,7 +320,7 @@ void *activityLoop(void *params_) {
             glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invokation)",
                               cameraMs, cameraMs / cameraInvocations);
 
-            skybox.Draw();
+           skybox.Draw();
         }
 
         //backCamera.Draw();
