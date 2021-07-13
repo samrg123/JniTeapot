@@ -535,6 +535,16 @@ class GlObject : public GlRenderable {
 
             GlAssertNoError("Failed to Draw");
         }
+
+        void Draw(GLuint program) {
+            glUseProgram(program);
+            glBindVertexArray(vao);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+            glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);
+
+            GlAssertNoError("Failed to Draw");
+        }
         
         //TODO: create GENERIC!!! VBO
         //TODO: create VBI's

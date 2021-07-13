@@ -237,10 +237,15 @@ void *activityLoop(void *params_) {
             //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
     );
 
-    BackgroundRenderer background_renderer;
-    GLuint depth_tex = 0;
-    background_renderer.InitializeGlContent(FileManager::assetManager, depth_tex);
+    GlObject plane("meshes/plane.obj",
+                    &backCamera,
+                    &skybox,
+                    GlTransform(Vec3(0.f, -1.f, -.5f), Vec3(1.f, 1.f, 1.f))
+    );
 
+//    BackgroundRenderer background_renderer;
+//    GLuint depth_tex = 0;
+//    background_renderer.InitializeGlContent(FileManager::assetManager, depth_tex);
 
     // TODO: Abstract out into separate class
     {
@@ -277,15 +282,18 @@ void *activityLoop(void *params_) {
 
         // first render depth of scene to shadow map
         {
-            shadow_map.confgure_for_rendering();
-            glUniformMatrix4fv(shadow_map.model_loc, 1, GL_FALSE, &sphere.transformMatrix.values[0]);
-            glBindVertexArray(sphere.vao);
-            glBindBuffer(GL_ARRAY_BUFFER, sphere.vbo);
-            glDrawElements(GL_TRIANGLES, sphere.numIndices, sphere.elementType, 0);
-            FBO::use_defualt();
-            glViewport(0,0,glContext.Width(), glContext.Height());
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//            shadow_map.configure();
+//            glUniformMatrix4fv(shadow_map.model_loc, 1, GL_FALSE, &sphere.transformMatrix.values[0]);
+//            glBindVertexArray(sphere.vao);
+//            glBindBuffer(GL_ARRAY_BUFFER, sphere.vbo);
+//            glDrawElements(GL_TRIANGLES, sphere.numIndices, sphere.elementType, 0);
+//            FBO::use_defualt();
+//            glViewport(0,0,glContext.Width(), glContext.Height());
+//            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
+        shadow_map.render_debug_quad();
+
+
 
         //udate skybox
         {
@@ -320,7 +328,7 @@ void *activityLoop(void *params_) {
             glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invokation)",
                               cameraMs, cameraMs / cameraInvocations);
 
-           skybox.Draw();
+           //skybox.Draw();
         }
 
         //backCamera.Draw();
@@ -391,7 +399,8 @@ void *activityLoop(void *params_) {
             //float r = .5f*(FastSin(mirrorTheta)+1.f);
             float r = .5f;
 
-            //sphere.Draw(r);
+//            sphere.Draw(r);
+//            plane.Draw(r);
         }
 
         Vec3<float> coordinates = backCamera.GetTransform().position;

@@ -77,6 +77,7 @@ namespace util {
             free(buf);
             glDeleteShader(shader);
             shader = 0;
+            exit(0);
         }
 
         return shader;
@@ -89,14 +90,16 @@ namespace util {
         if (!LoadTextFileFromAssetManager(vertex_shader_file_name, asset_manager,
                                           &vertexShaderContent)) {
             Log("Failed to load file: %s\n", vertex_shader_file_name);
-            return 0;
+//            return 0;
+            exit(0);
         }
 
         std::string fragmentShaderContent;
         if (!LoadTextFileFromAssetManager(fragment_shader_file_name, asset_manager,
                                           &fragmentShaderContent)) {
             Log("Failed to load file: %s\n", fragment_shader_file_name);
-            return 0;
+//            return 0;
+            exit(0);
         }
 
         // Prepend any #define values specified during this run.
