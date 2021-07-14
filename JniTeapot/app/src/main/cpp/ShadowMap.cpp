@@ -19,17 +19,24 @@ void ShadowMap::init_gl(AAssetManager* asset_manager) {
         glBindTexture(GL_TEXTURE_2D, shadow_depth);
         shadow_depth_fbo.create();
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LESS);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
         shadow_depth_fbo.use();
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_depth, 0);
         GLuint buffs = GL_NONE;
         glDrawBuffers(1, &buffs);
         glReadBuffer(GL_NONE);
         FBO::use_defualt();
-        light_space = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 1000.0f) * glm::lookAt(glm::vec3(-2.0f, 4, -2), glm::vec3(0,0,0), glm::vec3(0, 1, 0));
+        float aspect_ratio = SHADOW_WIDTH / SHADOW_HEIGHT;
+        glm::mat4 light_view = glm::lookAt(glm::vec3(1.0f, 3.0f, 2.0f), glm::vec3(0,0,0), glm::vec3(0, 1, 0));
+        glm::mat4 light_proj = glm::ortho(-1.f, 1.f, -1.f, 1.f, 1.0f, 7.5f);
+//        glm::mat4 light_proj = glm::ortho(-2.f*aspect_ratio, 2.f*aspect_ratio, -2.f, 2.f, 1.f, 3.f);
+        light_space = light_proj * light_view;
         GlAssertNoError("Error configuring in ShadowMap::init_gl");
     }
 
@@ -57,19 +64,21 @@ void ShadowMap::init_gl(AAssetManager* asset_manager) {
 }
 
 void ShadowMap::configure() {
+    glEnable(GL_DEPTH_TEST);
+    glUseProgram(shadow_program);
+    glUniformMatrix4fv(light_space_loc, 1, GL_FALSE, glm::value_ptr(light_space));
+
     glViewport(0,0,SHADOW_WIDTH, SHADOW_HEIGHT);
     shadow_depth_fbo.use();
     glClear(GL_DEPTH_BUFFER_BIT);
-    glUseProgram(shadow_program);
-    glUniformMatrix4fv(light_space_loc, 1, GL_FALSE, glm::value_ptr(light_space));
     GlAssertNoError("Error in ShadowMap::configure");
 }
 
 void ShadowMap::render_debug_quad() {
     glUseProgram(debug_program);
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, shadow_depth);
-    glUniform1i(glGetUniformLocation(debug_program, "shadow_map"), 0);
+    glUniform1i(glGetUniformLocation(debug_program, "shadow_map"), 1);
 
     glBindVertexArray(quadVAO);
     glBindBuffer(GL_ARRAY_BUFFER, quadVBO);

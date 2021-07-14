@@ -26,6 +26,7 @@
 #include <android/native_window_jni.h>
 #include "FBO.h"
 #include "ShadowMap.h"
+#include <gtc/matrix_transform.hpp>
 
 #define JFunc(jClass, jMethod) JNIEXPORT JNICALL Java_com_eecs487_jniteapot_##jClass##_ ##jMethod
 
@@ -224,24 +225,29 @@ void *activityLoop(void *params_) {
                             .generateMipmaps = true, //Note: used for object roughness parameter
                     });
 
-//    GlObject sphere("meshes/cow.obj",
-//                    &backCamera,
-//                    &skybox,
-//                    GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.03f, .03f, .03f))
-//                    );
-
-    GlObject sphere("meshes/sphere.obj",
+    GlObject sphere("meshes/cow.obj",
                     &backCamera,
                     &skybox,
-                    GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
-            //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
-    );
+                    GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.05f, .05f, .05f))
+                    );
+
+//    GlObject sphere("meshes/sphere.obj",
+//                    &backCamera,
+//                    &skybox,
+//                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
+//    );
 
     GlObject plane("meshes/plane.obj",
                     &backCamera,
                     &skybox,
-                    GlTransform(Vec3(0.f, -1.f, -.5f), Vec3(1.f, 1.f, 1.f))
+                    GlTransform(Vec3(1.f, -1.0f, -1.0f), Vec3(.1f, .1f, .1f))
     );
+
+//    GlObject plane("meshes/plane.obj",
+//                   &backCamera,
+//                   &skybox,
+//                   GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f))
+//    );
 
 //    BackgroundRenderer background_renderer;
 //    GLuint depth_tex = 0;
@@ -268,6 +274,14 @@ void *activityLoop(void *params_) {
 
     Timer fpsTimer(true), physicsTimer(true);
 
+    glm::mat4 sphere_transform(1);
+    glm::mat4 plane_transform(1);
+    plane_transform = glm::scale(plane_transform, glm::vec3(0.7,0.7,0.7));
+    plane_transform = glm::translate(plane_transform, glm::vec3(0.0,-0.5,0.0));
+    sphere_transform = glm::scale(sphere_transform, glm::vec3(0.1,0.1,0.1));
+
+    GLuint object_shader = util::CreateProgram("shaders/object.vert", "shaders/object.frag", FileManager::assetManager);
+
     for (Timer loopTimer(true);; loopTimer.SleepLapMs(kTargetMsFrameTime)) {
 
         float secElapsed = physicsTimer.LapSec();
@@ -281,39 +295,26 @@ void *activityLoop(void *params_) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // first render depth of scene to shadow map
-        {
-//            shadow_map.configure();
-//            glUniformMatrix4fv(shadow_map.model_loc, 1, GL_FALSE, &sphere.transformMatrix.values[0]);
-//            glBindVertexArray(sphere.vao);
-//            glBindBuffer(GL_ARRAY_BUFFER, sphere.vbo);
-//            glDrawElements(GL_TRIANGLES, sphere.numIndices, sphere.elementType, 0);
-//            FBO::use_defualt();
-//            glViewport(0,0,glContext.Width(), glContext.Height());
-//            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        }
-        shadow_map.render_debug_quad();
-
-
 
         //udate skybox
         {
 
             //rotate camera
             if (false) {
-                GlTransform transform = backCamera.GetTransform();
-
-                static float totalTime = 0.f;
-                totalTime += secElapsed;
-                float theta = ToRadians(10.f) * totalTime;
-                while (theta >= 2. * Pi()) theta -= 2. * Pi();
-
-                transform.position = Vec3(FastCos(theta), 0.f, FastSin(theta)) * .3f;
-
-                Quaternion<float> rotation = Quaternion<float>::LookAt(transform.position,
-                                                                       sphere.GetTransform().position);
-                transform.SetRotation(rotation);
-
-                backCamera.SetTransform(transform);
+//                GlTransform transform = backCamera.GetTransform();
+//
+//                static float totalTime = 0.f;
+//                totalTime += secElapsed;
+//                float theta = ToRadians(10.f) * totalTime;
+//                while (theta >= 2. * Pi()) theta -= 2. * Pi();
+//
+//                transform.position = Vec3(FastCos(theta), 0.f, FastSin(theta)) * .3f;
+//
+//                Quaternion<float> rotation = Quaternion<float>::LookAt(transform.position,
+//                                                                       sphere.GetTransform().position);
+//                transform.SetRotation(rotation);
+//
+//                backCamera.SetTransform(transform);
             }
 
 
@@ -328,7 +329,7 @@ void *activityLoop(void *params_) {
             glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invokation)",
                               cameraMs, cameraMs / cameraInvocations);
 
-           //skybox.Draw();
+           skybox.Draw();
         }
 
         //backCamera.Draw();
@@ -388,6 +389,16 @@ void *activityLoop(void *params_) {
             plane_list = nullptr;
         }
 
+        {
+            shadow_map.configure();
+            glUniformMatrix4fv(shadow_map.model_loc, 1, GL_FALSE, glm::value_ptr(sphere_transform));
+            sphere.Draw();
+            glUniformMatrix4fv(shadow_map.model_loc, 1, GL_FALSE, glm::value_ptr(plane_transform));
+            plane.Draw();
+            FBO::use_defualt();
+            glViewport(0,0,glContext.Width(), glContext.Height());
+        }
+//        shadow_map.render_debug_quad();
         //Update sphere
         {
             //GlTransform transform = sphere.GetTransform();
@@ -400,7 +411,25 @@ void *activityLoop(void *params_) {
             float r = .5f;
 
 //            sphere.Draw(r);
-//            plane.Draw(r);
+
+            glUseProgram(object_shader);
+            glUniform3fv(glGetUniformLocation(object_shader, "lightDir"), 1, glm::value_ptr(glm::vec3(1, 3, 2)));
+            glUniformMatrix4fv(glGetUniformLocation(object_shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection_matrix));
+            glUniformMatrix4fv(glGetUniformLocation(object_shader, "view"), 1, GL_FALSE, glm::value_ptr(view_matrix));
+            glUniformMatrix4fv(glGetUniformLocation(object_shader, "lightSpace"), 1, GL_FALSE, glm::value_ptr(shadow_map.light_space));
+
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, shadow_map.shadow_depth);
+            glUniform1i(glGetUniformLocation(object_shader, "shadowMap"), 1);
+            glUniform1i(glGetUniformLocation(object_shader, "envMap"), GlObject::TextureUnits::TU_SKY_MAP);
+
+            glUniformMatrix4fv(glGetUniformLocation(object_shader, "model"), 1, GL_FALSE, glm::value_ptr(plane_transform));
+            glUniform4fv(glGetUniformLocation(object_shader, "color"), 1, glm::value_ptr(glm::vec4(0.5,0.5,0.5, 0.0)));
+            plane.Draw();
+
+            glUniformMatrix4fv(glGetUniformLocation(object_shader, "model"), 1, GL_FALSE, glm::value_ptr(sphere_transform));
+            glUniform4fv(glGetUniformLocation(object_shader, "color"), 1, glm::value_ptr(glm::vec4(1.0,0.8,0,1.0)));
+            sphere.Draw();
         }
 
         Vec3<float> coordinates = backCamera.GetTransform().position;

@@ -545,8 +545,21 @@ class GlObject : public GlRenderable {
 
             GlAssertNoError("Failed to Draw");
         }
-        
-        //TODO: create GENERIC!!! VBO
+
+    void Draw() {
+        glActiveTexture(GL_TEXTURE0+TU_SKY_MAP);
+        glBindSampler(TU_SKY_MAP, skybox->CubeMapSampler());
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->CubeMapTexture());
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+        glDrawElements(GL_TRIANGLES, numIndices, elementType, 0);
+
+        GlAssertNoError("Failed to Draw");
+    }
+
+    //TODO: create GENERIC!!! VBO
         //TODO: create VBI's
         //TODO: create FBO pipeline: vbo queue -> render with their included shaders & optional VBIs to backBuffer quad texture
         //      - VBOs render pipeline takes in a camera to render to!
