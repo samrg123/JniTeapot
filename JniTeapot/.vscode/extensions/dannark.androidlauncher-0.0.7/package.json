@@ -1,0 +1,84 @@
+{
+	"name": "AndroidLauncher",
+	"displayName": "Android Emulator Launcher",
+	"description": "Run Android emulator to test your apps from VSCode.",
+	"version": "0.0.7",
+	"author": {
+		"name": "Daniel Queiroz"
+	},
+	"publisher": "Dannark",
+	"icon": "images/logo_animated.gif",
+	"galleryBanner": {
+		"color": "#380e7f",
+		"theme": "dark"
+	},
+	"engines": {
+		"vscode": "^1.45.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"main": "./extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "AndroidLauncher.runandroid",
+				"title": "Run Android Emulator"
+			},
+			{
+				"command": "AndroidLauncher.createandroid",
+				"title": "Create Android Emulator"
+			},
+			{
+				"command": "AndroidLauncher.deleteandroid",
+				"title": "Delete An Android Emulator"
+			},
+			{
+				"command": "AndroidLauncher.focuswindows",
+				"title": "Enable Dedicated Android Emulator"
+			},
+			{
+				"command": "AndroidLauncher.stopfocuswindows",
+				"title": "Disable Dedicated Android Emulator"
+			}
+		]
+	},
+	"scripts": {
+		"lint": "eslint .",
+		"pretest": "npm run lint",
+		"test": "node ./test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.45.0",
+		"@types/glob": "^7.1.1",
+		"@types/mocha": "^7.0.2",
+		"@types/node": "^13.11.0",
+		"eslint": "^6.8.0",
+		"glob": "^7.1.6",
+		"mocha": "^7.1.2",
+		"typescript": "^3.8.3",
+		"vscode-test": "^1.3.0"
+	},
+	"dependencies": {
+		"node-window-manager": "^2.2.3"
+	},
+	"license": "SEE LICENSE IN LICENSE.txt",
+	"homepage": "https://github.com/Dannark/Android-Launcher-for-VSCode/blob/master/README.md",
+	"bugs": {
+		"url": "https://github.com/Dannark/Android-Launcher-for-VSCode/issues",
+		"email": "dqpontes@gmail.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Dannark/Android-Launcher-for-VSCode.git"
+	},
+	"__metadata": {
+		"id": "38ccf71c-5e8b-4788-b536-daf137d92c5a",
+		"publisherId": "3f8fcc95-bfc6-4c9b-bb56-4274bcfae620",
+		"publisherDisplayName": "Dannark",
+		"installedTimestamp": 1624758792827
+	}
+}
