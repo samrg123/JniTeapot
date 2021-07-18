@@ -1,6 +1,6 @@
 #pragma once
 
-template<typename T, auto n> constexpr auto ArrayCount(const T(&)[n]) { return n; }
+template<typename T, size_t n> constexpr size_t ArrayCount(const T(&)[n]) { return n; }
 
 template<typename T> constexpr void* ByteOffset(const void* ptr, const T& bytes) { return (char*)ptr + bytes; }
 template<typename T> constexpr void* NegByteOffset(const void* ptr, const T& negBytes) { return (char*)ptr - negBytes; }
