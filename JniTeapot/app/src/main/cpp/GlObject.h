@@ -244,7 +244,7 @@ class GlObject : public GlRenderable {
                 
                 Log("Normals not provided in obj file. Computing normals.");
                 
-                //create a tempory block of vectors filled with 0's to compute intermediate math on
+                //create a temporary block of vectors filled with 0's to compute intermediate math on
                 Memory::Region tmpRegion = Memory::temporaryArena.CreateRegion();
                 Vec3<float>* tmpNormals = (Vec3<float>*)Memory::temporaryArena.PushBytes(numVerts*sizeof(Vec3<float>), true);
                 

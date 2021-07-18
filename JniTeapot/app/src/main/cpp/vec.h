@@ -8,7 +8,7 @@ struct Vec {
 };
 
 //Note: not sure if we're going to want to store vectors in a simd/neon registers or something,
-//      so I left different dimensions vectors seperate
+//      so I left different dimensions vectors separate
 
 template <typename T, typename Base = Vec<2>>
 struct Vec2 : Base {
