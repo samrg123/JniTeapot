@@ -23,17 +23,17 @@ android {
             abiFilters 'x86' //only build for the emulator so build goes faster 
         }
 
-        ndkVersion "22.0.6917172"
+        ndkVersion "21.3.6528147"
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_TOOLCHAIN=clang",
                           "-DANDROID_STL=c++_static",
-//                          "-DCMAKE_BUILD_TYPE=Release"
+                        //   "-DCMAKE_BUILD_TYPE=Release"
                           "-DCMAKE_BUILD_TYPE=Debug",
-                        "-DARCORE_LIBPATH=${arcore_libpath}/jni",
-                        "-DARCORE_INCLUDE=${project.rootDir}/app/src/main/cpp/arcore${arcore_version}",
-                        "-DARCORE_HEADER=${project.rootDir}/app/src/main/cpp/arcore${arcore_version}/arcore_c_api.h",
-                        "-DGLM_INCLUDE=${project.rootDir}/app/src/main/cpp/glm"
+                          "-DARCORE_LIBPATH=${arcore_libpath}/jni",
+                          "-DARCORE_INCLUDE=${project.rootDir}/app/src/main/cpp/arcore${arcore_version}",
+                          "-DARCORE_HEADER=${project.rootDir}/app/src/main/cpp/arcore${arcore_version}/arcore_c_api.h",
+                          "-DGLM_INCLUDE=${project.rootDir}/app/src/main/cpp/glm"
             }
         }
 
