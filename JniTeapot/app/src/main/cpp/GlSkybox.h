@@ -206,17 +206,18 @@ class GlSkybox : public GlRenderable {
 
     public:
         struct SkyboxParams {
+            struct Cubemap {
+                const char  *posX,
+                            *negX,
+                            *posY,
+                            *negY,
+                            *posZ,
+                            *negZ;
+            };            
+            
             union {
-                struct {
-                    const char  *posX,
-                                *negX,
-                                *posY,
-                                *negY,
-                                *posZ,
-                                *negZ;
-                };
-                
-                const char* images[6];
+                Cubemap cubemap; 
+                const char* cubemapImages[6];
             };
             
             GlCamera* camera;
@@ -261,9 +262,9 @@ class GlSkybox : public GlRenderable {
             
             Memory::Region tmpRegion = Memory::temporaryArena.CreateRegion();
             
-            for(int i = 0; i < ArrayCount(params.images); ++i) {
+            for(int i = 0; i < ArrayCount(params.cubemapImages); ++i) {
                 
-                FileManager::AssetBuffer* pngBuffer = FileManager::OpenAsset(params.images[i], &Memory::temporaryArena);
+                FileManager::AssetBuffer* pngBuffer = FileManager::OpenAsset(params.cubemapImages[i], &Memory::temporaryArena);
                 
                 uchar* bitmap;
                 uint width, height;
@@ -273,20 +274,20 @@ class GlSkybox : public GlRenderable {
                 
                 RUNTIME_ASSERT(width == height,
                               "Cubemap width must equal height. { side: %d, assetPath: '%s', width: %u, height: %u }",
-                               i, params.images[i], width, height);
+                               i, params.cubemapImages[i], width, height);
                 
                 RUNTIME_ASSERT(width < maxCubeMapSize,
                                "Cubemap width is too large { maxCubeMapSize: %d, side: %d, assetPath: '%s', width: %u, height: %u }",
-                               maxCubeMapSize, i, params.images[i], width, height);
+                               maxCubeMapSize, i, params.cubemapImages[i], width, height);
 
                 RUNTIME_ASSERT(height < maxCubeMapSize,
                                "Cubemap height is too large { maxCubeMapSize: %d, side: %d, assetPath: '%s', width: %u, height: %u }",
-                               maxCubeMapSize, i, params.images[i], width, height);
+                               maxCubeMapSize, i, params.cubemapImages[i], width, height);
 
                 RUNTIME_ASSERT(i == 0 || textureSize == width,
                               "Cubmap must be cube complete (all textures in cubemap have same dimensions). Current image doesn't match textureSize: %d "
                               "{ side: %d, assetPath: '%s', width: %u, height: %u }",
-                              textureSize, i, params.images[i], width, height);
+                              textureSize, i, params.cubemapImages[i], width, height);
                 
                 textureSize = width;
                 
@@ -305,12 +306,12 @@ class GlSkybox : public GlRenderable {
                              bitmap);
                 
                 GlAssertNoError("Failed to set cubemap image { maxCubeMapSize: %d, side: %d, assetPath: '%s', width: %u, height: %u }",
-                                maxCubeMapSize, i, params.images[i], width, height);
+                                maxCubeMapSize, i, params.cubemapImages[i], width, height);
                 
                 free(bitmap);
                 Memory::temporaryArena.FreeBaseRegion(tmpRegion);
     
-                Log("Loaded cubemap { i: %d, size: %d, assetPath: %s }", i, textureSize, params.images[i]);
+                Log("Loaded cubemap { i: %d, size: %d, assetPath: %s }", i, textureSize, params.cubemapImages[i]);
             }
     
             UpdateMipMaps();

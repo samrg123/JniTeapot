@@ -5,8 +5,8 @@
 #include "macros.h"
 
 // Note: log.h may use Panic so we prototype it before we define it
-template<size_t n, const char(&kPanicFmt)[n], typename ...ArgsT> __declspec(noreturn)
-void Panic_(const ArgsT&... args);
+template<size_t n, const char(&kPanicFmt)[n], typename ...ArgsT>
+[[noreturn]] void Panic_(const ArgsT&... args);
 
 // Note: LOG_FMT_ expansion is defined and defined in log.h
 #define PANIC_FMT_(errorCallSiteFmt, errorMsgFmt) LOG_FMT_(errorCallSiteFmt, "\n\tPANIC CALLED! {\n\t\tMSG: " errorMsgFmt "\n\t}\n")
@@ -18,8 +18,8 @@ void Panic_(const ArgsT&... args);
 
 #include "log.h"
 
-template<size_t n, const char(&kPanicFmt)[n], typename ...ArgsT> __declspec(noreturn)
-void Panic_(const char* const kErrorFuncStr, const ArgsT&... args) {
+template<size_t n, const char(&kPanicFmt)[n], typename ...ArgsT>
+[[noreturn]] void Panic_(const char* const kErrorFuncStr, const ArgsT&... args) {
 
 	#if LOG_ENABLED
 		logger_.PushLogStr<n, kPanicFmt>(kErrorFuncStr, LogType(LOG_LEVEL_ERROR), args...);

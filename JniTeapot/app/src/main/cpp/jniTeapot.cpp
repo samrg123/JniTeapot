@@ -140,7 +140,7 @@ void* activityLoop(void* params_) {
 
     RenderThreadParams* params = (RenderThreadParams*) params_;
 
-    //Intialize EGL on current thread
+    //Initialize EGL on current thread
     glContext.Init(params->androidNativeWindow);
     
     // setup ARCore
@@ -178,28 +178,31 @@ void* activityLoop(void* params_) {
     const Vec3 omega = ToRadians(Vec3(0.f, 0.f, 0.f));
     const float mirrorOmega = ToRadians( 180.f / 10.f);
     
-    GlSkybox skybox({
+    GlSkybox skybox(GlSkybox::SkyboxParams {
 
-        //.posX = "textures/skymap/px.png",
-        //.negX = "textures/skymap/nx.png",
-        //.posY = "textures/skymap/py.png",
-        //.negY = "textures/skymap/ny.png",
-        //.posZ = "textures/skymap/pz.png",
-        //.negZ = "textures/skymap/nz.png",
-        
-        .posX = "textures/uvGrid.png",
-        .negX = "textures/uvGrid.png",
-        .posY = "textures/uvGrid.png",
-        .negY = "textures/uvGrid.png",
-        .posZ = "textures/uvGrid.png",
-        .negZ = "textures/uvGrid.png",
+        .cubemap = {
+
+            // .posX = "textures/skymap/px.png",
+            // .negX = "textures/skymap/nx.png",
+            // .posY = "textures/skymap/py.png",
+            // .negY = "textures/skymap/ny.png",
+            // .posZ = "textures/skymap/pz.png",
+            // .negZ = "textures/skymap/nz.png",
+
+            .posX = "textures/uvGrid.png",
+            .negX = "textures/uvGrid.png",
+            .posY = "textures/uvGrid.png",
+            .negY = "textures/uvGrid.png",
+            .posZ = "textures/uvGrid.png",
+            .negZ = "textures/uvGrid.png",
     
-        //.posX = "textures/debugTexture.png",
-        //.negX = "textures/debugTexture.png",
-        //.posY = "textures/debugTexture.png",
-        //.negY = "textures/debugTexture.png",
-        //.posZ = "textures/debugTexture.png",
-        //.negZ = "textures/debugTexture.png",
+            // .posX = "textures/debugTexture.png",
+            // .negX = "textures/debugTexture.png",
+            // .posY = "textures/debugTexture.png",
+            // .negY = "textures/debugTexture.png",
+            // .posZ = "textures/debugTexture.png",
+            // .negZ = "textures/debugTexture.png",
+        },
 
         .camera = &backCamera,
         .generateMipmaps = true, //Note: used for object roughness parameter
@@ -236,7 +239,7 @@ void* activityLoop(void* params_) {
         // TODO: POLL ANDROID MESSAGE LOOP
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
-        //udate skybox
+        //update skybox
         {
             
             //rotate camera
@@ -266,7 +269,7 @@ void* activityLoop(void* params_) {
             }
 
             float cameraMs = cameraTimer.ElapsedMs();
-            glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invokation)", cameraMs, cameraMs/cameraInvocations);
+            glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invocation)", cameraMs, cameraMs/cameraInvocations);
 
             //skybox.Draw();
         }
