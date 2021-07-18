@@ -63,12 +63,12 @@
 
 		public:
 
-			//TODO: introduce Log queue system and run logging on seperate thread - that way we won't introduce as much lag into sound system for example
+			//TODO: introduce Log queue system and run logging on separate thread - that way we won't introduce as much lag into sound system for example
 			template<size_t nFmt, const char (&kLogFmt)[nFmt], typename ...ArgsT>
 			void PushLogStr(const char* kFuncStr, uint32 type, const ArgsT&... args) {
 
 				if(type & kLogTypeEnableMask_) {
-					// TODO: enable lock when logger runs a seperate thread
+					// TODO: enable lock when logger runs a separate thread
 					// _logState.mtx.lock();
 
                     LogStr(type, kLogFmt, LOG_ARGS_(kFuncStr, LogLevelStr(type), args...));

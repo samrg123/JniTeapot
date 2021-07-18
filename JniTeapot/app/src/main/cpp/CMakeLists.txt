@@ -6,8 +6,19 @@ project(JniTeapot LANGUAGES C CXX)
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # set up common compile options
-set(CMAKE_VERBOSE_MAKEFILE on )
-set(CMAKE_CXX_FLAGS "-DARCORE_HEADER=\"\\\"${ARCORE_HEADER}\\\"\" -Wall -std=c++2a -fno-exceptions -fno-rtti -fdeclspec -fno-threadsafe-statics -ftemplate-depth=4096 -g -Od -DOPTIMIZED_BUILD=0")
+set(CMAKE_VERBOSE_MAKEFILE on)
+set(CMAKE_CXX_FLAGS 
+    "-DARCORE_HEADER=\"\\\"${ARCORE_HEADER}\\\"\" \
+    -Wall \
+    -std=c++2a \
+    -fno-exceptions \
+    -fno-rtti -fdeclspec \
+    -fno-threadsafe-statics \
+    -ftemplate-depth=4096 \
+    -g \
+    -Od \
+    -DOPTIMIZED_BUILD=0"
+)
 
 # build app
 set(SOURCES jniTeapot.cpp lodepng/lodepng.cpp)
