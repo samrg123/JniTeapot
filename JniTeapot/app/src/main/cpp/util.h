@@ -8,7 +8,7 @@
 #include "android/asset_manager.h"
 #include "GLES3/gl3.h"
 #include "arcore_c_api.h"
-#include "glm.hpp"
+#include "gtc/type_ptr.hpp"
 
 constexpr unsigned int RGBA(uint r, uint g, uint b, uint a = 255) {
     return (r << 24) | (g << 16) | (b << 8) | a;
@@ -103,4 +103,19 @@ namespace util {
                          const char *fragment_shader_file_name,
                          AAssetManager *asset_manager);
 
+    static void SetVec3(GLuint program, const char* uniform, glm::vec3 value) {
+        glUniform3fv(glGetUniformLocation(program, uniform), 1, glm::value_ptr(value));
+    }
+
+    static void SetMat4(GLuint program, const char* uniform, glm::mat4& value) {
+        glUniformMatrix4fv(glGetUniformLocation(program, uniform), 1, GL_FALSE, glm::value_ptr(value));
+    }
+
+    static void SetInt(GLuint program, const char* uniform, int value) {
+        glUniform1i(glGetUniformLocation(program, uniform), value);
+    }
+
+    static void SetVec4(GLuint program, const char* uniform, glm::vec4 value) {
+        glUniform4fv(glGetUniformLocation(program, uniform), 1, glm::value_ptr(value));
+    }
 }

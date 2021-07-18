@@ -26,7 +26,9 @@
 #include <android/native_window_jni.h>
 #include "FBO.h"
 #include "ShadowMap.h"
+#include "Texture.h"
 #include <gtc/matrix_transform.hpp>
+#include "Light.h"
 
 #define JFunc(jClass, jMethod) JNIEXPORT JNICALL Java_com_eecs487_jniteapot_##jClass##_ ##jMethod
 
@@ -159,7 +161,7 @@ void DrawStrings(GlText *glText, Vec3<float> coordinates,
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
-void *activityLoop(void *params_) {
+[[noreturn]] void *activityLoop(void *params_) {
 
     RenderThreadParams *params = (RenderThreadParams *) params_;
 
@@ -190,10 +192,6 @@ void *activityLoop(void *params_) {
     backCamera.SetTransform(ARWrapper::Instance()->UpdateFrame());
     backCamera.SetProjectionMatrix(ARWrapper::Instance()->ProjectionMatrix(.01f, 1000.f));
     glm::mat4 projection_matrix = ARWrapper::Instance()->ProjectionMatrix_glm(0.1f, 1000.f);
-
-    {
-        //Camera camera(Camera::FRONT_CAMERA);
-    }
 
     const Vec3 omega = ToRadians(Vec3(0.f, 0.f, 0.f));
     const float mirrorOmega = ToRadians(180.f / 10.f);
@@ -231,37 +229,12 @@ void *activityLoop(void *params_) {
                     GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.05f, .05f, .05f))
                     );
 
-//    GlObject sphere("meshes/sphere.obj",
-//                    &backCamera,
-//                    &skybox,
-//                    GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
-//    );
-
     GlObject plane("meshes/plane.obj",
                     &backCamera,
                     &skybox,
-                    GlTransform(Vec3(1.f, -1.0f, -1.0f), Vec3(.1f, .1f, .1f))
+                    GlTransform(Vec3(1.f, 0.0f, -1.0f), Vec3(.1f, .1f, .1f))
     );
 
-//    GlObject plane("meshes/plane.obj",
-//                   &backCamera,
-//                   &skybox,
-//                   GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f))
-//    );
-
-//    BackgroundRenderer background_renderer;
-//    GLuint depth_tex = 0;
-//    background_renderer.InitializeGlContent(FileManager::assetManager, depth_tex);
-
-    // TODO: Abstract out into separate class
-    {
-    }
-
-    //GlObject sphere("meshes/triangle.obj",
-    //                &backCamera,
-    //                &skybox,
-    //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.2f, .2f, .2f))
-    //               );
     PlaneRenderer plane_renderer;
     int32_t plane_count;
     plane_renderer.InitializeGlContent(FileManager::assetManager);
@@ -269,8 +242,20 @@ void *activityLoop(void *params_) {
     PointCloudRenderer point_cloud_renderer;
     point_cloud_renderer.InitializeGlContent(FileManager::assetManager);
 
-    ShadowMap shadow_map(1024, 1024);
-    shadow_map.init_gl(FileManager::assetManager);
+    std::vector<QuadLight> quad_lights;
+    quad_lights.emplace_back(glm::vec3(-0.25,0.0,-0.25), glm::vec3(0,0,0.5), glm::vec3(0.5,0,0), glm::vec3(1,1,1));
+//    quad_lights.emplace_back(glm::vec3(-0.7,0.0,-0.7), glm::vec3(0,0,1.4), glm::vec3(0,1.4,0), glm::vec3(1,0,0));
+//    quad_lights.emplace_back(glm::vec3(0.25,0,-0.25), glm::vec3(0,0,0.5), glm::vec3(0,0.5,0), glm::vec3(0,1,0));
+//    quad_lights.emplace_back(glm::vec3(-0.25,0.5,-0.25), glm::vec3(0,0,0.5), glm::vec3(0.5,0,0), glm::vec3(1,1,1));
+
+    LightRenderer light_renderer;
+    light_renderer.init_gl(FileManager::assetManager);
+    light_renderer.update_verts(quad_lights.data(), quad_lights.size());
+
+    ShadowMap::Init_Shaders(FileManager::assetManager);
+
+    ShadowMap shadow_map;
+    shadow_map.init_gl(1024, 1024);
 
     Timer fpsTimer(true), physicsTimer(true);
 
@@ -280,15 +265,22 @@ void *activityLoop(void *params_) {
     plane_transform = glm::translate(plane_transform, glm::vec3(0.0,-0.5,0.0));
     sphere_transform = glm::scale(sphere_transform, glm::vec3(0.1,0.1,0.1));
 
+    glm::mat4 lights_transform(1);
+    lights_transform = glm::translate(lights_transform, glm::vec3(0.0,0.0,0.0));
+
     GLuint object_shader = util::CreateProgram("shaders/object.vert", "shaders/object.frag", FileManager::assetManager);
 
-    for (Timer loopTimer(true);; loopTimer.SleepLapMs(kTargetMsFrameTime)) {
+    Texture brick_texture;
+    brick_texture.create();
+    brick_texture.load_image("textures/brick.png", true);
+    brick_texture.configure_params(true, false, true);
 
+    for (Timer loopTimer(true);; loopTimer.SleepLapMs(kTargetMsFrameTime)) {
         float secElapsed = physicsTimer.LapSec();
 
         backCamera.SetTransform(ARWrapper::Instance()->UpdateFrame());
-        ArSession* arSession = ARWrapper::Instance()->arSession;
-        ArFrame* arFrame = ARWrapper::Instance()->arFrame;
+//        ArSession* arSession = ARWrapper::Instance()->arSession;
+//        ArFrame* arFrame = ARWrapper::Instance()->arFrame;
         glm::mat4 view_matrix = ARWrapper::Instance()->ViewMatrix();
 
         // TODO: POLL ANDROID MESSAGE LOOP
@@ -298,26 +290,6 @@ void *activityLoop(void *params_) {
 
         //udate skybox
         {
-
-            //rotate camera
-            if (false) {
-//                GlTransform transform = backCamera.GetTransform();
-//
-//                static float totalTime = 0.f;
-//                totalTime += secElapsed;
-//                float theta = ToRadians(10.f) * totalTime;
-//                while (theta >= 2. * Pi()) theta -= 2. * Pi();
-//
-//                transform.position = Vec3(FastCos(theta), 0.f, FastSin(theta)) * .3f;
-//
-//                Quaternion<float> rotation = Quaternion<float>::LookAt(transform.position,
-//                                                                       sphere.GetTransform().position);
-//                transform.SetRotation(rotation);
-//
-//                backCamera.SetTransform(transform);
-            }
-
-
             Timer cameraTimer(true);
             int cameraInvocations = 1; // TODO: set to 100 for benchmarking
             for (int i = 0; i < cameraInvocations; ++i) {
@@ -332,109 +304,44 @@ void *activityLoop(void *params_) {
            skybox.Draw();
         }
 
-        //backCamera.Draw();
-        //background_renderer.Draw(arSession, arFrame, false, backCamera);
-
-        // Update and render point cloud.
-        ArPointCloud* ar_point_cloud = nullptr;
-        ArStatus point_cloud_status = ArFrame_acquirePointCloud(arSession, arFrame, &ar_point_cloud);
-        if (point_cloud_status == AR_SUCCESS) {
-            point_cloud_renderer.Draw(projection_matrix * view_matrix, arSession,
-                                       ar_point_cloud);
-            ArPointCloud_release(ar_point_cloud);
-        }
-
         {
-            ArTrackableList* plane_list = nullptr;
-            ArTrackableList_create(arSession, &plane_list);
-            assert(plane_list != nullptr);
-
-            ArTrackableType plane_tracked_type = AR_TRACKABLE_PLANE;
-            ArSession_getAllTrackables(arSession, plane_tracked_type, plane_list);
-
-            int32_t plane_list_size = 0;
-            ArTrackableList_getSize(arSession, plane_list, &plane_list_size);
-            plane_count = plane_list_size;
-
-            for (int i = 0; i < plane_list_size; ++i) {
-                ArTrackable* ar_trackable = nullptr;
-                ArTrackableList_acquireItem(arSession, plane_list, i, &ar_trackable);
-                ArPlane* ar_plane = ArAsPlane(ar_trackable);
-                ArTrackingState out_tracking_state;
-                ArTrackable_getTrackingState(arSession, ar_trackable,
-                                             &out_tracking_state);
-
-                //TODO: TURN THIS OPTIMIZATION BACK ON WHEN WE FIGURE OUT HOW To FIX THE BUG
-                // ArPlane* subsume_plane;
-                // ArPlane_acquireSubsumedBy(arSession, ar_plane, &subsume_plane);
-                // if (subsume_plane != nullptr) {
-                //     ArTrackable_release(ArAsTrackable(subsume_plane));
-                //     ArTrackable_release(ar_trackable);
-                //     continue;
-                // }
-
-                if (ArTrackingState::AR_TRACKING_STATE_TRACKING != out_tracking_state) {
-                    ArTrackable_release(ar_trackable);
-                    continue;
-                }
-
-                //plane_renderer.Draw(projection_matrix, view_matrix, *arSession, *ar_plane);
-                ArTrackable_release(ar_trackable);
-            }
-
-            //TODO: DEBUG CODE
-            //Log("%d", plane_list_size);
-
-            ArTrackableList_destroy(plane_list);
-            plane_list = nullptr;
-        }
-
-        {
+            // render scene to shadow map
             shadow_map.configure();
-            glUniformMatrix4fv(shadow_map.model_loc, 1, GL_FALSE, glm::value_ptr(sphere_transform));
+            ShadowMap::set_model(sphere_transform);
             sphere.Draw();
-            glUniformMatrix4fv(shadow_map.model_loc, 1, GL_FALSE, glm::value_ptr(plane_transform));
+            ShadowMap::set_model(plane_transform);
             plane.Draw();
             FBO::use_defualt();
             glViewport(0,0,glContext.Width(), glContext.Height());
         }
-//        shadow_map.render_debug_quad();
-        //Update sphere
+        // visualize shadow map
+//         shadow_map.render_debug_quad();
+
         {
-            //GlTransform transform = sphere.GetTransform();
-            //transform.Rotate(omega * secElapsed);
-            //sphere.SetTransform(transform);
-//            static float mirrorTheta = 0.f;
-//            mirrorTheta += mirrorOmega * secElapsed;
-
-            //float r = .5f*(FastSin(mirrorTheta)+1.f);
-            float r = .5f;
-
-//            sphere.Draw(r);
-
+            // render scene
             glUseProgram(object_shader);
-            glUniform3fv(glGetUniformLocation(object_shader, "lightDir"), 1, glm::value_ptr(glm::vec3(1, 3, 2)));
-            glUniformMatrix4fv(glGetUniformLocation(object_shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection_matrix));
-            glUniformMatrix4fv(glGetUniformLocation(object_shader, "view"), 1, GL_FALSE, glm::value_ptr(view_matrix));
-            glUniformMatrix4fv(glGetUniformLocation(object_shader, "lightSpace"), 1, GL_FALSE, glm::value_ptr(shadow_map.light_space));
+            util::SetVec3(object_shader, "uLightDir", glm::vec3(1, 3, 2));
+            util::SetMat4(object_shader, "projection", projection_matrix);
+            util::SetMat4(object_shader, "view", view_matrix);
+            util::SetMat4(object_shader, "lightSpace", shadow_map.light_space);
 
-            glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, shadow_map.shadow_depth);
-            glUniform1i(glGetUniformLocation(object_shader, "shadowMap"), 1);
-            glUniform1i(glGetUniformLocation(object_shader, "envMap"), GlObject::TextureUnits::TU_SKY_MAP);
+            util::SetInt(object_shader, "uEnvMap", GlObject::TextureUnits::TU_SKY_MAP);
+            shadow_map.depth_tex.bind(1, glGetUniformLocation(object_shader, "uShadowMap"));
 
-            glUniformMatrix4fv(glGetUniformLocation(object_shader, "model"), 1, GL_FALSE, glm::value_ptr(plane_transform));
-            glUniform4fv(glGetUniformLocation(object_shader, "color"), 1, glm::value_ptr(glm::vec4(0.5,0.5,0.5, 0.0)));
+            util::SetMat4(object_shader, "model", plane_transform);
+            util::SetVec4(object_shader, "uColor", glm::vec4(0,0,0,0));
+            brick_texture.bind(2, glGetUniformLocation(object_shader, "uAlbedo"));
             plane.Draw();
 
-            glUniformMatrix4fv(glGetUniformLocation(object_shader, "model"), 1, GL_FALSE, glm::value_ptr(sphere_transform));
-            glUniform4fv(glGetUniformLocation(object_shader, "color"), 1, glm::value_ptr(glm::vec4(1.0,0.8,0,1.0)));
+            util::SetMat4(object_shader, "model", sphere_transform);
+            util::SetVec4(object_shader, "uColor", glm::vec4(1,0.8,0,1));
             sphere.Draw();
         }
+//        light_renderer.render_lights(projection_matrix, view_matrix, lights_transform);
 
         Vec3<float> coordinates = backCamera.GetTransform().position;
-//        Log("Coordinates: (%7.3f, %7.3f, %7.3f)",
-//                    coordinates.x, coordinates.y, coordinates.z);
+        Log("Coordinates: (%7.3f, %7.3f, %7.3f)",
+                    coordinates.x, coordinates.y, coordinates.z);
 //        InitGlesState();
 //        DrawStrings(&glText,
 //                    backCamera.GetTransform().position,

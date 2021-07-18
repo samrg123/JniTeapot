@@ -421,7 +421,7 @@ class GlObject : public GlRenderable {
                     break;
                     
                     default: {
-                        Panic("Unknown object command: %d[%c]", c, c);
+//                        Panic("Unknown object command: %d[%c]", c, c);
                     }
                 }
 

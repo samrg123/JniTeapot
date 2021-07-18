@@ -5,36 +5,35 @@
 #pragma once
 
 #include "FBO.h"
+#include "Texture.h"
+
+#include <glm.hpp>
+#include <GLES3/gl3.h>
 
 #include "glUtil.h"
-#include <GLES3/gl3.h>
 #include "android/asset_manager.h"
-#include <glm.hpp>
 
 class ShadowMap {
 public:
+    glm::mat4 light_space;
     unsigned int SHADOW_WIDTH, SHADOW_HEIGHT;
     FBO shadow_depth_fbo;
-    GLuint shadow_depth;
-    GLuint shadow_program;
-    GLuint debug_program;
-    const char* kShadowVert = "shaders/simple_shadow.vert";
-    const char* kShadowFrag = "shaders/simple_shadow.frag";
-    const char* kDebugVert = "shaders/debug_texture.vert";
-    const char* kDebugFrag = "shaders/debug_texture.frag";
-    glm::mat4 light_space;
-    glm::mat4 model;
-    GLint light_space_loc;
-    GLint model_loc;
+    Texture depth_tex;
 
-    // debug quad
-    GLuint quadVBO;
-    GLuint quadVAO;
+    static GLuint shadow_program;
+    static GLuint debug_program;
+    static GLuint quadVBO;
+    static GLuint quadVAO;
+    static GLint light_space_loc;
+    static GLint model_loc;
 
-    ShadowMap(unsigned int width=1024, unsigned int height=1024) : SHADOW_WIDTH(width), SHADOW_HEIGHT(height) {}
+    ShadowMap() {}
     ~ShadowMap() {}
 
-    void init_gl(AAssetManager* asset_manager);
+    static void Init_Shaders(AAssetManager* asset_manager);
+    static void set_model(glm::mat4& model);
+
+    void init_gl(unsigned int width=1024, unsigned int height=1024);
     void configure();
     void render_debug_quad();
 };
