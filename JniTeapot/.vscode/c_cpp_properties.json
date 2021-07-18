@@ -3,18 +3,39 @@
         {
             "name": "Clang (Android)",
             "includePath": [
-                "${workspaceFolder}/**",
-                "${env:LOCALAPPDATA}/Android/Sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/**"
+                // "${workspaceFolder}/**"
             ],
             "defines": [
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE"
+                "DEBUG",
+                "ANDROID"
             ],
+
             "compilerPath": "${env:LOCALAPPDATA}/Android/Sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/windows-x86_64/bin/clang++.exe",
-            "cStandard": "c17",
+            "intelliSenseMode": "linux-clang-x86",
             "cppStandard": "c++20",
-            "intelliSenseMode": "clang-x86"
+
+            //Flags taken from build.ninja compile_commands.json / CmakeLists.txt
+            "compilerArgs": [
+
+                "--target=i686-none-linux-android29",
+                "--gcc-toolchain=${env:LOCALAPPDATA}/Android/Sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/windows-x86_64",
+
+                "--sysroot=${env:LOCALAPPDATA}/Android/Sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/windows-x86_64/sysroot",
+                "-isystem ${workspaceFolder}/app/src/main/cpp/arcore1.19.0",
+                "-I${workspaceFolder}/app/src/main/cpp/FreeType2.9/include",
+                "-I${workspaceFolder}/app/src/main/cpp/glm",
+
+                "-DOPTIMIZED_BUILD=0",
+                "-DARCORE_HEADER=\\\"${workspaceFolder}/app/src/main/cpp/arcore1.19.0/arcore_c_api.h\\\"",
+
+                "-Wall",
+                "-std=c++2a",
+                "-fno-exceptions",
+                "-fno-rtti",
+                "-fdeclspec",
+                "-fno-threadsafe-statics",
+                "-ftemplate-depth=4096"
+            ]
         }
     ],
     "version": 4
