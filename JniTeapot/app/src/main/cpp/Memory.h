@@ -1,7 +1,6 @@
 #pragma once
 
 #include <errno.h>
-#include <sys/mman.h>
 
 #include "types.h"
 #include "util.h"
@@ -85,15 +84,8 @@ class Memory {
 						        	this, blockBytes, sizeof(Block));
 			
 			        // Note: this memory is page aligned and zeroed
-			        Block* block = (Block*)mmap(nullptr,
-			                                    blockBytes,
-			                                    PROT_READ|PROT_WRITE,
-			                                    MAP_ANONYMOUS|MAP_PRIVATE,
-			                                    -1, // some linux variations require fd to be -1
-			                                    0   // offset must be 0 with MAP_ANONYMOUS
-			                                   );
-			
-			        if(block == MAP_FAILED) {
+			        Block* block = HeapAllocate(blockBytes);
+			        if(block == InvalidHeapPtr) {
 				        Panic("Failed to allocate memory block { arena: %p, bytes requested: %d, Linux errno: %d } ",
 				        	  this, blockBytes, errno);
 			        }
@@ -137,8 +129,7 @@ class Memory {
 				        memoryPadBytes-= block->padBytes;
 			        #endif
 			
-			        int error = munmap(block, block->bytes);
-			        RUNTIME_ASSERT(!error,
+			        RUNTIME_ASSERT(HeapFree(block, block->bytes),
 						        	"Failed to free Memory block { arena: %p, block: %p, bytes: %d, Linux errno: %d }",
 						        	this, block, block->bytes, errno);
 		        }
@@ -197,7 +188,7 @@ class Memory {
 		        
         	public:
 		
-				inline Arena(uint32 prealocatedBytes = 0): reservedBlock(nullptr) {
+				inline Arena(uint32 preallocatedBytes = 0): reservedBlock(nullptr) {
                     #if ENABLE_MEMORY_STATS
                         arenaBytes = 0;
                         arenaPadBytes = 0;
@@ -205,7 +196,7 @@ class Memory {
                         arenaBlockCount = 0;
                     #endif
 		            
-					currentBlock = prealocatedBytes ? CreateBlock(prealocatedBytes, &emptyBlock) : &emptyBlock;
+					currentBlock = preallocatedBytes ? CreateBlock(preallocatedBytes, &emptyBlock) : &emptyBlock;
 				}
 	    		
 				void* PushBytes(size_t bytes, bool zeroMemory = false, uint8 alignment = 1) {
