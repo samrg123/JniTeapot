@@ -10,9 +10,19 @@ public:
     glm::vec3 u;
     glm::vec3 v;
     glm::vec3 emission;
+    ShadowMap shadow_map;
 
     QuadLight(glm::vec3 _pos, glm::vec3 _u, glm::vec3 _v, glm::vec3 _emission) : pos(_pos), u(_u), v(_v), emission(_emission) {}
     ~QuadLight() {}
+
+    void init_shadow_map(unsigned int shadow_width=1024, unsigned int shadow_height=1024) {
+        shadow_map.init_gl(shadow_width, shadow_height);
+        shadow_map.update_light_space(pos, u, v);
+    }
+
+    void update_light_space() {
+        shadow_map.update_light_space(pos, u, v);
+    }
 };
 
 struct LightVert {
@@ -66,7 +76,6 @@ public:
             light_indices.emplace_back(index + 3);
             light_indices.emplace_back(index + 2);
         }
-        QuadLight& l = lights[0];
 
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);

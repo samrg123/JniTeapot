@@ -78,13 +78,13 @@ Vec2<float> DrawMemoryStats(GlText *glText, Vec2<float> textBaseline, Vec2<float
 }
 
 inline
-Vec2<float> DrawCoordinates(GlText* glText, Vec3<float> coordinates, Vec2<float> textBaseline, Vec2<float> lineAdvance) {
+Vec2<float> DrawCoordinates(GlText *glText, Vec3<float> coordinates, Vec2<float> textBaseline,
+                            Vec2<float> lineAdvance) {
     glText->PushString(textBaseline, "Coordinates: (%7.3f, %7.3f, %7.3f)",
                        coordinates.x, coordinates.y, coordinates.z);
     textBaseline += lineAdvance;
     return textBaseline;
 }
-
 
 
 Vec2<float> DrawFPS(GlText *glText, float renderTime, float frameTime,
@@ -223,16 +223,16 @@ void DrawStrings(GlText *glText, Vec3<float> coordinates,
                             .generateMipmaps = true, //Note: used for object roughness parameter
                     });
 
-    GlObject sphere("meshes/cow.obj",
+    GlObject sphere("meshes/sphere.obj",
                     &backCamera,
                     &skybox,
                     GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.05f, .05f, .05f))
-                    );
+    );
 
     GlObject plane("meshes/plane.obj",
-                    &backCamera,
-                    &skybox,
-                    GlTransform(Vec3(1.f, 0.0f, -1.0f), Vec3(.1f, .1f, .1f))
+                   &backCamera,
+                   &skybox,
+                   GlTransform(Vec3(1.f, 0.0f, -1.0f), Vec3(.1f, .1f, .1f))
     );
 
     PlaneRenderer plane_renderer;
@@ -242,33 +242,40 @@ void DrawStrings(GlText *glText, Vec3<float> coordinates,
     PointCloudRenderer point_cloud_renderer;
     point_cloud_renderer.InitializeGlContent(FileManager::assetManager);
 
+    ShadowMap::Init_Shaders(FileManager::assetManager);
+
     std::vector<QuadLight> quad_lights;
-    quad_lights.emplace_back(glm::vec3(-0.25,0.0,-0.25), glm::vec3(0,0,0.5), glm::vec3(0.5,0,0), glm::vec3(1,1,1));
+    quad_lights.emplace_back(glm::vec3(-0.25, 0.5, -0.25), glm::vec3(0, 0, 0.5),
+                             glm::vec3(0.5, 0, 0), glm::vec3(1,1, 1));
+//    quad_lights.emplace_back(glm::vec3(-0.125, 0.5, -0.125), glm::vec3(0, 0, 0.25),
+//                             glm::vec3(0.25, 0, 0), glm::vec3(1,1, 1));
+    // 17 14 12
 //    quad_lights.emplace_back(glm::vec3(-0.7,0.0,-0.7), glm::vec3(0,0,1.4), glm::vec3(0,1.4,0), glm::vec3(1,0,0));
 //    quad_lights.emplace_back(glm::vec3(0.25,0,-0.25), glm::vec3(0,0,0.5), glm::vec3(0,0.5,0), glm::vec3(0,1,0));
 //    quad_lights.emplace_back(glm::vec3(-0.25,0.5,-0.25), glm::vec3(0,0,0.5), glm::vec3(0.5,0,0), glm::vec3(1,1,1));
+    for (auto &light : quad_lights) {
+        light.init_shadow_map(1024, 1024);
+        light.update_light_space();
+    }
 
     LightRenderer light_renderer;
     light_renderer.init_gl(FileManager::assetManager);
     light_renderer.update_verts(quad_lights.data(), quad_lights.size());
 
-    ShadowMap::Init_Shaders(FileManager::assetManager);
-
-    ShadowMap shadow_map;
-    shadow_map.init_gl(1024, 1024);
-
     Timer fpsTimer(true), physicsTimer(true);
 
     glm::mat4 sphere_transform(1);
     glm::mat4 plane_transform(1);
-    plane_transform = glm::scale(plane_transform, glm::vec3(0.7,0.7,0.7));
-    plane_transform = glm::translate(plane_transform, glm::vec3(0.0,-0.5,0.0));
-    sphere_transform = glm::scale(sphere_transform, glm::vec3(0.1,0.1,0.1));
+    plane_transform = glm::scale(plane_transform, glm::vec3(0.7, 0.7, 0.7));
+    plane_transform = glm::translate(plane_transform, glm::vec3(0.0, -0.5, 0.0));
+    sphere_transform = glm::scale(sphere_transform, glm::vec3(0.1, 0.1, 0.1));
+    sphere_transform = glm::translate(sphere_transform, glm::vec3(0, -1, 0));
 
     glm::mat4 lights_transform(1);
-    lights_transform = glm::translate(lights_transform, glm::vec3(0.0,0.0,0.0));
+//    lights_transform = glm::translate(lights_transform, glm::vec3(0.0, 0.0, 0.0));
 
-    GLuint object_shader = util::CreateProgram("shaders/object.vert", "shaders/object.frag", FileManager::assetManager);
+    GLuint object_shader = util::CreateProgram("shaders/object.vert", "shaders/object.frag",
+                                               FileManager::assetManager);
 
     Texture brick_texture;
     brick_texture.create();
@@ -305,43 +312,49 @@ void DrawStrings(GlText *glText, Vec3<float> coordinates,
         }
 
         {
-            // render scene to shadow map
-            shadow_map.configure();
-            ShadowMap::set_model(sphere_transform);
-            sphere.Draw();
-            ShadowMap::set_model(plane_transform);
-            plane.Draw();
+            // render scene to shadow maps
+            for (auto &light : quad_lights) {
+                auto& map = light.shadow_map;
+                map.configure();
+                map.set_model(sphere_transform);
+                sphere.Draw();
+                map.set_model(plane_transform);
+                plane.Draw();
+            }
             FBO::use_defualt();
-            glViewport(0,0,glContext.Width(), glContext.Height());
+//            quad_lights[0].shadow_map.render_debug_quad();
+            glViewport(0, 0, glContext.Width(), glContext.Height());
         }
         // visualize shadow map
-//         shadow_map.render_debug_quad();
 
         {
             // render scene
+            auto& light = quad_lights[0];
+            auto& shadow_map = quad_lights[0].shadow_map;
             glUseProgram(object_shader);
-            util::SetVec3(object_shader, "uLightDir", glm::vec3(1, 3, 2));
+            util::SetVec3(object_shader, "uLightDir", glm::vec3(0, 1, 0));
             util::SetMat4(object_shader, "projection", projection_matrix);
             util::SetMat4(object_shader, "view", view_matrix);
             util::SetMat4(object_shader, "lightSpace", shadow_map.light_space);
+            util::SetMat4(object_shader, "uLightView", shadow_map.light_view);
 
             util::SetInt(object_shader, "uEnvMap", GlObject::TextureUnits::TU_SKY_MAP);
             shadow_map.depth_tex.bind(1, glGetUniformLocation(object_shader, "uShadowMap"));
 
             util::SetMat4(object_shader, "model", plane_transform);
-            util::SetVec4(object_shader, "uColor", glm::vec4(0,0,0,0));
+            util::SetVec4(object_shader, "uColor", glm::vec4(0, 0, 0, 0));
             brick_texture.bind(2, glGetUniformLocation(object_shader, "uAlbedo"));
             plane.Draw();
 
             util::SetMat4(object_shader, "model", sphere_transform);
-            util::SetVec4(object_shader, "uColor", glm::vec4(1,0.8,0,1));
+            util::SetVec4(object_shader, "uColor", glm::vec4(1, 0.8, 0, 0));
             sphere.Draw();
         }
-//        light_renderer.render_lights(projection_matrix, view_matrix, lights_transform);
+        light_renderer.render_lights(projection_matrix, view_matrix, lights_transform);
 
         Vec3<float> coordinates = backCamera.GetTransform().position;
         Log("Coordinates: (%7.3f, %7.3f, %7.3f)",
-                    coordinates.x, coordinates.y, coordinates.z);
+            coordinates.x, coordinates.y, coordinates.z);
 //        InitGlesState();
 //        DrawStrings(&glText,
 //                    backCamera.GetTransform().position,

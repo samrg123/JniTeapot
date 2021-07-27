@@ -10,17 +10,17 @@ uniform mat4 projection;
 uniform mat4 lightSpace;
 
 out VS_OUT {
-    vec3 FragPos;
-    vec3 Normal;
+    vec4 FragPos;
     vec4 FragPosLightSpace;
+    vec3 Normal;
     vec2 UV;
 } vs_out;
 
 void main() {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
 
-    vs_out.FragPos = vec3(model * vec4(aPos, 1.0));
+    vs_out.FragPos = model * vec4(aPos, 1.0);
+    vs_out.FragPosLightSpace = lightSpace * vec4(vs_out.FragPos.xyz, 1.0);
     vs_out.Normal = transpose(inverse(mat3(model))) * aNormal;
-    vs_out.FragPosLightSpace = lightSpace * vec4(vs_out.FragPos, 1.0);
     vs_out.UV = aUV;
 }

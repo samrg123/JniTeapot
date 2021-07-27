@@ -1,7 +1,3 @@
-//
-// Created by varun on 6/23/2021.
-//
-
 #pragma once
 
 #include "FBO.h"
@@ -16,6 +12,7 @@
 class ShadowMap {
 public:
     glm::mat4 light_space;
+    glm::mat4 light_view;
     unsigned int SHADOW_WIDTH, SHADOW_HEIGHT;
     FBO shadow_depth_fbo;
     Texture depth_tex;
@@ -34,6 +31,7 @@ public:
     static void set_model(glm::mat4& model);
 
     void init_gl(unsigned int width=1024, unsigned int height=1024);
+    void update_light_space(glm::vec3& pos, glm::vec3& u, glm::vec3& v);
     void configure();
     void render_debug_quad();
 };
