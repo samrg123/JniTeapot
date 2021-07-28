@@ -63,8 +63,6 @@ void ShadowMap::init_gl(unsigned int width, unsigned int height) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, SHADOW_WIDTH, SHADOW_HEIGHT, 0,
                  GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     depth_tex.configure_params(false, true, false);
-//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LESS);
-//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 
     shadow_depth_fbo.use();
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_tex.id, 0);
@@ -72,14 +70,6 @@ void ShadowMap::init_gl(unsigned int width, unsigned int height) {
     glDrawBuffers(1, &buffs);
     glReadBuffer(GL_NONE);
     FBO::use_defualt();
-    float aspect_ratio = SHADOW_WIDTH / SHADOW_HEIGHT;
-//    glm::mat4 light_view = glm::lookAt(glm::vec3(1.0f, 3.0f, 2.0f), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-//    glm::mat4 _light_view = glm::lookAt(glm::vec3(0.01f, 3.0f, 0.0f), glm::vec3(0, 0, 0),glm::vec3(0, 1, 0));
-    glm::mat4 _light_view = glm::lookAt(glm::vec3(0.01f, 1.1f, 0.0f), glm::vec3(0, 0, 0),glm::vec3(0, 1, 0));
-    glm::mat4 _light_proj = glm::perspectiveRH(glm::radians(30.0f), aspect_ratio, 1.0f, 7.5f);
-//    glm::mat4 _light_proj = glm::ortho(-1.f, 1.f, -1.f, 1.f, 0.1f, 7.5f);
-//    light_space = _light_proj * _light_view;
-//    light_view = _light_view;
     GlAssertNoError("Error configuring in ShadowMap::init_gl");
 }
 
@@ -87,19 +77,10 @@ void ShadowMap::update_light_space(glm::vec3 &pos, glm::vec3 &u, glm::vec3 &v) {
     glm::vec3 center = pos + u / 2.f + v / 2.f;
     glm::vec3 un = glm::normalize(u), vn = glm::normalize(v);
     glm::vec3 normal = glm::normalize(glm::cross(u, v));
-    float aspect = glm::length(u) / glm::length(v);
-    float fovy = glm::atan(glm::length(v / 2.f));
-    Log("%s", glm::to_string(center).c_str());
-   Log("%f", fovy);
-    glm::mat4 _light_view = glm::lookAt(center + glm::vec3(0.001f), glm::vec3(0), vn);
-//    glm::mat4 light_proj = glm::perspectiveFovRH(fovy, glm::length(u), glm::length(v), 1.0f, 7.5f);
-//    glm::mat4 _light_proj = glm::perspectiveRH(glm::radians(60.0f), aspect, 1.0f, 7.5f);
     const float frustum_radius = 0.5f;
+    glm::mat4 _light_view = glm::lookAt(center + glm::vec3(0.001f), glm::vec3(0), vn);
     glm::mat4 _light_proj = glm::frustumRH(-frustum_radius, frustum_radius, -frustum_radius, frustum_radius, 0.5f, 5.0f);
-//    glm::mat4 _light_view = glm::lookAt(glm::vec3(1.0f, 3.0f, 2.0f), glm::vec3(0, 0, 0),glm::vec3(0, 1, 0));
-//    glm::mat4 _light_proj = glm::ortho(-1.f, 1.f, -1.f, 1.f, 1.0f, 7.5f);
-    light_space = _light_proj * light_view;
-    light_view = _light_view;
+    light_space = _light_proj * _light_view;
 }
 
 void ShadowMap::configure() {

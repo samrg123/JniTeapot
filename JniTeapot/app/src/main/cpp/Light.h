@@ -6,11 +6,11 @@
 
 class QuadLight {
 public:
+    ShadowMap shadow_map;
     glm::vec3 pos;
     glm::vec3 u;
     glm::vec3 v;
     glm::vec3 emission;
-    ShadowMap shadow_map;
 
     QuadLight(glm::vec3 _pos, glm::vec3 _u, glm::vec3 _v, glm::vec3 _emission) : pos(_pos), u(_u), v(_v), emission(_emission) {}
     ~QuadLight() {}

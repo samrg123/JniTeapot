@@ -10,7 +10,7 @@ uniform vec3 uLightDir;
 uniform sampler2D uShadowMap;
 uniform samplerCube uEnvMap;
 uniform sampler2D uAlbedo;
-uniform mat4 uLightView;
+uniform sampler2D uShadowMaps;
 
 in VS_OUT {
     vec4 FragPos;
@@ -45,15 +45,8 @@ uint init_random_seed(uint val0, uint val1){
 
     return v0;
 }
-
-uint random_int(inout uint seed){
-    // LCG values from Numerical Recipes
-    return (seed = 1664525u * seed + 1013904223u);
-}
-
-float rand(inout uint seed){
-    return (float(random_int(seed) & 0x00FFFFFFu) / float(0x01000000u));
-}
+uint random_int(inout uint seed){ return (seed = 1664525u * seed + 1013904223u); }
+float rand(inout uint seed){ return (float(random_int(seed) & 0x00FFFFFFu) / float(0x01000000u)); }
 
 vec2 sample_disk(inout uint seed) {
     float r0 = rand(seed);
@@ -63,27 +56,16 @@ vec2 sample_disk(inout uint seed) {
     return vec2(r * cos(theta), r * sin(theta));
 }
 
-bool in_frustum(vec4 clip) {
-    return abs(clip.x) < clip.w && abs(clip.y) < clip.w && abs(clip.z) < clip.w;
-}
-float NEAR = 0.5;
-float FAR = 7.5;
-float FRUSTUMW = 1.0;
-float calc_search_radius(float l_radius, float zreciever) {
-    return l_radius * (zreciever - NEAR) / zreciever;
-}
+bool in_frustum(vec4 clip) { return abs(clip.x) < clip.w && abs(clip.y) < clip.w && abs(clip.z) < clip.w; }
 
-float calc_penumbra_radius(float l_radius, float zreciever, float zavg) {
-    return (zreciever - zavg) / zavg * l_radius;
-}
+const float NEAR = 0.5;
+const float FAR = 7.5;
+const float FRUSTUMW = 2. * 0.5; // 2 * r
 
-float project_light_uv(float size_uv, float zworld) {
-    return size_uv * NEAR / zworld;
-}
-
-float zclip_to_eye(float z) {
-    return FAR * NEAR / (FAR - z * (FAR - NEAR));
-}
+float calc_search_radius(float l_radius, float zreciever) { return l_radius * (zreciever - NEAR) / zreciever; }
+float calc_penumbra_radius(float l_radius, float zreciever, float zavg) { return (zreciever - zavg) / zavg * l_radius; }
+float project_light_uv(float size_uv, float zworld) { return size_uv * NEAR / zworld; }
+float zclip_to_eye(float z) { return FAR * NEAR / (FAR - z * (FAR - NEAR)); }
 
 float pcf(in sampler2D shadow_map, in vec2 filter_radius, in vec2 uv, float current_depth, int num_samples, inout uint rng_state) {
     float accum = 0.;
@@ -112,11 +94,11 @@ float calc_blocker_dist(in sampler2D shadow_map, in vec2 search_radius, in vec2 
     else return dist / float(num_blockers);
 }
 
+const int blocker_search_samples = 32;
+const int filter_samples = 256;
 // returns floating point number between 0.0 and 1.0, with 0.0 completely in shadow and 1.0 completely in light
-float calc_visibility(in QuadLight l, in vec4 frag_pos, float cosine, float z_light, inout uint rng_state) {
-    //    if(!in_frustum(frag_pos)) return 0.0;
-    //    return 1.0;
-    float world_light_radius = length(l.u) * 1.4 / 2.; // half of diagonal
+float calc_visibility(in QuadLight l, in vec4 frag_pos, float cosine, inout uint rng_state) {
+    float world_light_radius = length(l.u) * 1.4 / 2.;// half of diagonal
 
     vec3 proj_coords = frag_pos.xyz / frag_pos.w;
     proj_coords = proj_coords * 0.5 + 0.5;
@@ -124,25 +106,21 @@ float calc_visibility(in QuadLight l, in vec4 frag_pos, float cosine, float z_li
 
     float bias = max(0.005 * (1.0 - cosine), 0.005);
     float zreciever = proj_coords.z - bias;// in light clip space between [0,1]
-    float light_zreciever = z_light;// in light view spcae between [0, INF]
-
-    float closest_depth = texture(uShadowMap, uv).r;
-    //    return pcf(uShadowMap, 5. / vec2(textureSize(uShadowMap, 0)), uv, zreciever, 32, rng_state);
+    float light_zreciever = zclip_to_eye(proj_coords.z);// in light view spcae between [0, INF]
 
     // STEP 1: blocker search
     vec2 search_radius = vec2(calc_search_radius(world_light_radius, light_zreciever) / FRUSTUMW);
-    float zavg = calc_blocker_dist(uShadowMap, search_radius, uv, zreciever, 16, rng_state);
-    // STEP 2: estimate penumbra
+    float zavg = calc_blocker_dist(uShadowMap, search_radius, uv, zreciever, blocker_search_samples, rng_state);
+
+    // STEP 2: penumbra estimation
     if (zavg <= 0.) return abs(zavg);
     zavg = zclip_to_eye(zavg);
     float penumbra_radius = calc_penumbra_radius(world_light_radius, light_zreciever, zavg);
-//        penumbra_radius *= 1. / FRUSTUMW;
 
     // STEP 3: do filtering
     vec2 filter_radius = vec2(project_light_uv(penumbra_radius, light_zreciever) / FRUSTUMW);
-    //    vec2 filter_radius = 3. / vec2(textureSize(uShadowMap, 0));
 
-    return pcf(uShadowMap, filter_radius, uv, zreciever, 16, rng_state);
+    return pcf(uShadowMap, filter_radius, uv, zreciever, filter_samples, rng_state);
 }
 
 vec3 analytic_direct(in vec3 r, in vec3 normal, in vec3 albedo) {
@@ -159,8 +137,7 @@ vec3 analytic_direct(in vec3 r, in vec3 normal, in vec3 albedo) {
         + acos(dot(normalize(v2 - r), normalize(v3 - r))) * normalize(cross(v2 - r, v3 - r))
         + acos(dot(normalize(v3 - r), normalize(v4 - r))) * normalize(cross(v3 - r, v4 - r))
         + acos(dot(normalize(v4 - r), normalize(v1 - r))) * normalize(cross(v4 - r, v1 - r)));
-        //        L += (albedo / PI) * light.emission * dot(irradiance, normal);
-        L += (vec3(1) / PI) * light.emission * dot(irradiance, normal);
+        L += (albedo / PI) * light.emission * dot(irradiance, normal);
     }
     return L;
 }
@@ -172,39 +149,28 @@ void main() {
         quad_lights[0].pos = vec3(-0.25, 0.5, -0.25);
         quad_lights[0].u = vec3(0.0, 0.0, 0.5);
         quad_lights[0].v = vec3(0.5, 0.0, 0.0);
-        //        quad_lights[0].emission = vec3(17., 12., 4.);
-        quad_lights[0].emission = vec3(1., 1., 1.)*5.;
-        //
-        //        quad_lights[0].pos = vec3(-0.7, 0.0, -0.7);
-        //        quad_lights[0].u = vec3(0.0, 0.0, 1.4);
-        //        quad_lights[0].v = vec3(0.0, 1.4, 0.0);
-        //        quad_lights[0].emission = vec3(1., 0., 0.);
-        //
-        //        quad_lights[1].pos = vec3(0.25, 0.0, -0.25);
-        //        quad_lights[1].v = vec3(0.0, 0.0, 0.5);
-        //        quad_lights[1].u = vec3(0.0, 0.5, 0.0);
-        //        quad_lights[1].emission = vec3(0., 1., 0.);
-        //
-        //        quad_lights[2].pos = vec3(-0.25, 0.5, -0.25);
-        //        quad_lights[2].u = vec3(0.0, 0.0, 0.5);
-        //        quad_lights[2].v = vec3(0.5, 0.0, 0.0);
-        //        quad_lights[2].emission = vec3(1., 1., 1.);
+        quad_lights[0].emission = vec3(17., 12., 4.);
+
+//        quad_lights[0].pos = vec3(-0.7, 0, -0.7);
+//        quad_lights[0].u = vec3(0.0, 0.0, 1.4);
+//        quad_lights[0].v = vec3(0.0, 0.0, 1.4);
+//        quad_lights[0].emission = vec3(1., 1., 1.)*5.;
     }
 
     vec3 normal = normalize(fs_in.Normal);
-    vec3 light_dir = normalize(uLightDir);
+
+    QuadLight l = quad_lights[0];
+    vec3 l_center = l.pos + l.u / 2. + l.v / 2.;
+    vec3 frag_pos = fs_in.FragPos.xyz;
+
+    vec3 to_light = normalize(l_center - frag_pos);
+
     vec3 albedo = uColor == vec4(0.) ? texture(uAlbedo, fs_in.UV).xyz : uColor.xyz;
 
-    // phong
+    float cosine = max(dot(normal, to_light), 0.);
+    float vis = calc_visibility(quad_lights[0], fs_in.FragPosLightSpace, cosine, rng_state);
 
-    float z_eye = -(uLightView * fs_in.FragPos).z;
-    float cosine = max(dot(normal, light_dir), 0.);
-    float vis = calc_visibility(quad_lights[0], fs_in.FragPosLightSpace, cosine, z_eye, rng_state);
-    //    vec3 frag_color = cosine * albedo * vis;
-    //    frag_color *= uColor.w == 0. ? vec3(1.) : texture(uEnvMap, normal).xyz * uColor.w;
-    //    frag_color = vis * vec3(1,0,0);
-
-//    vec3 frag_color = analytic_direct(fs_in.FragPos.xyz, normal, albedo) * vis;
+    //    vec3 frag_color = analytic_direct(frag_pos, normal, albedo) * vis;
     vec3 frag_color = vec3(1) * vis;
 
     FragColor = vec4(frag_color, 1.);

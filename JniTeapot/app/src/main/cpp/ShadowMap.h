@@ -12,7 +12,6 @@
 class ShadowMap {
 public:
     glm::mat4 light_space;
-    glm::mat4 light_view;
     unsigned int SHADOW_WIDTH, SHADOW_HEIGHT;
     FBO shadow_depth_fbo;
     Texture depth_tex;

@@ -246,13 +246,9 @@ void DrawStrings(GlText *glText, Vec3<float> coordinates,
 
     std::vector<QuadLight> quad_lights;
     quad_lights.emplace_back(glm::vec3(-0.25, 0.5, -0.25), glm::vec3(0, 0, 0.5),
-                             glm::vec3(0.5, 0, 0), glm::vec3(1,1, 1));
-//    quad_lights.emplace_back(glm::vec3(-0.125, 0.5, -0.125), glm::vec3(0, 0, 0.25),
-//                             glm::vec3(0.25, 0, 0), glm::vec3(1,1, 1));
-    // 17 14 12
-//    quad_lights.emplace_back(glm::vec3(-0.7,0.0,-0.7), glm::vec3(0,0,1.4), glm::vec3(0,1.4,0), glm::vec3(1,0,0));
-//    quad_lights.emplace_back(glm::vec3(0.25,0,-0.25), glm::vec3(0,0,0.5), glm::vec3(0,0.5,0), glm::vec3(0,1,0));
-//    quad_lights.emplace_back(glm::vec3(-0.25,0.5,-0.25), glm::vec3(0,0,0.5), glm::vec3(0.5,0,0), glm::vec3(1,1,1));
+                             glm::vec3(0.5, 0, 0), glm::vec3(1, 1, 1));
+//    quad_lights.emplace_back(glm::vec3(-0.7, 0, -0.7), glm::vec3(0, 0, 1.4),
+//                             glm::vec3(0, 1.4, 0), glm::vec3(1, 1, 1));
     for (auto &light : quad_lights) {
         light.init_shadow_map(1024, 1024);
         light.update_light_space();
@@ -308,13 +304,13 @@ void DrawStrings(GlText *glText, Vec3<float> coordinates,
             glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invokation)",
                               cameraMs, cameraMs / cameraInvocations);
 
-           skybox.Draw();
+            skybox.Draw();
         }
 
         {
             // render scene to shadow maps
             for (auto &light : quad_lights) {
-                auto& map = light.shadow_map;
+                auto &map = light.shadow_map;
                 map.configure();
                 map.set_model(sphere_transform);
                 sphere.Draw();
@@ -329,14 +325,14 @@ void DrawStrings(GlText *glText, Vec3<float> coordinates,
 
         {
             // render scene
-            auto& light = quad_lights[0];
-            auto& shadow_map = quad_lights[0].shadow_map;
+            auto &light = quad_lights[0];
+            auto &shadow_map = quad_lights[0].shadow_map;
             glUseProgram(object_shader);
+
             util::SetVec3(object_shader, "uLightDir", glm::vec3(0, 1, 0));
             util::SetMat4(object_shader, "projection", projection_matrix);
             util::SetMat4(object_shader, "view", view_matrix);
             util::SetMat4(object_shader, "lightSpace", shadow_map.light_space);
-            util::SetMat4(object_shader, "uLightView", shadow_map.light_view);
 
             util::SetInt(object_shader, "uEnvMap", GlObject::TextureUnits::TU_SKY_MAP);
             shadow_map.depth_tex.bind(1, glGetUniformLocation(object_shader, "uShadowMap"));
@@ -355,14 +351,14 @@ void DrawStrings(GlText *glText, Vec3<float> coordinates,
         Vec3<float> coordinates = backCamera.GetTransform().position;
         Log("Coordinates: (%7.3f, %7.3f, %7.3f)",
             coordinates.x, coordinates.y, coordinates.z);
-//        InitGlesState();
-//        DrawStrings(&glText,
-//                    backCamera.GetTransform().position,
-//                    loopTimer.ElapsedSec(),
-//                    fpsTimer.LapSec(),
-//                    Vec2(50.f, 50.f), //textBaseline
-//                    Vec2(0.f, 50.f)   //textAdvance
-//        );
+        InitGlesState();
+        DrawStrings(&glText,
+                    backCamera.GetTransform().position,
+                    loopTimer.ElapsedSec(),
+                    fpsTimer.LapSec(),
+                    Vec2(50.f, 50.f), //textBaseline
+                    Vec2(0.f, 50.f)   //textAdvance
+        );
 
         // present back buffer
         if (!glContext.SwapBuffers()) InitGlesState();
