@@ -5,6 +5,7 @@
 #include "Ft.h"
 
 #include "GlContext.h"
+#include "shaderUtil.h"
 #include "types.h"
 #include "customAssert.h"
 #include "FileManager.h"
@@ -53,103 +54,111 @@ class GlText {
         
         
         //Warn: VertexAttribs values must match the locations in the vertex shader
-        enum Attribs { AttribPosition,  AttribSCI };
-        enum Uniforms { UScreenSize, UInverseTextureSize };
-        enum SharedBlocks { SBlockVertexGlyphData, SBlockStringAttribData };
-        enum TextureUnits { TUnitFont };
+        enum Attribs { ATTRIB_POSITION,  ATTRIB_SCI };
+        enum Uniforms { UNIFORM_SCREEN_SIZE, UNIFORM_INVERSE_TEXTURE_SIZE };
+        enum SharedBlocks { BLOCK_VERTEX_GLYPH_DATA, BLOCK_STRING_ATTRIB_DATA };
+        enum TextureUnits { TU_FONT };
     
-        
-        //TODO: update shaders to use shaderUtil
-        static constexpr const char* kVertexShaderSource =  "#version 310 es\n"
-                                                            "struct VertexGlyphData {"
-                                                            "   highp vec2 textureCoordinates;"
-                                                            "   highp vec2 size;"
-                                                            "};"
-                                                            ""
-                                                            "struct StringAttrib {"
-                                                            "   highp vec2 scale;"
-                                                            "   highp uint rgba;"
-                                                            "   highp float depth;"
-                                                            "};"
-                                                            ""
-                                                            //Note: std430 ensures that alignment is 8 bytes
-                                                            "layout(std430, binding = 0) buffer VertexGlyphDataBuffer {"
-                                                            "   readonly VertexGlyphData glyphData[];"
-                                                            "};"
-                                                            ""
-                                                            //Note: std430 ensures ordering and that alignment is 8 bytes
-                                                            "layout(std430, binding = 1) buffer StringAttribBuffer {"
-                                                            "   readonly StringAttrib stringAttribData[];"
-                                                            "};"
-                                                            ""
-                                                            "layout(location = 0) uniform vec2 screenSize;"
-                                                            "layout(location = 1) uniform vec2 inverseTextureSize;"
-                                                            ""
-                                                            "layout(location = 0) in highp vec2 position;"
-                                                            "layout(location = 1) in highp uint SCI;" //stringAttribIndex[24]:glyphDataIndex[8]
-                                                            ""
-                                                            "smooth out vec2 textureCoordinates;"
-                                                            "flat   out vec4 fontColor;" //Note: don't waste time interpolating color - its the same across the whole quad
-                                                            ""
-                                                            "void main() {"
-                                                            ""
-                                                            "" // unpack indexes
-                                                            "   uint glyphIndex        =  SCI & 0xFFU;"
-                                                            "   uint stringAttribIndex =  SCI >> 8;"
-                                                            ""
-                                                            "" // fetch scale/color/depth attributes
-                                                            "   VertexGlyphData gData = glyphData[glyphIndex];"
-                                                            "   StringAttrib stringAttrib = stringAttribData[stringAttribIndex];"
-                                                            ""
-                                                            "" // set font color
-                                                            "   fontColor = (1.f/255.f) * "
-                                                            "               vec4(float(stringAttrib.rgba>>24), "
-                                                            "                    float((stringAttrib.rgba>>16) & 0xFFU), "
-                                                            "                    float((stringAttrib.rgba>>8) & 0xFFU), "
-                                                            "                    float(stringAttrib.rgba & 0xFFU)"
-                                                            "               );"
-                                                            ""
-                                                            ""  // compute vertex coordinates - note 'position' is upper left of glyph
-                                                            "   gl_Position = vec4(position.x, position.y, stringAttrib.depth, 1);"
-                                                            "   textureCoordinates = gData.textureCoordinates;"
-                                                            ""
-                                                            "   if((gl_VertexID&1) != 0) {"
-                                                            "       gl_Position.x+= stringAttrib.scale.x * gData.size.x;"
-                                                            "       textureCoordinates.x+= gData.size.x;"
-                                                            "   }"
-                                                            ""
-                                                            "   if((gl_VertexID&2) != 0) {"
-                                                            "       gl_Position.y+= stringAttrib.scale.y * gData.size.y;"
-                                                            "       textureCoordinates.y+= gData.size.y;"
-                                                            "   }"
-                                                            ""
-                                                            ""  // normalize texture coordinates
-                                                            "   textureCoordinates*= inverseTextureSize;"
-                                                            ""
-                                                            "" // map screen space to clip space - Note: screen space origin is upper left
-                                                            "   gl_Position.x =  2.f*gl_Position.x / screenSize.x - 1.f;"
-                                                            "   gl_Position.y = -2.f*gl_Position.y / screenSize.y + 1.f;"
-                                                            ""
-                                                            "}";
+        static inline constexpr StringLiteral kShaderVersion = "310 es";
+    
+        static inline constexpr StringLiteral kVertexShaderSource = Shader(
+            
+            ShaderVersion(kShaderVersion);
 
-        static constexpr const char* kFragmentShaderSource =    "#version 310 es\n"
-                                                                "precision mediump float;"
-                                                                ""
-                                                                "layout(binding = 0) uniform sampler2D fontSampler;"
-                                                                ""
-                                                                "smooth in vec2 textureCoordinates;"
-                                                                "flat   in vec4 fontColor;"
-                                                                ""
-                                                                "layout(location = 0) out vec4 fragColor;"
-                                                                ""
-                                                                "void main() {"
-                                                                "   float tColor = texture(fontSampler, textureCoordinates).r;"
-                                                                //Warn: this is expensive!!! (halves performance on moto G6) - acts as a hack to enable z-testing on transparent pixels, but prevents fragment culling [really should sort things with painters algorithm!]
-                                                                "   if(tColor <= .5f) discard;"
-                                                                ""
-                                                                "   fragColor.rgb = (tColor > 0.f) ? fontColor.rgb : vec3(0,0,0);"
-                                                                "   fragColor.a = fontColor.a*tColor;"
-                                                                "}";
+            struct VertexGlyphData {
+                highp vec2 textureCoordinates;
+                highp vec2 size;
+            };
+
+            struct StringAttrib {
+                highp vec2 scale;
+                highp uint rgba;
+                highp float depth;
+            };
+
+            ShaderBufferBlock(BLOCK_VERTEX_GLYPH_DATA) VertexGlyphDataBuffer {
+                readonly VertexGlyphData glyphData[];
+            };
+
+            ShaderBufferBlock(BLOCK_STRING_ATTRIB_DATA) StringAttribBuffer {
+                readonly StringAttrib stringAttribData[];
+            };            
+
+            ShaderUniform(UNIFORM_SCREEN_SIZE)            vec2 screenSize;
+            ShaderUniform(UNIFORM_INVERSE_TEXTURE_SIZE)   vec2 inverseTextureSize;
+
+            ShaderIn(ATTRIB_SCI)      highp uint SCI; //stringAttribIndex[24]:glyphDataIndex[8]
+            ShaderIn(ATTRIB_POSITION) highp vec2 position;
+
+            ShaderOut(0) smooth vec2 textureCoordinates;
+            ShaderOut(1) flat   vec4 fontColor; //Note: don't waste time interpolating color - its the same across the whole quad
+
+            void main() {
+
+                // unpack indicies
+                uint glyphIndex        =  SCI & 0xFFU;
+                uint stringAttribIndex =  SCI >> 8;
+
+                // fetch scale/color/depth attribute
+                VertexGlyphData gData = glyphData[glyphIndex];
+                StringAttrib stringAttrib = stringAttribData[stringAttribIndex];
+
+                // set font color
+                fontColor = (1.f/255.f) *
+                            vec4(float(stringAttrib.rgba>>24), 
+                                 float((stringAttrib.rgba>>16) & 0xFFU), 
+                                 float((stringAttrib.rgba>>8) & 0xFFU), 
+                                 float(stringAttrib.rgba & 0xFFU));
+
+                // compute vertex coordinates - note 'position' is upper left of glyph
+                gl_Position = vec4(position.x, position.y, stringAttrib.depth, 1);
+                textureCoordinates = gData.textureCoordinates;
+
+                if((gl_VertexID&1) != 0) {
+                    gl_Position.x+= stringAttrib.scale.x * gData.size.x;
+                    textureCoordinates.x+= gData.size.x;
+                }
+
+                if((gl_VertexID&2) != 0) {
+                    gl_Position.y+= stringAttrib.scale.y * gData.size.y;
+                    textureCoordinates.y+= gData.size.y;
+                }
+
+                // normalize texture coordinates
+                textureCoordinates*= inverseTextureSize;
+
+                // map screen space to clip space - Note: screen space origin is upper left
+                gl_Position.x =  2.f*gl_Position.x / screenSize.x - 1.f;
+                gl_Position.y = -2.f*gl_Position.y / screenSize.y + 1.f;
+            }
+        );  
+
+
+        static constexpr StringLiteral kFragmentShaderSource = Shader(
+
+            ShaderVersion(kShaderVersion);
+
+            precision mediump float;
+
+            ShaderSampler(TU_FONT) sampler2D fontSampler;
+
+            ShaderIn(0) smooth vec2 textureCoordinates;
+            ShaderIn(1) flat   vec4 fontColor;
+
+            ShaderOut(0) vec4 fragColor;
+
+            void main() {
+                
+                float tColor = texture(fontSampler, textureCoordinates).r;
+
+                //Warn: this is expensive!!! (halves performance on moto G6) - acts as a hack to enable z-testing on transparent pixels, but prevents fragment culling [really should sort things with painters algorithm!]
+                if(tColor <= .5f) discard;
+
+                fragColor.rgb = (tColor > 0.f) ? fontColor.rgb : vec3(0,0,0);
+                fragColor.a = fontColor.a*tColor;
+            }
+        ); 
+
            
         struct GlyphData {
             Vec2<float> advance;  //stride between glyphs
@@ -475,7 +484,7 @@ class GlText {
     
             glUseProgram(glProgram);
             Vec2 inverseFontTextureSize = ((Vec2<float>)fontTextureSize).Inverse();
-            glUniform2fv(UInverseTextureSize, 1, &inverseFontTextureSize);
+            glUniform2fv(UNIFORM_INVERSE_TEXTURE_SIZE, 1, &inverseFontTextureSize);
         
             glDeleteTextures(ArrayCount(glTextures), glTextures);
             GlAssertNoError("Failed to Delete old textures");
@@ -526,7 +535,7 @@ class GlText {
         inline
         void UpdateScreenSize(int32 width, int32 height) {
             glUseProgram(glProgram);
-            glUniform2f(UScreenSize, width, height);
+            glUniform2f(UNIFORM_SCREEN_SIZE, width, height);
             GlAssertNoError("Failed to set screenSize uniform { glProgram: %u, width: %d, height: %d }",
                             glProgram, width, height);
         }
@@ -606,11 +615,11 @@ class GlText {
             glGenBuffers(ArrayCount(glBuffers), glBuffers);
             GlAssertNoError("Failed to generate glBuffers");
     
-            //setup glyphData buffer
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SBlockVertexGlyphData, vertexGlyphDataBuffer);
+            //setup gNIFORMlyphData buffer
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BLOCK_VERTEX_GLYPH_DATA, vertexGlyphDataBuffer);
             
             //setup stringAttrib buffer
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SBlockStringAttribData, stringAttribBuffer);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BLOCK_STRING_ATTRIB_DATA, stringAttribBuffer);
             
             //setup attribute buffer
             vertexAttributeBufferBytes = 0;
@@ -619,16 +628,16 @@ class GlText {
             glGenVertexArrays(1, &vao);
             glBindVertexArray(vao);
     
-            glEnableVertexAttribArray(AttribSCI);
-            glEnableVertexAttribArray(AttribPosition);
+            glEnableVertexAttribArray(ATTRIB_SCI);
+            glEnableVertexAttribArray(ATTRIB_POSITION);
             
             glBindBuffer(GL_ARRAY_BUFFER, vertexAttributeBuffer); //Note: this doesn't modify vao state so we still need to rebind it on draw!
-            glVertexAttribPointer(AttribPosition, 2, GL_FLOAT,        GL_FALSE, sizeof(VertexAttributeData), (void*)offsetof(VertexAttributeData, position));
-            glVertexAttribIPointer(AttribSCI,     1, GL_UNSIGNED_INT,           sizeof(VertexAttributeData), (void*)offsetof(VertexAttributeData, SCI));
+            glVertexAttribPointer(ATTRIB_POSITION, 2, GL_FLOAT,        GL_FALSE, sizeof(VertexAttributeData), (void*)offsetof(VertexAttributeData, position));
+            glVertexAttribIPointer(ATTRIB_SCI,     1, GL_UNSIGNED_INT,           sizeof(VertexAttributeData), (void*)offsetof(VertexAttributeData, SCI));
             
             //advance each attribute once per instance [character]
-            glVertexAttribDivisor(AttribSCI, 1);
-            glVertexAttribDivisor(AttribPosition, 1);
+            glVertexAttribDivisor(ATTRIB_SCI, 1);
+            glVertexAttribDivisor(ATTRIB_POSITION, 1);
     
             glBindVertexArray(0);
     
@@ -830,10 +839,10 @@ class GlText {
             }
     
             glUseProgram(glProgram);
-            glBindSampler(TUnitFont, fontSampler);
+            glBindSampler(TU_FONT, fontSampler);
             glBindVertexArray(vao);
     
-            glActiveTexture(GL_TEXTURE0 + TUnitFont);
+            glActiveTexture(GL_TEXTURE0 + TU_FONT);
             glBindTexture(GL_TEXTURE_2D, fontTexture);
             
             //Note: 4 vertices per quad
