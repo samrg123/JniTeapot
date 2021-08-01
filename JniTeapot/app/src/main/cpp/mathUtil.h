@@ -18,6 +18,9 @@ constexpr auto Max(const T& n) { return n; }
 template<typename T1, typename T2, typename... TOpt>
 constexpr auto Max(const T1& n1, const T2& n2, const TOpt&... nOpt) { return n1 > n2 ? Max(n1, nOpt...) : Max(n2, nOpt...); }
 
+template<typename T>
+constexpr auto Abs(const T& n) { return n >= 0 ? n : -n; }
+
 template<typename T> constexpr bool IsPow2(T n)     { return (n&(n-1)) == 0; }
 template<typename T> constexpr bool IsPow2Safe(T n) { return n && IsPow2(n); }
 
