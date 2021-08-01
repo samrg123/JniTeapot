@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "Sequence.h"
 
 template<int n>
@@ -51,30 +50,105 @@ class StringLiteral {
         constexpr auto operator+ (const char (&s)[n2]) const { return StringLiteral<n+n2-1>(str, indexSequence, s, IncreasingSequence<0, n2-2>()); }
         
         constexpr auto operator+ (char c) const { return StringLiteral<n+1>(str, indexSequence, c); }
+
+        constexpr operator const char* const () const { return str; }
 };
 
-template<typename T, auto n>
-struct ToStringLiteral {};
+template<auto N>
+struct ToStringLiteral_ {
+    using NType = decltype(N); 
 
-template<unsigned int n>
-struct ToStringLiteral<unsigned int, n> {
+    ToStringLiteral_() = delete;
+
+
+    static constexpr auto Prefix() {
+        if constexpr(N < 0) return StringLiteral("-");
+        else return StringLiteral("");
+    }
+
+    template<uint64 n>
+    static constexpr auto IntegerString() {
+
+        constexpr char c = (n%10) + '0';
+
+        if constexpr(n < 10) return StringLiteral("") + c;
+        else return IntegerString<n/10>() + c;
+    }
+
+    static constexpr auto ParseInteger() { return Prefix() + IntegerString<Abs(N)>(); }
+
+    static constexpr auto ParseChar() { return StringLiteral("") + N; }
+
+    // TODO: THIS... need to do some floating point divion to compute mantisa and exponent
+    static constexpr auto ParseFloat() {
+        static_assert(sizeof(NType) == 0, "ToStringLiteral ParseFloat not implemented yet");
+        return StringLiteral("float");
+    }
+
+    static constexpr auto ParseConstantPointer() { 
+        constexpr auto value = N->value;
+        using ValueT = decltype(value);
+
+        // Note: Clang doesn't support passing float parameters yet so we handle them here
+        if constexpr(IsFloatType<ValueT>()) {
+
+            // TODO: THIS... need to do some foating point divion to compute mantisa and exponent
+            return ParseFloat();
+
+        } else if constexpr(IsStringType<ValueT>()) {
+
+            //Parse as string literal    
+            return StringLiteral(N->value); 
+        
+        } else if constexpr(IsNonTypeTemplate<ValueT, StringLiteral>()) {
+
+            //Just return the string literal as is
+            return value;
+
+        } else {
+         
+            //Try to parse as template parameter
+            return ToStringLiteral_<value>::Value();
+        }
+    }
+
+    static constexpr auto ParsePointer() {
+        auto value = *N;
+        using ValueT = decltype(value);
+
+        //Note: clang doesn't support pasing literal types as template parameters so instead we pass pointers
+        //      to 'Constants' which we can further processes as literal type 
+        if constexpr(IsTypeTemplate<ValueT, Constant>()) return ParseConstantPointer();
+        else {
+
+            // TODO: add support for printing hexidecimal pointers?
+            static_assert(sizeof(NType) == 0, "ToStringLiteral pointers not implement yet");
+            return StringLiteral("pointer");
+        }
+    }
+
     static constexpr auto Value() {
-        if constexpr(n < 10) return StringLiteral("") + ((n%10)+'0');
-        else return ToStringLiteral<unsigned int, n/10>::Value() + ((n%10)+'0');
+
+             if constexpr(IsIntegerType<NType>())   return ParseInteger();
+        else if constexpr(IsFloatType<NType>())     return ParseFloat();
+        else if constexpr(IsPointer<NType>())       return ParsePointer();
+        else if constexpr(IsType<NType, char>())    return ParseChar();   
+        else                                        return StringLiteral(N);
+ 
     }
 };
 
-template<>
-struct ToStringLiteral<unsigned int, 0u> {
-    static constexpr auto Value() { return StringLiteral("0"); }
-};
+template<auto x> 
+constexpr auto ToStringLiteral = ToStringLiteral_<x>::Value;
 
-template<int n>
-struct ToStringLiteral<int, n> {
-    static constexpr auto Value() {
-        if constexpr(n < 0) return StringLiteral("-") + ToStringLiteral<unsigned int, (unsigned int)(-n)>::Value();
-        else return ToStringLiteral<unsigned int, (unsigned int)n>::Value();
-    }
-};
-
-#define ToString(x) ToStringLiteral<decltype(x), x>::Value()
+// Note: Clang doesn't support passing float/literal template parameters yet so we use this macro as a fallback to
+//       create a unique template instantiation that encodes floatingpoint/literal values
+// Note: using static in statement expression doesn't work with gcc instead we can just use 'ToStringLiteral<Contant(x)>()'
+#if __INTELLISENSE__
+    
+    //Note: VsCode Intellisense can't resolve auto template parameters so we throw this hack in to prevent annoying errors
+    //TODO: Find out way to get intellisense to deduce template paramters
+    #define ToStringLiteral(x) ( static_cast<void>(x), StringLiteral("Intellisense ToStringLiteral"))
+#else
+    #define ToStringLiteral(x) [](){ return ({ static constexpr auto constant = Constant(x); ToStringLiteral<&constant>(); }); }()
+#endif

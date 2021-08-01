@@ -8,52 +8,61 @@ class GlCamera {
     private:
         
         enum TextureUnits  { TU_EGLTexture = 0 };
-        enum Uniforms { UProjectionMatrix = 0 };
-        static inline const StringLiteral kVertexShaderSourceDraw =
-            ShaderVersionStr+
-    
-            ShaderUniform(UProjectionMatrix)+"mat4 projectionMatrix;"+
-            ShaderOut(0)+"vec2 textureCord;"+
-    
-            STRINGIFY(
-                void main() {
-                    const vec2[4] vertices = vec2[](
-                        vec2(-1., -1.),
-                        vec2(-1.,  1.),
-                        vec2( 1., -1.),
-                        vec2( 1.,  1.)
-                    );
-
-                    vec2 vert = vertices[gl_VertexID];
-                    
-                    //Note: opengl is left handed so we set depth to 1 (farthest away)
-                    gl_Position = vec4(vert, 1., 1.);
-    
-                    float tx = (gl_VertexID&2) == 0 ? 1. : 0.;
-                    float ty = (gl_VertexID&1) == 0 ? 1. : 0.;
-                    
-                    //TODO: FIX THIS... Camera should use projection matrix? Probably just pass through vect2 of aspect ratio!
-                    textureCord = vec2(tx, ty) + .0001*projectionMatrix[0][0];
-                    
-                    //mat2 newProjMat = mat2(projectionMatrix[0][0], projectionMatrix[0][1],
-                    //                       projectionMatrix[1][0], projectionMatrix[1][1]);
-                    //textureCord = newProjMat * vec2(tx, ty);
-                });
+        enum Uniforms      { U_ProjectionMatrix = 0 };
         
-        static inline const StringLiteral kFragmentShaderSourceDraw =
-            ShaderVersionStr +
-            ShaderExtension("GL_OES_EGL_image_external")+
-            ShaderExtension("GL_OES_EGL_image_external_essl3")+
+        static inline constexpr StringLiteral kShaderVersion = "310 es"; 
+
+        static inline constexpr StringLiteral kVertexShaderSourceDraw = Shader(
+
+            ShaderVersion(kShaderVersion);
             
-            "precision highp float;"+
-            ShaderSampler(TU_EGLTexture) + "samplerExternalOES sampler;" +
-            ShaderIn(0) + "vec2 textureCord;" +
-            ShaderOut(0) + "vec4 fragColor;" +
-            STRINGIFY(
-                void main() {
-                    fragColor = texture(sampler, textureCord);
-                }
-             );
+            ShaderUniform(U_ProjectionMatrix) mat4 projectionMatrix;
+            ShaderOut(0) vec2 textureCord;
+
+            void main() {
+                const vec2[4] vertices = vec2[] (
+                    vec2(-1., -1.),
+                    vec2(-1.,  1.),
+                    vec2( 1., -1.),
+                    vec2( 1.,  1.)
+                );
+
+                vec2 vert = vertices[gl_VertexID];
+                
+                //Note: opengl is left handed so we set depth to 1 (farthest away)
+                gl_Position = vec4(vert, 1., 1.);
+
+                float tx = (gl_VertexID&2) == 0 ? 1. : 0.;
+                float ty = (gl_VertexID&1) == 0 ? 1. : 0.;
+                
+                //TODO: FIX THIS... Camera should use projection matrix? Probably just pass through vect2 of aspect ratio!
+                textureCord = vec2(tx, ty) + .0001*projectionMatrix[0][0];
+                
+                //mat2 newProjMat = mat2(projectionMatrix[0][0], projectionMatrix[0][1],
+                //                       projectionMatrix[1][0], projectionMatrix[1][1]);
+                //textureCord = newProjMat * vec2(tx, ty);
+            }
+        );
+        
+        static inline const StringLiteral kFragmentShaderSourceDraw = Shader(
+            
+            ShaderVersion(kShaderVersion);
+
+            ShaderExtension("GL_OES_EGL_image_external");
+            ShaderExtension("GL_OES_EGL_image_external_essl3");
+
+            precision highp float;
+
+            ShaderSampler(TU_EGLTexture) samplerExternalOES sampler;
+            
+            ShaderIn(0) vec2 textureCord;
+
+            ShaderOut(0) vec4 fragColor;
+            
+            void main() {
+                fragColor = texture(sampler, textureCord);
+            }
+        );
         
         enum Flags { FLAG_PROJECTION_MATRIX_UPDATED = 1<<0, FLAG_CAM_TRANSFORM_UPDATED = 1<<1 };
 
@@ -95,7 +104,7 @@ class GlCamera {
             flags|= FLAG_PROJECTION_MATRIX_UPDATED;
 
             glUseProgram(glProgramDraw);
-            glUniformMatrix4fv(UProjectionMatrix, 1, GL_FALSE, projectionMatrix.values);
+            glUniformMatrix4fv(U_ProjectionMatrix, 1, GL_FALSE, projectionMatrix.values);
             GlAssertNoError("Failed to set project matrix");
         }
 
@@ -119,7 +128,7 @@ class GlCamera {
             transform(transform),
             flags(FLAG_PROJECTION_MATRIX_UPDATED|FLAG_CAM_TRANSFORM_UPDATED) {
             
-            glProgramDraw  = GlContext::CreateGlProgram(kVertexShaderSourceDraw.str, kFragmentShaderSourceDraw.str);
+            glProgramDraw  = GlContext::CreateGlProgram(kVertexShaderSourceDraw, kFragmentShaderSourceDraw);
             
             glGenTextures(1, &eglTexture);
             GlAssertNoError("Failed to generate eglCameraTexture");

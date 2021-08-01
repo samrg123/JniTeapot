@@ -16,154 +16,165 @@ class GlSkybox : public GlRenderable {
         enum TextureUnits  { TU_CUBE_MAP, TU_IMAGE = 0 };
         enum UniformBlocks { UBLOCK_SKY_BOX = 1 };
         
-        static inline const StringLiteral kSkyBoxStr =
-            ShaderUniformBlock(UBLOCK_SKY_BOX) + "SkyBox {"
-            "   mat4 clipToWorldSpaceMatrix;" //inverse(viewMatrix)*inverse(projectionMatrix)
-            "   mat4 cameraRotationMatrix;"
-            "   mat4 cameraInverseRotationMatrix;"
-            "   mat4 viewMatrix;"
-            "};";
-    
-        static inline const StringLiteral kVertexShaderSourceDraw =
-            ShaderVersionStr+
-            kSkyBoxStr +
-            ShaderOut(0) + "vec3 cubeCoord;" +
+        static inline constexpr StringLiteral kShaderVersion = "310 es";
 
-            STRINGIFY(
-                void main() {
-                    const vec2[4] vertices = vec2[](
-                            vec2(-1., -1.),
-                            vec2(-1.,  1.),
-                            vec2( 1., -1.),
-                            vec2( 1.,  1.)
-                        );
-
-                    vec2 vert = vertices[gl_VertexID];
-
-                    //Note: opengl is left handed so we set depth to 1 (farthest away)
-                    gl_Position = vec4(vert, 1., 1.);
-
-                    cubeCoord = (clipToWorldSpaceMatrix * gl_Position).xyz;
-
-                    //Note: flip x axis to translate right handed coordinates to left handed coordinates
-                    //      opengl has negZ cubemap x-axis moving right to left
-                    cubeCoord.x = -cubeCoord.x;
-            });
-
-        static inline const StringLiteral kFragmentShaderSourceDraw =
-            ShaderVersionStr +
-            "precision highp float;"+
-
-            ShaderSampler(TU_CUBE_MAP) + "samplerCube cubemap;" +
-            ShaderIn(0)  + "vec3 cubeCoord;" +
-
-            ShaderOut(0) + "vec4 fragColor;" +
-            STRINGIFY(
-                void main() {
-                    fragColor = texture(cubemap, cubeCoord);
-                }
-            );
-        
-        static inline const StringLiteral kVertexShaderSourceWrite =
-            ShaderVersionStr+
-            kSkyBoxStr+
-
-            ShaderOut(0) + "flat int textureFace;" +
-            ShaderOut(1) + "vec3 viewPos;"
-
-            STRINGIFY(
-                void main() {
-
-                    vec2[4] verts = vec2[] (
-                        vec2(-1.0f, -1.0f),
-                        vec2(+1.0f, -1.0f),
-                        vec2(-1.0f, +1.0f),
-                        vec2(+1.0f, +1.0f)
-                    );
-
-                    vec2 a_Position = verts[gl_VertexID];
-                    textureFace = gl_InstanceID;
-
-                    //vec2 a_Position = verts[gl_VertexID%4];
-                    //textureFace = gl_VertexID/4;
-
-                    vec3 fakeWorldPos;
-
-                    //X
-                    if(textureFace == 0) { fakeWorldPos = vec3(1., -a_Position.y, -a_Position.x); }
-                    if(textureFace == 1) { fakeWorldPos = vec3(-1., -a_Position.y, a_Position.x); }
-
-                    //Y
-                    if(textureFace == 2) { fakeWorldPos = vec3(a_Position.x, 1., a_Position.y); } // befre just -x
-                    if(textureFace == 3) { fakeWorldPos = vec3(a_Position.x, -1., -a_Position.y); }
-
-                    //z
-                    if(textureFace == 4) { fakeWorldPos = vec3(a_Position.x, -a_Position.y, 1.); }
-                    if(textureFace == 5) { fakeWorldPos = vec3(-a_Position.x, -a_Position.y, -1.); }
-
-                    //reflect x axis to translate right handed world space into left handed cubemap space
-                    fakeWorldPos.x = -fakeWorldPos.x;
-                    
-                    viewPos = mat3(viewMatrix) * fakeWorldPos;
-
-                    gl_Position = vec4(a_Position, 1., 1.);
-                    //if(viewPos.x > -1. && viewPos.x < 1. &&
-                    //   viewPos.y > -1. && viewPos.y < 1. && viewPos.z > 0.) {
-                    //
-                    //    vec2 cameraTexCoord = vec2((viewPos.x+1.)/2., (1.0-(viewPos.y+1.)/2.));
-                    //    //fragColor[textureFace]=texture(imageSampler, cameraTexCoord);
-                    //    fragColor[textureFace]= vec4(0, 0, 1, 1);
-                    //} else {
-                    //    fragColor[textureFace]=vec4(0.);
-                    //}
-                }
-            );
-
-        static inline const StringLiteral kFragmentShaderSourceWrite =
-            ShaderVersionStr+
-            ShaderExtension("GL_OES_EGL_image_external")+
-            ShaderExtension("GL_OES_EGL_image_external_essl3") +
-            "precision mediump float;" +
-
-            ShaderSampler(TU_IMAGE) + "samplerExternalOES imageSampler;" +
-
-            ShaderIn(0) + "flat int textureFace;" +
-            ShaderIn(1) + "vec3 viewPos;" +
-
-            ShaderOut(0) + "vec4[6] fragColor;" +
-
-            STRINGIFY(
-                void main() {
-
-                    
-                    //TODO: THIS IS SLOW ON MOBILE DUE TO EXTRA MEMORY WRITES JUST USE DUMB LOOP!!
-                    fragColor[0] = vec4(0);
-                    fragColor[1] = vec4(0);
-                    fragColor[2] = vec4(0);
-                    fragColor[3] = vec4(0);
-                    fragColor[4] = vec4(0);
-                    fragColor[5] = vec4(0);
-
-                    if( viewPos.x > -1. && viewPos.x < 1. &&
-                        viewPos.y > -1. && viewPos.y < 1. &&
-                        viewPos.z > 0.) {
-
-                        vec2 cameraTexCoord = vec2((viewPos.x+1.)/2., (1.0-(viewPos.y+1.)/2.));
-                        fragColor[textureFace] = texture(imageSampler, cameraTexCoord);
-                    }
-
-
-                    //vec2 cameraTexCoord=vec2((viewPos.x+1.)/2., (1.0-(viewPos.y+1.)/2.));
-                    //fragColor[textureFace]= vec4(0, 0, 1, 1);
-                }
-            );
+        static inline constexpr StringLiteral kSkyBoxStr = Shader(
+           
+            ShaderUniformBlock(UBLOCK_SKY_BOX) SkyBox {
+                mat4 clipToWorldSpaceMatrix; //inverse(viewMatrix)*inverse(projectionMatrix)
+                mat4 cameraRotationMatrix;
+                mat4 cameraInverseRotationMatrix;
+                mat4 viewMatrix;
+            };
+        );
 
         struct alignas(16) UniformBlock {
             Mat4<float> clipToWorldSpaceMatrix;
             Mat4<float> cameraRotationMatrix;
             Mat4<float> cameraInverseRotationMatrix;
             Mat4<float> viewMatrix;
-        };
+        };        
+    
+        static inline constexpr StringLiteral kVertexShaderSourceDraw = Shader(
+
+            ShaderVersion(kShaderVersion);
+
+            ShaderInclude(kSkyBoxStr);
+
+            ShaderOut(0) vec3 cubeCoord;
+            
+            void main() {
+
+                const vec2[4] vertices = vec2[] (
+                    vec2(-1., -1.),
+                    vec2(-1.,  1.),
+                    vec2( 1., -1.),
+                    vec2( 1.,  1.)
+                );
+
+                vec2 vert = vertices[gl_VertexID];
+
+                //Note: opengl is left handed so we set depth to 1 (farthest away)
+                gl_Position = vec4(vert, 1., 1.);
+
+                cubeCoord = (clipToWorldSpaceMatrix * gl_Position).xyz;
+
+                //Note: flip x axis to translate right handed coordinates to left handed coordinates
+                //      opengl has negZ cubemap x-axis moving right to left
+                cubeCoord.x = -cubeCoord.x;
+            }
+        );
+
+        static inline constexpr StringLiteral kFragmentShaderSourceDraw = Shader(
+
+            ShaderVersion(kShaderVersion);
+
+            precision highp float;
+
+            ShaderSampler(TU_CUBE_MAP) samplerCube cubemap;
+            ShaderIn(0) vec3 cubeCoord;
+
+            ShaderOut(0) vec4 fragColor;
+        
+            void main() {
+                fragColor = texture(cubemap, cubeCoord);
+            }
+        );
+        
+        static inline constexpr StringLiteral kVertexShaderSourceWrite = Shader(
+
+            ShaderVersion(kShaderVersion);
+
+            ShaderInclude(kSkyBoxStr);
+
+            ShaderOut(0) flat int textureFace;
+            ShaderOut(1)  vec3 viewPos;
+
+            void main() {
+
+                vec2[4] verts = vec2[] (
+                    vec2(-1.0f, -1.0f),
+                    vec2(+1.0f, -1.0f),
+                    vec2(-1.0f, +1.0f),
+                    vec2(+1.0f, +1.0f)
+                );
+
+                vec2 a_Position = verts[gl_VertexID];
+                textureFace = gl_InstanceID;
+
+                //vec2 a_Position = verts[gl_VertexID%4];
+                //textureFace = gl_VertexID/4;
+
+                vec3 fakeWorldPos;
+
+                //X
+                if(textureFace == 0) { fakeWorldPos = vec3(1., -a_Position.y, -a_Position.x); }
+                if(textureFace == 1) { fakeWorldPos = vec3(-1., -a_Position.y, a_Position.x); }
+
+                //Y
+                if(textureFace == 2) { fakeWorldPos = vec3(a_Position.x, 1., a_Position.y); } // befre just -x
+                if(textureFace == 3) { fakeWorldPos = vec3(a_Position.x, -1., -a_Position.y); }
+
+                //z
+                if(textureFace == 4) { fakeWorldPos = vec3(a_Position.x, -a_Position.y, 1.); }
+                if(textureFace == 5) { fakeWorldPos = vec3(-a_Position.x, -a_Position.y, -1.); }
+
+                //reflect x axis to translate right handed world space into left handed cubemap space
+                fakeWorldPos.x = -fakeWorldPos.x;
+                
+                viewPos = mat3(viewMatrix) * fakeWorldPos;
+
+                gl_Position = vec4(a_Position, 1., 1.);
+                //if(viewPos.x > -1. && viewPos.x < 1. &&
+                //   viewPos.y > -1. && viewPos.y < 1. && viewPos.z > 0.) {
+                //
+                //    vec2 cameraTexCoord = vec2((viewPos.x+1.)/2., (1.0-(viewPos.y+1.)/2.));
+                //    //fragColor[textureFace]=texture(imageSampler, cameraTexCoord);
+                //    fragColor[textureFace]= vec4(0, 0, 1, 1);
+                //} else {
+                //    fragColor[textureFace]=vec4(0.);
+                //}
+            }            
+        );
+
+        static inline constexpr StringLiteral kFragmentShaderSourceWrite = Shader(
+
+            ShaderVersion(kShaderVersion);
+
+            ShaderExtension("GL_OES_EGL_image_external");
+            ShaderExtension("GL_OES_EGL_image_external_essl3");
+
+            precision mediump float;
+
+            ShaderSampler(TU_IMAGE) samplerExternalOES imageSampler;
+
+            ShaderIn(0) flat int textureFace;
+            ShaderIn(1) vec3 viewPos;
+
+            ShaderOut(0) vec4[6] fragColor;
+
+            void main() {
+                
+                //TODO: THIS IS SLOW ON MOBILE DUE TO EXTRA MEMORY WRITES JUST USE DUMB LOOP!!
+                fragColor[0] = vec4(0);
+                fragColor[1] = vec4(0);
+                fragColor[2] = vec4(0);
+                fragColor[3] = vec4(0);
+                fragColor[4] = vec4(0);
+                fragColor[5] = vec4(0);
+
+                if( viewPos.x > -1. && viewPos.x < 1. &&
+                    viewPos.y > -1. && viewPos.y < 1. &&
+                    viewPos.z > 0.) {
+
+                    vec2 cameraTexCoord = vec2((viewPos.x+1.)/2., (1.0-(viewPos.y+1.)/2.));
+                    fragColor[textureFace] = texture(imageSampler, cameraTexCoord);
+                }
+
+                //vec2 cameraTexCoord=vec2((viewPos.x+1.)/2., (1.0-(viewPos.y+1.)/2.));
+                //fragColor[textureFace]= vec4(0, 0, 1, 1);
+            }            
+        );
 
         GLuint glProgramDraw, glProgramWrite;
         GLuint writeFrameBuffer, uniformBuffer;
@@ -230,8 +241,8 @@ class GlSkybox : public GlRenderable {
         GlSkybox(const SkyboxParams &params): GlRenderable(params.camera), generateMipmaps(params.generateMipmaps) {
     
             
-            glProgramDraw  = GlContext::CreateGlProgram(kVertexShaderSourceDraw.str, kFragmentShaderSourceDraw.str);
-            glProgramWrite = GlContext::CreateGlProgram(kVertexShaderSourceWrite.str, kFragmentShaderSourceWrite.str);
+            glProgramDraw  = GlContext::CreateGlProgram(kVertexShaderSourceDraw, kFragmentShaderSourceDraw);
+            glProgramWrite = GlContext::CreateGlProgram(kVertexShaderSourceWrite, kFragmentShaderSourceWrite);
     
             glGenFramebuffers(1, &writeFrameBuffer);
             GlAssertNoError("Failed to create render buffer");

@@ -22,103 +22,104 @@ class GlObject : public GlRenderable {
         enum Uniforms     { UNIFORM_MIRROR_CONSTANT, UNIFORM_CAMERA_POSITION, UNIFORM_LIGHT_POSITION };
         enum UBlocks      { UBLOCK_OBJECT };
         
-        static inline const StringLiteral kVertexShaderSource =
-            ShaderVersionStr+
+        static inline constexpr StringLiteral kShaderVersion = "310 es";
 
-            ShaderUniformBlock(UBLOCK_OBJECT)+ "ObjectBlock {" +
-            "   mat4 mvpMatrix;"
-            "   mat4 modelMatrix;"
-            "   mat4 normalMatrix;"
-            "};" +
+        static inline constexpr StringLiteral kVertexShaderSource = Shader(
+            ShaderVersion(kShaderVersion);
 
-            ShaderIn(ATTRIB_GEO_VERT)    + "vec3 position;" +
-            ShaderIn(ATTRIB_NORMAL_VERT) + "vec3 normal;" +
-            ShaderIn(ATTRIB_UV_VERT)     + "vec2 uv;" +
-    
-            ShaderOut(0) + "vec3 fragNormal;" +
-            ShaderOut(1) + "vec3 fragWorldPosition;" +
-            ShaderOut(2) + "vec4 fragLightColor;" +
+            ShaderUniformBlock(UBLOCK_OBJECT) ObjectBlock {
+                mat4 mvpMatrix;
+                mat4 modelMatrix;
+                mat4 normalMatrix;
+            };
 
-            STRINGIFY(
-                void main() {
+            ShaderIn(ATTRIB_GEO_VERT)    vec3 position;
+            ShaderIn(ATTRIB_NORMAL_VERT) vec3 normal;
+            ShaderIn(ATTRIB_UV_VERT)     vec2 uv;
 
-                    vec4 v4Position = vec4(position, 1.);
-                    gl_Position = mvpMatrix*v4Position;
-    
-                    fragNormal = mat3(normalMatrix) * normal;
-                    fragWorldPosition = (modelMatrix * v4Position).xyz;
-                    
-                    //  fragLightColor = vec4(0., 1., 0., .3);
-                    //  fragLightColor = vec4(1., 1., 1., 300000.);
-                    //  fragLightColor = vec4(0.85, .95, 1., 200000.);
-                    fragLightColor = vec4(0.6784, .7255, .698, 50.);
+            ShaderOut(0) vec3 fragNormal;
+            ShaderOut(1) vec3 fragWorldPosition;
+            ShaderOut(2) vec4 fragLightColor;
+
+            void main() {
+
+                vec4 v4Position = vec4(position, 1.);
+                gl_Position = mvpMatrix*v4Position;
+
+                fragNormal = mat3(normalMatrix) * normal;
+                fragWorldPosition = (modelMatrix * v4Position).xyz;
+                
+                //  fragLightColor = vec4(0., 1., 0., .3);
+                //  fragLightColor = vec4(1., 1., 1., 300000.);
+                //  fragLightColor = vec4(0.85, .95, 1., 200000.);
+                fragLightColor = vec4(0.6784, .7255, .698, 50.);
             }
         );
+    
+        static inline constexpr StringLiteral kFragmentShaderSource = Shader(
 
-        static inline const StringLiteral kFragmentShaderSource =
-            ShaderVersionStr +
-            "precision highp float;" +
-            
-            ShaderSampler(TU_SKY_MAP) + "samplerCube cubemapSampler;" +
+            ShaderVersion(kShaderVersion);
+
+            precision highp float;
+
+            ShaderSampler(TU_SKY_MAP) samplerCube cubemapSampler;
+
+            ShaderUniform(UNIFORM_MIRROR_CONSTANT)  float mirrorConstant;
+            ShaderUniform(UNIFORM_CAMERA_POSITION)  vec3 cameraPosition;
+            ShaderUniform(UNIFORM_LIGHT_POSITION)   vec3 lightPosition;
+
+            ShaderIn(0) vec3 fragNormal;
+            ShaderIn(1) vec3 fragWorldPosition;
+            ShaderIn(2) vec4 fragLightColor;
+
+            ShaderOut(0) vec4 fragColor;
+
+            //TODO: this is phong - see if we should do blin-phong instead
+            void main() {
+
+                vec4 diffuseColor = vec4(.9, .9, .9, 1.);
+                vec4 ambientColor = vec4(.4471, .4486, .3464, 1.);
+    
+                float reflectivity = mirrorConstant;
+                float diffuseness = 1. - mirrorConstant;
+                float specularPower  = 8.; //Note: smaller numbers = more reflective
+                
+                vec3 lightToVertex = lightPosition - fragWorldPosition;
+                float invLightDistanceSquared = 1./dot(lightToVertex, lightToVertex);
+
+                //Note: normal is not normalized!
+                vec3 normal = normalize(fragNormal);
+                vec3 lightDirection  = normalize(lightToVertex);
+                
+                vec3 cameraToVertex = cameraPosition - fragWorldPosition;
+                vec3 cameraDirection = normalize(cameraToVertex);
+
+                //TODO: play around with the direction vectors to cut down on the number of negations
+                vec3 lightReflection = -reflect(lightDirection, normal);
+                vec3 cubeReflection = -reflect(cameraDirection, normal);
+                cubeReflection.x = -cubeReflection.x;
+                
+                //TODO: sit down and do the math to get an good roughness parameter
+                //float roughness = 20.; //0 is pure shiny
+                float roughness = 0.; //0 is pure shiny
+                float cubeLod = roughness * log( sqrt(length(cameraToVertex)) + 1.); //TODO: should use cubemapWall to vertex not cameraToVertex!
+                
+                vec4 cubeColor = textureLod(cubemapSampler, cubeReflection, cubeLod);
+    
+                vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((diffuseness*ambientColor.rgb) + (reflectivity*cubeColor.rgb));
+                vec3 diffuseTerm = diffuseness * diffuseColor.rgb * max(0., dot(normal, lightDirection));
+
+                float specularTerm = reflectivity * pow(max(0., dot(cameraDirection, lightReflection)), specularPower);
+                vec3 lightTerm = fragLightColor.w * fragLightColor.rgb * (diffuseTerm+specularTerm) * invLightDistanceSquared;
+                
+                fragColor.rgb = ambientTerm + lightTerm;
+                fragColor.a = diffuseColor.a;
+                
+                ////uncomment to view NormalColor
+                //fragColor.rgb = (.001*fragColor.rgb) + .999*(.5*(normal + vec3(1.)));
+            }
+        );
  
-            ShaderUniform(UNIFORM_MIRROR_CONSTANT) + "float mirrorConstant;" +
-            ShaderUniform(UNIFORM_CAMERA_POSITION) + "vec3 cameraPosition;" +
-            ShaderUniform(UNIFORM_LIGHT_POSITION)  + "vec3 lightPosition;" +
-    
-            ShaderIn(0) + "vec3 fragNormal;" +
-            ShaderIn(1) + "vec3 fragWorldPosition;" +
-            ShaderIn(2) + "vec4 fragLightColor;" +
-
-            ShaderOut(0) + "vec4 fragColor;" +
-
-            STRINGIFY(
-
-                //TODO: this is phong - see if we should do blin-phong instead
-                void main() {
-    
-                    vec4 diffuseColor = vec4(.9, .9, .9, 1.);
-                    vec4 ambientColor = vec4(.4471, .4486, .3464, 1.);
-        
-                    float reflectivity = mirrorConstant;
-                    float diffuseness = 1. - mirrorConstant;
-                    float specularPower  = 8.; //Note: smaller numbers = more reflective
-                    
-                    vec3 lightToVertex = lightPosition - fragWorldPosition;
-                    float invLightDistanceSquared = 1./dot(lightToVertex, lightToVertex);
-    
-                    //Note: normal is not normalized!
-                    vec3 normal = normalize(fragNormal);
-                    vec3 lightDirection  = normalize(lightToVertex);
-                    
-                    vec3 cameraToVertex = cameraPosition - fragWorldPosition;
-                    vec3 cameraDirection = normalize(cameraToVertex);
-    
-                    //TODO: play around with the direction vectors to cut down on the number of negations
-                    vec3 lightReflection = -reflect(lightDirection, normal);
-                    vec3 cubeReflection = -reflect(cameraDirection, normal);
-                    cubeReflection.x = -cubeReflection.x;
-                    
-                    //TODO: sit down and do the math to get an good roughness parameter
-                    //float roughness = 20.; //0 is pure shiny
-                    float roughness = 0.; //0 is pure shiny
-                    float cubeLod = roughness * log( sqrt(length(cameraToVertex)) + 1.); //TODO: should use cubemapWall to vertex not cameraToVertex!
-                    
-                    vec4 cubeColor = textureLod(cubemapSampler, cubeReflection, cubeLod);
-        
-                    vec3 ambientTerm = ambientColor.w * diffuseColor.rgb * ((diffuseness*ambientColor.rgb) + (reflectivity*cubeColor.rgb));
-                    vec3 diffuseTerm = diffuseness * diffuseColor.rgb * max(0., dot(normal, lightDirection));
-
-                    float specularTerm = reflectivity * pow(max(0., dot(cameraDirection, lightReflection)), specularPower);
-                    vec3 lightTerm = fragLightColor.w * fragLightColor.rgb * (diffuseTerm+specularTerm) * invLightDistanceSquared;
-                    
-                    fragColor.rgb = ambientTerm + lightTerm;
-                    fragColor.a = diffuseColor.a;
-                    
-                    ////uncomment to view NormalColor
-                    //fragColor.rgb = (.001*fragColor.rgb) + .999*(.5*(normal + vec3(1.)));
-                }
-         );
-            
         enum Flag {
             FLAG_NORMAL = 1<<0, FLAG_UV = 1<<1,
             FLAG_OBJ_TRANSFORM_UPDATED = 1<<2
@@ -448,7 +449,7 @@ class GlObject : public GlRenderable {
             glGenBuffers(ArrayCount(glBuffers), glBuffers);
             GlAssertNoError("Failed to create glBuffers");
         
-            glProgram = GlContext::CreateGlProgram(kVertexShaderSource.str, kFragmentShaderSource.str);
+            glProgram = GlContext::CreateGlProgram(kVertexShaderSource, kFragmentShaderSource);
             
             //Debugging
             GlContext::PrintVariables(glProgram);
