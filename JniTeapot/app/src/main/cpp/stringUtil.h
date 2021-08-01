@@ -9,28 +9,28 @@ template<auto n> constexpr auto StrCount(const wchar_t(&)[n]) 	{ return n-1; }
 constexpr char LowerCase(char c) { return c | (1<<5);}
 constexpr char UpperCase(char c) { return c & (~(1<<5));}
 
-inline char* SkipLine(char* str) {
+template<typename T>
+inline T* SkipLine(T* str) {
     while(*str && *str++ != '\n');
     return str;
 }
 
-inline char* SkipWhiteSpace(char* str) {
-    
-    for(char c; (c = *str); ++str) {
-        switch(c) {
-            case ' ':
-            case '\t':
-            case '\n':
-            case '\r':
-            case '\f': break;
-            
-            default: goto End;
-        }
+constexpr bool IsWhiteSpace(char c) {
+    switch(c) {
+        case ' ':
+        case '\t':
+        case '\n':
+        case '\r':
+        case '\f': return true;
     }
-    
-    End:
-    return str;
+    return false;
 }
+
+template<typename T>
+inline T* SkipWhiteSpace(T* str) {
+    for(char c; (c = *str) && IsWhiteSpace(c); ++str);
+    return str;
+} 
 
 inline auto StrSign(char* str, char** strEnd = nullptr) {
     
@@ -45,7 +45,7 @@ inline auto StrSign(char* str, char** strEnd = nullptr) {
             return 1;
         }
             
-            //if there's no sign number is positive
+        //if there's no sign number is positive
         default: {
             if(strEnd) *strEnd = str;
             return 1;

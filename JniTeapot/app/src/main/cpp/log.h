@@ -103,14 +103,9 @@
 							uint32 whitespaceBreakpoint = [&]() {
 								
 								for(uint32 i = kLogcatMaxPayloadBytes; i; --i) {	
-									switch(logBufferPtr[i]) {
-										case ' ':
-										case '\t':
-										case '\r':
-										case '\f':
-										case '\n': return i;
-									}
+									if(IsWhiteSpace(logBufferPtr[i])) return i;
 								}
+	
 								return 0u;
 							}();
 
