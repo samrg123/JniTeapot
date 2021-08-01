@@ -127,6 +127,131 @@ class GlContext {
             EglAssertTrue(eglTerminate(display), "Failed to destroy Terminate EGL Display { display: %d }", display);
         }
 
+        static const char* FormatSourceString(const char* src) {
+
+            //TODO: for now this is only used for debugging information so static char array is ok, but 
+            //      we would really rather allocate string on temporary memory arena and free it
+            //      when it goes out of scope.
+            static char formattedStr[KB(4)];
+            constexpr int kFormattedStrLength = ArrayCount(formattedStr)-1;
+            
+            constexpr int kTabSize = 4;
+
+            auto insertIndent = [&](int formattedStrPos, int indent) {
+
+                for(int indents = indent*kTabSize; indents && formattedStrPos < kFormattedStrLength; --indents) {
+                    formattedStr[formattedStrPos++] = ' ';
+                }
+
+                return formattedStrPos;
+            };
+
+            int lineIndex = 0;
+            auto insertNewLine = [&](int formattedStrPos, int indent) {
+                
+                if(formattedStrPos < kFormattedStrLength) {
+                    formattedStr[formattedStrPos++] = '\n';
+                    lineIndex = formattedStrPos;
+                }
+                return insertIndent(formattedStrPos, indent);
+            };
+
+            auto startNewLine = [&](int formattedStrPos, int indent) {
+                src = SkipWhiteSpace(src);
+                return insertNewLine(formattedStrPos, indent);
+            };
+
+            auto lastNonEmptyChar = [&](int formattedStrPos) {
+                while(formattedStrPos && IsWhiteSpace(formattedStr[formattedStrPos-1])) --formattedStrPos;                
+                return formattedStrPos;
+            };
+
+            int i = 0;
+            int indent = 0;
+            int expressionIndex = 0;
+            while(i < kFormattedStrLength) {
+
+                char c = *src++;
+                switch(c) {
+
+                    case 0: {
+                        formattedStr[i++] = c;
+                        return formattedStr;
+                    } break;
+
+                    case '\n': {
+                        formattedStr[i++] = c;
+                        i = startNewLine(i, indent);
+
+                    } break;
+
+                    case '\t':{
+                        
+                        //replace tabs with fixes size
+                        i = insertIndent(i, 1);
+
+                    } break;
+
+                    case ';': {
+                        i = lastNonEmptyChar(i);
+                        formattedStr[i++] = c;
+
+                        if(!expressionIndex) i = startNewLine(i, indent);
+
+                    } break;
+
+                    case '(': {
+                        formattedStr[i++] = c;
+                        ++expressionIndex;
+                    } break;
+
+                    case ',':
+                    case ')': {
+                        formattedStr[i++] = c;
+                        if(expressionIndex) --expressionIndex;
+
+                        //insert space if there isn't one
+                        char nextC = *src;
+                        if(i < kFormattedStrLength && nextC != ';' && !IsWhiteSpace(nextC)) {
+                            formattedStr[i++] = ' ';
+                        }
+                    } break;
+
+                    case '{': {
+                        formattedStr[i++] = c;
+
+                        ++indent;
+                        i = startNewLine(i, indent);
+                        
+                    } break;
+
+                    case '}': {
+
+                        //rewind i to end of last non-empty char
+                        i = lastNonEmptyChar(i);
+
+                        //decrement indent
+                        if(indent) --indent;
+
+                        //insert a new line before '}' if there is something between curly braces
+                        if(i && formattedStr[i-1] != '{') i = startNewLine(i, indent);
+
+                        //copy over '}'
+                        if(i < kFormattedStrLength) formattedStr[i++] = c;
+
+                        //start new line for text after '}'
+                        if(*src != ';')  i = startNewLine(i, indent);
+
+                    } break;
+
+                    default: {
+                        formattedStr[i++] = c;
+                    } break;
+                }
+            };
+
+            return formattedStr;
+        }
 
     public:
 
@@ -199,7 +324,7 @@ class GlContext {
                         GL_ASSERT_INDENT "\t]"
                         GL_ASSERT_INDENT "}",
                 
-                        type, source
+                        type, FormatSourceString(source)
                 );
                 
                 glShaderSource(shader, 1, &source, NULL);
@@ -211,13 +336,13 @@ class GlContext {
                              "Failed to compile gl shader {"
                              GL_ASSERT_INDENT "\ttype: %s [%d]"
                              GL_ASSERT_INDENT "\tsource: ["
-                             "\n%.512s..." //Note: android logging caps out at 4k so 512 limit prevents chopping off info string
+                             "\n%s"
                              GL_ASSERT_INDENT "\t]"
                              GL_ASSERT_INDENT "\tInfo: %s"
                              GL_ASSERT_INDENT "}",
                              
                              (type == GL_VERTEX_SHADER ? "VertexShader" : type == GL_FRAGMENT_SHADER ? "FragmentShader" : "Unknown"), type,
-                             source,
+                             FormatSourceString(source),
                              (glGetShaderInfoLog(shader, sizeof(glCompileErrorStr), NULL, glCompileErrorStr), glCompileErrorStr)
                 );
                 
@@ -245,18 +370,18 @@ class GlContext {
                              GL_ASSERT_INDENT "\tglProgram: %d"
                              GL_ASSERT_INDENT "\tGL_LINK_STATUS: %d"
                              GL_ASSERT_INDENT "\tVertex Source ["
-                             "\n%.256s...\n"
+                             "\n%s\n"
                              GL_ASSERT_INDENT "\t]"
                              GL_ASSERT_INDENT "\tFragment Source ["
-                             "\n%.256s...\n"
+                             "\n%s\n"
                              GL_ASSERT_INDENT "\t]"
                              GL_ASSERT_INDENT "\tLinkInfo: %s"
                              GL_ASSERT_INDENT "}",
                             
                              glProgram,
                              status,
-                             vertexSource,
-                             fragmentSource,
+                             FormatSourceString(vertexSource),
+                             FormatSourceString(fragmentSource),
                              (glGetProgramInfoLog(glProgram, sizeof(linkInfoStr), NULL, linkInfoStr), linkInfoStr)
                 );
     
