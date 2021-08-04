@@ -1,17 +1,14 @@
 #pragma once
 
-#include "shaderUtil.h"
 #include "GlRenderable.h"
 #include "GlTransform.h"
 #include "GlCamera.h"
 #include "GlSkybox.h"
 
+#include "util.h"
 #include "FileManager.h"
 #include "Memory.h"
-#include "panic.h"
 
-#include "util.h"
-#include "vec.h"
 
 
 class GlObject : public GlRenderable {
@@ -312,7 +309,7 @@ class GlObject : public GlRenderable {
                 case '\t': {
                     ++params->numGeoVerts;
             
-                    Vec3<float>* v = params->geoVertArena.PushStruct<Vec3<float>>();
+                    Vec3<float>* v = params->geoVertArena.PushType<Vec3<float>>();
                     v->x = StrToFloat(++strPtr, &strPtr);
                     v->y = StrToFloat(++strPtr, &strPtr);
                     v->z = StrToFloat(++strPtr, &strPtr);
@@ -323,7 +320,7 @@ class GlObject : public GlRenderable {
                 case 't': {
                     ++params->numUvVerts;
             
-                    Vec2<float>* v = params->uvVertArena.PushStruct<Vec2<float>>();
+                    Vec2<float>* v = params->uvVertArena.PushType<Vec2<float>>();
                     v->x = StrToFloat(++strPtr, &strPtr);
                     v->y = StrToFloat(++strPtr, &strPtr);
             
@@ -333,7 +330,7 @@ class GlObject : public GlRenderable {
                 case 'n': {
                     ++params->numNormalVerts;
             
-                    Vec3<float>* v = params->normalVertArena.PushStruct<Vec3<float>>();
+                    Vec3<float>* v = params->normalVertArena.PushType<Vec3<float>>();
                     v->x = StrToFloat(++strPtr, &strPtr);
                     v->y = StrToFloat(++strPtr, &strPtr);
                     v->z = StrToFloat(++strPtr, &strPtr);

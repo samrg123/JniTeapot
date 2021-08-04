@@ -4,8 +4,6 @@
 
 #include "types.h"
 #include "util.h"
-#include "customAssert.h"
-#include "panic.h"
 
 #define ENABLE_MEMORY_STATS 1
 
@@ -188,6 +186,9 @@ class Memory {
 		        
         	public:
 		
+				//Creates a new memory arena. If specificed 'preallocatedBytes'
+				//is used to reserve at least that many bytes in the arena 
+				//Note: Arenas are page aligned
 				inline Arena(uint32 preallocatedBytes = 0): reservedBlock(nullptr) {
                     #if ENABLE_MEMORY_STATS
                         arenaBytes = 0;
@@ -199,6 +200,8 @@ class Memory {
 					currentBlock = preallocatedBytes ? CreateBlock(preallocatedBytes, &emptyBlock) : &emptyBlock;
 				}
 	    		
+				//Increases the size of the arena to fit at least 'bytes' of memory
+				//Returns a pointer to the first free byte 
 				void* PushBytes(size_t bytes, bool zeroMemory = false, uint8 alignment = 1) {
 					RUNTIME_ASSERT(IsPow2Safe(alignment), "Alignment must be a power of 2. { alignment: %d }", alignment);
 					RUNTIME_ASSERT(currentBlock, "Null arena block - should be initialized to emptyBlock! { arena: %p } ", this);
@@ -228,8 +231,11 @@ class Memory {
 					return tPosition;
 				}
         		
+				//Increaseas the size of the arena to fit type 'T'
+				//Returns a pointer to the newly allocated type
+				//Note: No constructors are called durring allocation
 		        template<class T>
-		        T* PushStruct(bool zeroMemory = false, uint8 alignment = 1) { return (T*)PushBytes(sizeof(T), zeroMemory, alignment); }
+		        T* PushType(bool zeroMemory = false, uint8 alignment = 1) { return (T*)PushBytes(sizeof(T), zeroMemory, alignment); }
 
                 inline void Reserve(uint32 bytes) {
                 
@@ -250,6 +256,7 @@ class Memory {
 				    return r.block == currentBlock && r.position == currentBlock->position;
 				}
 		        
+				//Creates a new memory region in the arena that starts at the current position
 		        inline Region CreateRegion() const { return Region(currentBlock, currentBlock->position); }
 		        
 		        //TODO: make  a FreeRegion that can take in a startRegion and endRegion and use ForEachRegion to free blocks in range and merge start and stop block if needed
@@ -290,7 +297,7 @@ class Memory {
 			        	FreeBlock(popBlock);
 			        	popBlock = currentBlock;
 			        }
-			        
+
 			        RUNTIME_ASSERT(region.position <= currentBlock->bytes,
 						        	"Region position is out of bounds of block { block: %p, regionPosition: %d, blockBytes: %d }",
 			                        currentBlock, region.position, currentBlock->bytes);
@@ -302,6 +309,10 @@ class Memory {
 					currentBlock->position = region.position;
 		        }
 			       
+				//Frees all blocks from the arena
+				inline void FreeAll() { FreeBaseRegion(kEmptyRegion); }
+
+				//Packs the current
 		        inline void Pack() {
 			        if(reservedBlock) {
 				
