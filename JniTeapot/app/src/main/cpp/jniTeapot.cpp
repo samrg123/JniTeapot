@@ -3,9 +3,7 @@
 
 #include "tests.h"
 
-#include "log.h"
-#include "panic.h"
-#include "customAssert.h"
+#include "util.h"
 
 #include "FileManager.h"
 #include "GlContext.h"
@@ -18,7 +16,10 @@
 #include "GlSkybox.h"
 
 #include "ARWrapper.h"
-#include "Camera.h"
+
+//NOTE: NOT IN REPO YET
+// #include "ArPlanes.h"
+// #include "Camera.h"
 
 #include <android/native_window_jni.h>
 
@@ -127,25 +128,24 @@ inline
 void DrawStrings(GlText* glText, float renderTime, float frameTime,
                  Vec2<float> textBaseline, Vec2<float> lineAdvance) {
 
-    textBaseline =DrawMemoryStats(glText, textBaseline, lineAdvance);
+    textBaseline = DrawMemoryStats(glText, textBaseline, lineAdvance);
     textBaseline = DrawFPS(glText, renderTime, frameTime, textBaseline, lineAdvance);
     
     glText->Draw();
     glText->Clear();
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
-void* activityLoop(void* params_) {
+[[noreturn]] void* activityLoop(void* params_) {
 
     RenderThreadParams* params = (RenderThreadParams*) params_;
 
     //Initialize EGL on current thread
     glContext.Init(params->androidNativeWindow);
-    
-    // setup ARCore
+        
+    //Set ArCore screen geometry
     ARWrapper::Instance()->UpdateScreenSize(glContext.Width(), glContext.Height());
-    
+
+    //setup GlText
     GlText glText(&glContext, "fonts/xolonium_regular.ttf");
     glText.RenderTexture(GlText::RenderParams {
         .targetGlyphSize = 25,
@@ -159,7 +159,7 @@ void* activityLoop(void* params_) {
     //GlCamera backCamera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f), GlTransform(Vec3(0.f, 0.f, 1.f)));
     GlCamera backCamera, frontCamera;
     
-    //Note: bind camera texture to arCore
+    //Note: Bind camera texture to ArCore
     //Warn: Order dependent.
     //      We must call SetEglCameraTexture before we update the frame
     //      we also only want to query the ArWrapper ProjectionMatrix after the frame is updated
@@ -167,17 +167,16 @@ void* activityLoop(void* params_) {
     backCamera.SetTransform(ARWrapper::Instance()->UpdateFrame());
     backCamera.SetProjectionMatrix(ARWrapper::Instance()->ProjectionMatrix(.01f, 1000.f));
     
-    
-    {
-        Camera camera(Camera::FRONT_CAMERA);
-    
-    
-    }
-    
-    
+    // TODO: Get Camera working with front/back camera and let ARWrapper switch between them so we can update both sides of 
+    //      the cubemap in the same frame
+    // {
+    //     Camera camera(Camera::FRONT_CAMERA);
+    // }
+       
     const Vec3 omega = ToRadians(Vec3(0.f, 0.f, 0.f));
     const float mirrorOmega = ToRadians( 180.f / 10.f);
-    
+
+    //Setup cubemap skybox    
     GlSkybox skybox(GlSkybox::SkyboxParams {
 
         .cubemap = {
@@ -208,18 +207,19 @@ void* activityLoop(void* params_) {
         .generateMipmaps = true, //Note: used for object roughness parameter
     });
 
-    GlObject sphere("meshes/cow.obj",
-                    &backCamera,
-                    &skybox,
-                    GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.03f, .03f, .03f))
-                    );
+    //Setup object to render
+    // GlObject sphere("meshes/cow.obj",
+    //                 &backCamera,
+    //                 &skybox,
+    //                 GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.03f, .03f, .03f))
+    //                 );
 
-    //GlObject sphere("meshes/sphere.obj",
-    //                &backCamera,
-    //                &skybox,
-    //                GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
-    //                //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
-    //               );
+    GlObject sphere("meshes/sphere.obj",
+                   &backCamera,
+                   &skybox,
+                   GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
+                   //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
+                  );
     
     //GlObject sphere("meshes/triangle.obj",
     //                &backCamera,
@@ -234,14 +234,16 @@ void* activityLoop(void* params_) {
 
         float secElapsed = physicsTimer.LapSec();
         
+        // TODO: POLL ANDROID MESSAGE LOOP FOR KEY EVENTS
+
+        //Update camera to match current ArCore position
         backCamera.SetTransform(ARWrapper::Instance()->UpdateFrame());
         
-        // TODO: POLL ANDROID MESSAGE LOOP
+        //clear last frame color and depth buffer
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
         //update skybox
         {
-            
             //rotate camera
             if(false)
             {
@@ -271,12 +273,12 @@ void* activityLoop(void* params_) {
             float cameraMs = cameraTimer.ElapsedMs();
             glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invocation)", cameraMs, cameraMs/cameraInvocations);
 
-            //skybox.Draw();
+            skybox.Draw();
         }
-    
-        backCamera.Draw();
+
+        // backCamera.Draw();
         
-        //Update sphere
+        //Update object
         {
             GlTransform transform = sphere.GetTransform();
             transform.Rotate(omega*secElapsed);
@@ -301,10 +303,7 @@ void* activityLoop(void* params_) {
         // present back buffer
         if(!glContext.SwapBuffers()) InitGlesState();
     }
-
-    return nullptr;
 }
-#pragma clang diagnostic pop
 
 extern "C" {
 
