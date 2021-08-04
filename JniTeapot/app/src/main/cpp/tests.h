@@ -1,11 +1,6 @@
 #pragma once
 
-#include "customAssert.h"
-#include "log.h"
-
-#include "types.h"
-#include "mathUtil.h"
-
+#include "util.h"
 
 #if OPTIMIZED_BUILD
     #define TESTS_ENABLED 0
@@ -67,7 +62,6 @@ TEST_FUNC(Mat4) {
 }
 
 #include "GlTransform.h"
-#include "mat.h"
 TEST_FUNC(GlTransform) {
 
     //Test NormalMatrix

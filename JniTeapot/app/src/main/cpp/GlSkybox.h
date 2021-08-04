@@ -7,8 +7,8 @@
 #include "FileManager.h"
 #include "lodepng/lodepng.h"
 
-#include "shaderUtil.h"
 #include "mat.h"
+#include "shaderUtil.h"
 
 class GlSkybox : public GlRenderable {
     private:

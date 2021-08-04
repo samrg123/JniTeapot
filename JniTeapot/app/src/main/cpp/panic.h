@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdlib>
-#include "util.h"
 #include "macros.h"
 
 // Note: log.h may use Panic so we prototype it before we define it

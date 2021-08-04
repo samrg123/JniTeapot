@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Sequence.h"
+#include "metaprogrammingUtil.h"
 
 template<int n>
 class StringLiteral {

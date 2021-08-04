@@ -4,9 +4,9 @@
 #if LOG_ENABLED
 	
 	#include "macros.h"
-	#include "util.h"
 	#include "types.h"
 	#include "memUtil.h"
+	#include "stringUtil.h"
 
 	#include <android/log.h>
 	#include <stdio.h>

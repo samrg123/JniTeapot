@@ -3,8 +3,8 @@
 #include <EGL/egl.h>
 #include <GLES3/gl31.h>
 
-#include "customAssert.h"
 #include "types.h"
+#include "customAssert.h"
 
 #define GL_ASSERT_INDENT "\n\t\t\t"
 #define GL_ASSERT_END GL_ASSERT_INDENT "}\n\t\t"

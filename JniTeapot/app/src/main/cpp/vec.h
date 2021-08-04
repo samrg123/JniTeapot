@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mathUtil.h"
+
 //TODO: TYPEDEF TEMPLATES!!!!!!!
 
 template<auto kNumDims_>

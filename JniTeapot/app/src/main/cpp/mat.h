@@ -1,7 +1,7 @@
 #pragma once
 
-#include "util.h"
 #include "vec.h"
+#include "mathUtil.h"
 
 template<typename T>
 struct Mat4 {

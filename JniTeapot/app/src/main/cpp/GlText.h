@@ -4,14 +4,9 @@
 #include <alloca.h>
 #include "Ft.h"
 
+#include "util.h"
 #include "GlContext.h"
-#include "shaderUtil.h"
-#include "types.h"
-#include "customAssert.h"
 #include "FileManager.h"
-
-#include "vec.h"
-#include "Rectangle.h"
 
 class GlText {
 
