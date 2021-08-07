@@ -10,10 +10,6 @@
 
 #if TESTS_ENABLED
 
-//Disable unused functions warnings in ide (ide doesn't know about crt init table)
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
-
 #define TEST_CONDITION(x) { RUNTIME_ASSERT(x, "TEST CONDITION FAILED for: '%s'", __PRETTY_FUNCTION__); }
 #define TEST_FUNC(name) static CrtGlobalTestFunc Test_##name()
 
@@ -165,7 +161,5 @@ static CrtGlobalPreTestFunc InitTests() {
 static CrtGlobalPostTestFunc TestsCompleted() {
     Log("Finished Testing! all tests passed!");
 }
-
-#pragma clang diagnostic pop
 
 #endif //TESTS_ENABLED
