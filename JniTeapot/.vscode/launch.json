@@ -1,5 +1,6 @@
 {
     "version": "0.2.0",
+
     "configurations": [
         {
             // configuration type, request  and name. "launch" is used to deploy the app
@@ -7,8 +8,8 @@
             "type": "android",
             "request": "launch",
             "name": "Build and Run",
-            // "preLaunchTask": "gradle: app:build",
-            
+            "preLaunchTask": "Prepare Launch",
+        
             // Location of the App source files. This value must point to the root of
             // your App source tree (containing AndroidManifest.xml).
             "appSrcRoot": "${workspaceRoot}/app/src/main",
@@ -22,7 +23,9 @@
 
             // Automatically launch 'adb start-server' if not already started.
             // Default: true
-            "autoStartADB": true,
+            // Note: this doesn't work with debugger because extension only starts adb server after checking for adb devices
+            //       instead we auto launch adb server in "Prepare Launch" task 
+            // "autoStartADB": true,
 
             // Launch behaviour if source files have been saved after the APK was built.
             // One of: [ ignore warn stop ]. Default: warn

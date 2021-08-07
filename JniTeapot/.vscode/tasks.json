@@ -25,6 +25,15 @@
 				"isDefault": true
 			}
 		},
+ 
+		{
+			"label": "Prepare Launch",
+			"dependsOn": ["Build Debug APK"],
+			
+			"type": "shell",
+			"command": "adb start-server",	
+		},
+
 
 		{
 			"label": "Build Release APK",
