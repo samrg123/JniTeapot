@@ -12,3 +12,4 @@ captures
 gradlew
 gradlew.bat
 gradle
+proguard-rules.pro
