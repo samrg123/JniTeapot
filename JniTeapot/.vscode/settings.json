@@ -3,6 +3,16 @@
         "*.logcat": "logcat"
     },
 
+    // Speed up vscode by not watching these large folders
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+
+        "**/.cxx/**": true,
+        "**/build/**": true,
+        "**/.vscode/extensions/**": true,
+    },
+
     "editor.tokenColorCustomizations": {
         "textMateRules": [
             {
@@ -50,4 +60,5 @@
                 }
             }
         ]
+    }
 }
