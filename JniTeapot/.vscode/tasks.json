@@ -1,0 +1,54 @@
+{
+	"version": "2.0.0",
+	
+	"presentation": {
+		"clear": true,
+		"panel": "shared",
+		"showReuseMessage": true
+	},
+
+	"tasks": [
+		{
+			"label": "Build Debug APK",
+			"type": "shell",
+			"command": "./gradlew.bat app:assembleDebug",
+
+			"problemMatcher": {
+				"owner": "cpp",
+				"base": "$gcc",
+				"fileLocation":"absolute",
+				"source": "Build Debug APK"
+			},
+
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+
+		{
+			"label": "Build Release APK",
+			"type": "shell",
+			"command": "./gradlew.bat app:assembleRelease",
+
+			"problemMatcher": {
+				"owner": "cpp",
+				"base": "$gcc",
+				"fileLocation":"absolute",
+				"source": "Build Release APK"
+			},
+
+			"group": "build",
+		},
+		
+		{
+			"label": "Clean Build",
+			"type": "shell",
+			"command": "./gradlew.bat app:clean",
+			"problemMatcher": ["$gradle"],
+
+			"group": "build",
+		},		
+
+	]
+}
