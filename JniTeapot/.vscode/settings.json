@@ -1,0 +1,53 @@
+{
+    "files.associations": {
+        "*.logcat": "logcat"
+    },
+
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": "markup.other.logcat.verbose",
+                "settings": {
+                    "foreground": "#BBBBBB"
+                }
+            },
+            {
+                "scope": "markup.quote.logcat.info",
+                "settings": {
+                    "foreground": "#45a059"
+                }
+            },
+            {
+                "scope": "markup.changed.logcat.debug",
+                "settings": {
+                    "foreground": "#74abce"
+                }
+            },
+            {
+                "scope": "markup.inserted.logcat.warning",
+                "settings": {
+                    "foreground": "#afae68"
+                }
+            },
+            {
+                "scope": "markup.deleted.logcat.error",
+                "settings": {
+                    "foreground": "#d6403b"
+                }
+            },
+            {
+                "scope": "markup.deleted.logcat.assert",
+                "settings": {
+                    "foreground": "#FF6B68",
+                    "fontStyle": "underline"
+                }
+            },
+            {
+                "scope": "entity.tag.logcat",
+                "settings": {
+                    // "foreground": "#928c8c",
+                    "fontStyle": "bold"
+                }
+            }
+        ]
+}

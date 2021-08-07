@@ -1,0 +1,135 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "logcat",
+	"patterns": [
+		{
+			"include": "#verbose"
+		},
+		{
+			"include": "#info"
+		},
+		{
+			"include": "#debug"
+		},
+		{
+			"include": "#warning"
+		},
+		{
+			"include": "#error"
+		},
+		{
+			"include": "#assert"
+		}
+	],
+	"repository": {
+		"verbose": {
+			"patterns": [{
+				"name": "markup.other.logcat.verbose",
+				"begin": "^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?(V)((\\s+|\/)(.+?))?:\\s+(.*)$",
+				"beginCaptures": {
+					"2": {"name": "entity.date.logcat"},
+					"4": {"name": "entity.time.logcat"},
+					"6": {"name": "entity.pid.logcat"},
+					"8": {"name": "entity.tid.logcat"},
+					"11": {"name": "entity.package.logcat"},
+					"12": {"name": "entity.level.logcat"},
+					"15": {"name": "entity.tag.logcat"},
+					"16": {"name": "entity.message.logcat"}
+				},
+				"contentName": "logcat.message",
+				"end": "(?=^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?([VIEWAD])((\\s+|\/)(.+?))?:\\s+(.*)$)"
+			}]
+		},
+		"info": {
+			"patterns": [{
+				"name": "markup.quote.logcat.info",
+				"begin": "^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?(I)((\\s+|\/)(.+?))?:\\s+(.*)$",
+				"beginCaptures": {
+					"2": {"name": "entity.date.logcat"},
+					"4": {"name": "entity.time.logcat"},
+					"6": {"name": "entity.pid.logcat"},
+					"8": {"name": "entity.tid.logcat"},
+					"11": {"name": "entity.package.logcat"},
+					"12": {"name": "entity.level.logcat"},
+					"15": {"name": "entity.tag.logcat"},
+					"16": {"name": "entity.message.logcat"}
+				},
+				"contentName": "logcat.message",
+				"end": "(?=^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?([VIEWAD])((\\s+|\/)(.+?))?:\\s+(.*)$)"
+			}]
+		},
+		"debug": {
+			"patterns": [{
+				"name": "markup.changed.logcat.debug",
+				"begin": "^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?(D)((\\s+|\/)(.+?))?:\\s+(.*)$",
+				"beginCaptures": {
+					"2": {"name": "entity.date.logcat"},
+					"4": {"name": "entity.time.logcat"},
+					"6": {"name": "entity.pid.logcat"},
+					"8": {"name": "entity.tid.logcat"},
+					"11": {"name": "entity.package.logcat"},
+					"12": {"name": "entity.level.logcat"},
+					"15": {"name": "entity.tag.logcat"},
+					"16": {"name": "entity.message.logcat"}
+				},
+				"contentName": "logcat.message",
+				"end": "(?=^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?([VIEWAD])((\\s+|\/)(.+?))?:\\s+(.*)$)"
+			}]
+		},
+		"warning": {
+			"patterns": [{
+				"name": "markup.inserted.logcat.warning",
+				"begin": "^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?(W)((\\s+|\/)(.+?))?:\\s+(.*)$",
+				"beginCaptures": {
+					"2": {"name": "entity.date.logcat"},
+					"4": {"name": "entity.time.logcat"},
+					"6": {"name": "entity.pid.logcat"},
+					"8": {"name": "entity.tid.logcat"},
+					"11": {"name": "entity.package.logcat"},
+					"12": {"name": "entity.level.logcat"},
+					"15": {"name": "entity.tag.logcat"},
+					"16": {"name": "entity.message.logcat"}
+				},
+				"contentName": "logcat.message",
+				"end": "(?=^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?([VIEWAD])((\\s+|\/)(.+?))?:\\s+(.*)$)"
+			}]
+		},
+		"error": {
+			"patterns": [{
+				"name": "markup.deleted.logcat.error",
+				"begin": "^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?(E)((\\s+|\/)(.+?))?:\\s+(.*)$",
+				"beginCaptures": {
+					"2": {"name": "entity.date.logcat"},
+					"4": {"name": "entity.time.logcat"},
+					"6": {"name": "entity.pid.logcat"},
+					"8": {"name": "entity.tid.logcat"},
+					"11": {"name": "entity.package.logcat"},
+					"12": {"name": "entity.level.logcat"},
+					"15": {"name": "entity.tag.logcat"},
+					"16": {"name": "entity.message.logcat"}
+				},
+				"contentName": "logcat.message",
+				"end": "(?=^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?([VIEWAD])((\\s+|\/)(.+?))?:\\s+(.*)$)"
+			}]
+		},
+		"assert": {
+			"patterns": [{
+				"name": "markup.deleted.logcat.assert",
+				"begin": "^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?(A)((\\s+|\/)(.+?))?:\\s+(.*)$",
+				"beginCaptures": {
+					"2": {"name": "entity.date.logcat"},
+					"4": {"name": "entity.time.logcat"},
+					"6": {"name": "entity.pid.logcat"},
+					"8": {"name": "entity.tid.logcat"},
+					"11": {"name": "entity.package.logcat"},
+					"12": {"name": "entity.level.logcat"},
+					"15": {"name": "entity.tag.logcat"},
+					"16": {"name": "entity.message.logcat"}
+				},
+				"contentName": "logcat.message",
+				"end": "(?=^(([\\d-]+?)\\s+)?(([\\d:\\.]+?)\\s+)?((\\d+)(\\s+|-)(\\d+)(\/)?)?(([\\w\\.?]+?)?\\s+)?([VIEWAD])((\\s+|\/)(.+?))?:\\s+(.*)$)"
+			}]
+		}
+	},
+	"scopeName": "source.logcat"
+}
