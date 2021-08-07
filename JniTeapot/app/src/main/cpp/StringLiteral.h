@@ -149,7 +149,7 @@ constexpr auto ToStringLiteral = ToStringLiteral_<x>::Value;
     
     //Note: VsCode Intellisense can't resolve auto template parameters so we throw this hack in to prevent annoying errors
     //TODO: Find out way to get intellisense to deduce template paramters
-    #define ToStringLiteral(x) ( static_cast<void>(x), StringLiteral("Intellisense ToStringLiteral"))
+    #define ToStringLiteral(x) [](){ return ({ constexpr auto constant = Constant(x); StringLiteral("Intellisense ToStringLiteral"); }); }()
 #else
     #define ToStringLiteral(x) [](){ return ({ static constexpr auto constant = Constant(x); ToStringLiteral<&constant>(); }); }()
 #endif
