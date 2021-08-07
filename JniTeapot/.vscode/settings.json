@@ -60,5 +60,43 @@
                 }
             }
         ]
-    }
+    },
+    "cSpell.words": [
+        "ACAMERA",
+        "GLenum",
+        "GLuint",
+        "Gles",
+        "JNICALL",
+        "JNIEXPORT",
+        "Lerp",
+        "Moto",
+        "OPENGL",
+        "Slerp",
+        "UBLOCK",
+        "Verts",
+        "alignas",
+        "blin",
+        "bmps",
+        "clazz",
+        "eecs",
+        "essl",
+        "ftlib",
+        "glClearDepthf",
+        "glGetIntegerv",
+        "glGetProgramiv",
+        "highp",
+        "horiAdvance",
+        "horiBearingX",
+        "horiBearingy",
+        "jclass",
+        "jniteapot",
+        "jobject",
+        "lodepng",
+        "mediump",
+        "msaa",
+        "phong",
+        "reupload",
+        "vsync",
+        "xolonium"
+    ]
 }

@@ -146,7 +146,7 @@ class GlText {
                 
                 float tColor = texture(fontSampler, textureCoordinates).r;
 
-                //Warn: this is expensive!!! (halves performance on moto G6) - acts as a hack to enable z-testing on transparent pixels, but prevents fragment culling [really should sort things with painters algorithm!]
+                //Warn: this is expensive!!! (halves performance on Moto G6) - acts as a hack to enable z-testing on transparent pixels, but prevents fragment culling [really should sort things with painters algorithm!]
                 if(tColor <= .5f) discard;
 
                 fragColor.rgb = (tColor > 0.f) ? fontColor.rgb : vec3(0,0,0);
@@ -166,16 +166,16 @@ class GlText {
             uint32 area;
             uint8 character;
             
-            static void Insert(GlyphSortData* arry, uint8 arryLength, const GlyphSortData& value) {
+            static void Insert(GlyphSortData* array, uint8 arrayLength, const GlyphSortData& value) {
                 
                 // sort glyphs by decreasing area
-                uint8 insertIndex = BinarySearchUpper(value.area, arry, arryLength,
+                uint8 insertIndex = BinarySearchUpper(value.area, array, arrayLength,
                                                       [](uint32 area, const GlyphSortData &data) { return area > data.area; }
                                                      );
     
                 //shift over existing values and insert
-                for(uint8 i = arryLength; i > insertIndex; --i) arry[i] = arry[i - 1];
-                arry[insertIndex] = value;
+                for(uint8 i = arrayLength; i > insertIndex; --i) array[i] = array[i - 1];
+                array[insertIndex] = value;
             }
         };
         
@@ -434,7 +434,7 @@ class GlText {
                     } else ++j; // scan next
                 }
         
-                // TODO: introduce valve distance field fonts for less blury scaling
+                // TODO: introduce valve distance field fonts for less blurry scaling
     
                 //set vgData
                 offsetVgData[sData->character] = {
@@ -610,7 +610,7 @@ class GlText {
             glGenBuffers(ArrayCount(glBuffers), glBuffers);
             GlAssertNoError("Failed to generate glBuffers");
     
-            //setup gNIFORMlyphData buffer
+            //setup glyphData buffer
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BLOCK_VERTEX_GLYPH_DATA, vertexGlyphDataBuffer);
             
             //setup stringAttrib buffer
@@ -648,7 +648,7 @@ class GlText {
             glDeleteBuffers(ArrayCount(glBuffers), glBuffers);
     
             // TODO: make this static so that they persist across the whole program
-            //      and initilize them with some GlText::Init call
+            //      and initialize them with some GlText::Init call
             glDeleteProgram(glProgram);
             glDeleteVertexArrays(1, &vao);
             glDeleteSamplers(1, &fontSampler);

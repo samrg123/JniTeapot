@@ -93,7 +93,7 @@ struct ToStringLiteral_ {
         // Note: Clang doesn't support passing float parameters yet so we handle them here
         if constexpr(IsFloatType<ValueT>()) {
 
-            // TODO: THIS... need to do some foating point divion to compute mantisa and exponent
+            // TODO: THIS... need to do some floating point divion to compute mantisa and exponent
             return ParseFloat();
 
         } else if constexpr(IsStringType<ValueT>()) {

@@ -215,5 +215,5 @@ constexpr StringLiteral ShaderQuaternion = Shader(
 //"   clipCoords.w = (tw2*( (tz3 - (nz*tw3))/((nz*tw2) - tz2) )) + tz3;"
 //"   clipCoords.xyz = vec3(nx, ny, nz) * clipCoords.w;"
 //"   mat4 inverseProjectionMatrix = inverse(projectionMatrix);"
-//"   vec4 unprojected = inverseProjectionMatrix * clipCoords;"
-//"   vec3 worldSpace = transpose(inverse(mat3(viewMatrix))) * unprojected.xyz;"
+//"   vec4 nonProjected = inverseProjectionMatrix * clipCoords;"
+//"   vec3 worldSpace = transpose(inverse(mat3(viewMatrix))) * nonProjected.xyz;"

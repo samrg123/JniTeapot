@@ -41,12 +41,16 @@ class ARWrapper {
         
     public:
         
-        static inline
-        ARWrapper* Instance() {
+        static inline ARWrapper* Instance() {
             static ARWrapper instance;
             return &instance;
         }
         
+        inline const ArSession* ArSession() const  { 
+            RUNTIME_ASSERT(arSession, "arSession not Initialized");
+            return arSession; 
+        } 
+
         inline Mat4<float> ProjectionMatrix(float nearPlane, float farPlane) const {
             RUNTIME_ASSERT(arSession, "arSession not Initialized");
             

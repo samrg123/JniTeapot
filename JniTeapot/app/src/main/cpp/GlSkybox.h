@@ -112,7 +112,7 @@ class GlSkybox : public GlRenderable {
                 if(textureFace == 1) { fakeWorldPos = vec3(-1., -a_Position.y, a_Position.x); }
 
                 //Y
-                if(textureFace == 2) { fakeWorldPos = vec3(a_Position.x, 1., a_Position.y); } // befre just -x
+                if(textureFace == 2) { fakeWorldPos = vec3(a_Position.x, 1., a_Position.y); } // before just -x
                 if(textureFace == 3) { fakeWorldPos = vec3(a_Position.x, -1., -a_Position.y); }
 
                 //z

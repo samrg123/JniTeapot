@@ -103,7 +103,7 @@ class GlContext {
             EglAssertTrue(eglMakeCurrent(display, surface, surface, context), "Failed to bind egl surface to thread");
             
             // set swap interval
-            EglAssertTrue(eglSwapInterval(display, kSwapInterval), "Failed to set swap interval { display: %p, context: %p, inverval: %d }", display, context, kSwapInterval);
+            EglAssertTrue(eglSwapInterval(display, kSwapInterval), "Failed to set swap interval { display: %p, context: %p, interval: %d }", display, context, kSwapInterval);
             
             Log("Created EGL context { display: %d, config: %p, context: %p }", display, config, context);
             return context;

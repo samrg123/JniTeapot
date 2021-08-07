@@ -204,7 +204,7 @@ class GlObject : public GlRenderable {
                            "numUvVerts[%u] != numVerts[%u]", params->numUvVerts, numVerts);
             
             // compute vbo stride
-            // Note: vbo's always contain geoVerts & normals (we compute them if not provided). UV is optional
+            // Note: vbo always contain geoVerts & normals (we compute them if not provided). UV is optional
             uint32 vboStride = 2*sizeof(Vec3<float>);
             if(flags&FLAG_UV) vboStride+= sizeof(Vec2<float>);
             
@@ -535,9 +535,9 @@ class GlObject : public GlRenderable {
         }
         
         //TODO: create GENERIC!!! VBO
-        //TODO: create VBI's
-        //TODO: create FBO pipeline: vbo queue -> render with their included shaders & optional VBIs to backBuffer quad texture
-        //      - VBOs render pipeline takes in a camera to render to!
+        //TODO: create VBI
+        //TODO: create FBO pipeline: vbo queue -> render with their included shaders & optional VBI to backBuffer quad texture
+        //      - VBO render pipeline takes in a camera to render to!
         //      - Camera system for handling MVP matrix transforms
         
         //TODO: create FBO
