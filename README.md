@@ -1,4 +1,4 @@
-# Mobile Graphics Lab
+# Graphics on Mobile
 
 |  Team Info |  Wiki |
 |:----------:|:-----:|
