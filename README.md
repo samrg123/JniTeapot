@@ -1,4 +1,4 @@
-# EECS441 Mobile App Development Labs
+# Mobile Graphics Lab
 
 |  Team Info |  Wiki |
 |:----------:|:-----:|
