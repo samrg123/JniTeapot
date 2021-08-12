@@ -4,10 +4,22 @@ def arcore_version = "1.19.0"
 def arcore_libpath = "${buildDir}/arcore-native"
 configurations { natives }
 
+tasks.named("clean") {
+    doFirst {
+        def cxxFolder="${project.rootDir}/app/.cxx/"
+        println "deleting: ${cxxFolder}"
+        delete cxxFolder
+
+        def buildFolder="${project.rootDir}/app/build/"
+        println "deleting: ${buildFolder}"
+        delete buildFolder
+    }
+}
+
 android {
     compileSdkVersion 29
     buildToolsVersion "30.0.2"
-    clean
+
     defaultConfig {
         applicationId "com.eecs487.jniteapot"
 
@@ -28,8 +40,7 @@ android {
             cmake {
                 arguments "-DANDROID_TOOLCHAIN=clang",
                           "-DANDROID_STL=c++_static",
-                        //   "-DCMAKE_BUILD_TYPE=Release"
-                          "-DCMAKE_BUILD_TYPE=Debug",
+                          "-DCMAKE_BUILD_TYPE:STRING=Custom", //use custom CMAKE_BUILD_TYPE string so "$ANDROID_NDK/build/cmake/android.toolchain.cmake" doesn't change our optimization flags placed in CMakeLists.txt
                           "-DARCORE_LIBPATH=${arcore_libpath}/jni",
                           "-DARCORE_INCLUDE=${project.rootDir}/app/src/main/cpp/arcore${arcore_version}",
                           "-DARCORE_HEADER=${project.rootDir}/app/src/main/cpp/arcore${arcore_version}/arcore_c_api.h",

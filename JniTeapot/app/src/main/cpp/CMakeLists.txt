@@ -1,24 +1,22 @@
 cmake_minimum_required(VERSION 3.10)
 project(JniTeapot LANGUAGES C CXX)
 
-# TODO: DOES'T LOOK LIKE THIS IS WORKING
-#set(CMAKE_CXX_FLAGS_DEBUG "-g")
-#set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-
 # set up common compile options
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_CXX_FLAGS 
-    "-DARCORE_HEADER=\"\\\"${ARCORE_HEADER}\\\"\" \
-    -Wall \
-    -std=c++2a \
-    -fno-exceptions \
-    -fno-rtti -fdeclspec \
-    -fno-threadsafe-statics \
-    -ftemplate-depth=4096 \
-    -g \
-    -Od \
-    -DOPTIMIZED_BUILD=0"
-)
+    "-DARCORE_HEADER=\"\\\"${ARCORE_HEADER}\\\"\"   \
+    -Wall                                           \
+    -std=c++2a                                      \
+    -fno-exceptions                                 \
+    -fno-rtti -fdeclspec                            \
+    -fno-threadsafe-statics                         \
+    -ftemplate-depth=4096                           \
+    -g                                              \
+    -O0                                             \
+    -DOPTIMIZED_BUILD=0                             \
+")
+    
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -save-temps=obj")
 
 # build app
 set(SOURCES jniTeapot.cpp lodepng/lodepng.cpp)
