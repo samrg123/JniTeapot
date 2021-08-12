@@ -824,6 +824,9 @@ class GlText {
                 char* attributeBuffer = (char*)glMapBufferRange(GL_ARRAY_BUFFER, 0, pushedBytes, GL_MAP_WRITE_BIT);
                 GlAssert(attributeBuffer, "Failed to map vertexAttributeBuffer");
     
+                //Note: attributeBuffer contains SCI and position of each character in a string
+                //      so it's ok to use ForEachRegion which is faster and may reverse the ordering of the buffer
+                //      instead of CopyToBuffer which is slower and preserves ordering
                 Memory::ForEachRegion(stringRegion, memoryArena.CreateRegion(),
                                       [&](void *chunk, uint32 chunkBytes) {
                                           CopyMemory(attributeBuffer, chunk, chunkBytes);
