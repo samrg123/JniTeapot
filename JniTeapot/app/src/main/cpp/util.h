@@ -17,8 +17,8 @@
 
 #include "metaprogrammingUtil.h"
 
-constexpr unsigned int RGBA(uint r, uint g, uint b, uint a = 255) { return (r << 24) | (g << 16) | (b << 8) | a; }
-constexpr unsigned int RGBA(float r, float g, float b, float a = 1.f) { return (Round(r*255.f) << 24) | (Round(g*255.f) << 16) | (Round(b*255.f) << 8) | Round(a*255.f); }
+constexpr unsigned int RGBA(uint8 r, uint8 g, uint8 b, uint8 a = 255) { return (uint32(r) << 24) | (uint32(g) << 16) | (uint32(b) << 8) | uint32(a); }
+constexpr unsigned int RGBAf(float r, float g, float b, float a = 1.f) { return (Round(r*255.f) << 24) | (Round(g*255.f) << 16) | (Round(b*255.f) << 8) | Round(a*255.f); }
 
 template<typename T> void Swap(T& x, T& y) {
 	T tmp = (T&&)x;
