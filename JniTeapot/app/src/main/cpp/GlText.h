@@ -609,12 +609,6 @@ class GlText {
             //generate buffers
             glGenBuffers(ArrayCount(glBuffers), glBuffers);
             GlAssertNoError("Failed to generate glBuffers");
-    
-            //setup glyphData buffer
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BLOCK_VERTEX_GLYPH_DATA, vertexGlyphDataBuffer);
-            
-            //setup stringAttrib buffer
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BLOCK_STRING_ATTRIB_DATA, stringAttribBuffer);
             
             //setup attribute buffer
             vertexAttributeBufferBytes = 0;
@@ -798,8 +792,9 @@ class GlText {
     
             //Note: glMapBufferRange fails with 0 size
             if(!pushedBytes) return;
-    
+
             //upload string attribs
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BLOCK_STRING_ATTRIB_DATA, stringAttribBuffer);
             if(stringAttribBitIndex >= uploadStringAttribBitIndex) {
         
                 // get inclusive distance from last uploaded stringAttribIndex to current stringAttribIndex
@@ -811,7 +806,6 @@ class GlText {
                 uploadStringAttribBitIndex = nextUploadStringAttribBitIndex;
         
                 //upload the new stringAttrib bits
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, stringAttribBuffer);
                 glBufferSubData(GL_SHADER_STORAGE_BUFFER, uscIndex*sizeof(StringAttrib), uploadCount * sizeof(StringAttrib), stringAttribData + uscIndex);
             }
     
@@ -837,9 +831,13 @@ class GlText {
             }
     
             glUseProgram(glProgram);
-            glBindSampler(TU_FONT, fontSampler);
+            
+            //bind buffers. Note: stringAttribBuffer was bound above 
             glBindVertexArray(vao);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BLOCK_VERTEX_GLYPH_DATA, vertexGlyphDataBuffer);
     
+            //bind sampler and textures
+            glBindSampler(TU_FONT, fontSampler);
             glActiveTexture(GL_TEXTURE0 + TU_FONT);
             glBindTexture(GL_TEXTURE_2D, fontTexture);
             
