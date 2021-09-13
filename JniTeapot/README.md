@@ -15,10 +15,12 @@ You can access the following commands in the VSCode command pallet:
 |`Android: View Logcat`     |Opens a logcat view of the connected android device                |
 |`Run Android Emulator`     |Opens an android emulator installed on the Machine<sup>1,2</sup>   |
 |`Run task`                 |Runs a designated build task such as Build Release APK or Clean    |
-> <table>
-><tr style="vertical-align:top"><td><sup>1</sup></td><td>This currently requires you to add <code>%LOCALAPPDATA%\Android\Sdk\emulator</code> and <code>%LOCALAPPDATA%\Android\Sdk\platform-tools</code> to your system path.</td><tr> 
-><tr style="vertical-align:top"><td><sup>2</sup></td><td>JniTeapot currently only works with emulators running Android API version 29 with GoogleAPIs and no Google Play. We recommend using the Pixel 3a as an emulation device.</td><tr>
-> </table>
+
+><small>
+1. This currently requires you to add `%LOCALAPPDATA%\Android\Sdk\emulator` and `%LOCALAPPDATA%\Android\Sdk\platform-tools` to your system path.
+2. JniTeapot currently only works with emulators running Android API version 29 with GoogleAPIs and no Google Play. We recommend using the Pixel 3a as an emulation device.
+></small> 
+
 
 <br><br>
 
