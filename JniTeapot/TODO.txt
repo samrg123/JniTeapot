@@ -1,13 +1,36 @@
 
-Low Priority:
-	- Ask for camera permissions at first run
-	- Get real linux sleep granularity for timers
-	- Make GlLight
-	- Clean up GlContext::RenderCubemap
-	- replace lodepng with libpng?
-	
+- ArPlanes
+- Render pipeline!! ... think about global binding points/uniforms?
+- Support for GlContext to open files for shaders
+- Port shadows from varun branch into master branch
 
+- ARCore drop bad frames
+- FPS cap
+- Galaxy S9 ArCore Bug
+- EGL lowp color bug.
+- Constant time PCSS shadows 
+- FIV shadows?
+- Spherical harmonics lightprobes?
+- Only update ArCamera EGL image when timestamp changes
+- GlCamera -- want to be able to poll front and rear camera for images! 
+- GlSkybox perspective
+- GlLights
+- Colorize gradle build log in vscode 
+- Figure out why logcat still truncates 2k character logs when payload size is 4068?
+  
+Low Priority:
+	- Auto find/configure Android SDK home path for "Launch android emulator" extension
+	- Add more instructions on how to import 
+	- Make better logcat extension for vscode - Simple CPP program that filters content and hands output to vscode
+	- Add extension installer for existing vscode installs instead of including portable version 
+	- Ask for camera permissions at first run
+	- replace lodepng with libpng?
+	- Get real linux sleep granularity for timers
+	- Clean up GlContext::RenderCubemap
+	
 Medium Priority:
+	- VsCode NDK debugging support
+	- Make GlLight
 	- Optimize ARCore rendering loop
 
 High Priority:

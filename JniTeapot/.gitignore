@@ -11,3 +11,5 @@
 .externalNativeBuild
 .cxx
 *.logcat
+vscode/data/user-data
+vscode/data/argv.json

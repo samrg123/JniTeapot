@@ -1,0 +1,63 @@
+{
+	"name": "close-all",
+	"displayName": "Close All",
+	"description": "Adds a close all button to the editor title area",
+	"version": "1.0.5",
+	"icon": "rssowl.png",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bpasero/vscode-close-all.git"
+	},
+	"bugs": {
+		"url": "https://github.com/bpasero/vscode-close-all/issues"
+	},
+	"publisher": "rssowl",
+	"engines": {
+		"vscode": "^1.36.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:extension.closeAll"
+	],
+	"main": "./out/src/extension",
+	"contributes": {
+		"commands": [
+			{
+				"command": "extension.closeAll",
+				"title": "Close All Editors in Group",
+				"icon": "$(close-all)"
+			}
+		],
+		"menus": {
+			"editor/title": [
+				{
+					"command": "extension.closeAll",
+					"group": "navigation"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "yarn run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./"
+	},
+	"devDependencies": {
+		"@types/glob": "^7.1.1",
+		"@types/mocha": "^5.2.6",
+		"@types/node": "^10.12.21",
+		"@types/vscode": "^1.36.0",
+		"glob": "^7.1.4",
+		"mocha": "^6.1.4",
+		"typescript": "^3.3.1",
+		"tslint": "^5.12.1"
+	},
+	"__metadata": {
+		"id": "4bc69eff-1633-4714-9074-35f1d78ef301",
+		"publisherId": "580dfc3e-1fa0-4ad4-98e5-ab01a79d5f3e",
+		"publisherDisplayName": "rssowl"
+	}
+}

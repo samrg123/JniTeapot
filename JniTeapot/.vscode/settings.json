@@ -1,4 +1,5 @@
 {
+ 
     "files.associations": {
         "*.logcat": "logcat"
     },
@@ -7,14 +8,65 @@
     "files.watcherExclude": {
         "**/.git/objects/**": true,
         "**/.git/subtree-cache/**": true,
-
-        "**/.cxx/**": true,
-        "**/build/**": true,
         "**/.vscode/extensions/**": true,
     },
 
+    "multiCommand.commands":[  
+        {   
+            //Note: simply using 'workbench.action.terminal.clear' doesn't clear terminal scrollback buffer
+            //      to achieve that effect we use this commonand instead. It first clears the scollback buffer
+            //      of a powershell/cmd/wsl terminal and then clears terminal screen in vscode  
+            "command": "multiCommand.clearTerminal",
+            "label": "Clear Terminal",
+            "sequence": [
+                //Note: we send
+                //      1 - ctrl+c[0x03] to blank the current line 
+                //      2 - cls enter[0x0d] to clear powershell and cmd terminals.
+                //      3 - ctrl+L[0x0c] to clear wsl terminal
+                //      4 - backspace[\b] to erase ^L character in cmd terminal
+                //      5 - We use workbench.action.terminal.clear to clear the terminal screen in vscode
+                {"command": "workbench.action.terminal.sendSequence", "args": {"text": "\u0003cls\u000d\u000c\b"}},
+                "workbench.action.terminal.clear",
+            ]
+        },
+    ],
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+
     "editor.tokenColorCustomizations": {
         "textMateRules": [
+
+            {
+                "scope": "jniteapot-cpp.attribute",
+                "settings": {
+                    "foreground": "#569CD6",
+                }
+            },
+            
+            {
+                "scope": "jniteapot-cpp.comment.todo.keyword, jniteapot-cpp.comment.fixme.keyword",
+                "settings": {
+                    "foreground": "#c9b24e"
+                }
+            },           
+            {
+                "scope": "jniteapot-cpp.comment.error.keyword, jniteapot-cpp.comment.bug.keyword",
+                "settings": {
+                    "foreground": "#c70000",
+                }
+            },            
+            {
+                "scope": "jniteapot-cpp.comment.warn.keyword",
+                "settings": {
+                    "foreground": "#d86800",
+                }
+            },            
+            {
+                "scope": "jniteapot-cpp.comment.note.keyword",
+                "settings": {
+                    "foreground": "#2ea100"
+                }
+            },
+
             {
                 "scope": "markup.other.logcat.verbose",
                 "settings": {
