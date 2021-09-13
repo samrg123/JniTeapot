@@ -32,7 +32,7 @@ To build JniTeapot with Android Studio. Navigate to `File->New->Import Project..
 <br><br>
 
 ## What about Documentation?
-Documentation about how JniTeapot works can be found at the [JniTeapot wiki](../../wiki/JniTeapot-Documentation.md).
+Documentation about how JniTeapot works can be found at the [JniTeapot wiki](https://github.com/UM-EECS-441/graphics/wiki/JniTeapot-Documentation).
 A list of known bugs and planned updates can be found in [TODO.txt](TODO.txt) 
 
 > **Note:** Because JniTeapot is still in its development phase the documentation is subject to frequent changes and may not always be up to date.
