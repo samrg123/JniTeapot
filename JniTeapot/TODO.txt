@@ -19,7 +19,7 @@
 - Figure out why logcat still truncates 2k character logs when payload size is 4068?
   
 Low Priority:
-	- Gradle language support extension without security variabilities
+	- Gradle language support extension without security vulnerability
 	- Auto find/configure Android SDK home path for "Launch android emulator" extension
 	- Add more instructions on how to import 
 	- Make better logcat extension for vscode - Simple CPP program that filters content and hands output to vscode

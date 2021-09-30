@@ -7,7 +7,7 @@ The JniTeapot repo is an augmented reality app powered by Google's ArCore API wh
 ## How to compile the project
 JniTeapot includes a portable install of VSCode including all the extensions needed to build and run the JniTeapot project. However, JniTeapot does not include a copy of the Android SDK and NDK which must be installed first in order to build the project.
  
-To build VSCode execute `code.cmd` and press `shift+ctrl+B`. After the build completes you run the app on a connected android device by pressing `F5`.
+To build JniTeapot with VSCode extract VSCode.zip into the root directory of the project. Then execute `code.cmd` and press `shift+ctrl+B`. After the build completes you run the app on a connected android device by pressing `F5`.
 
 You can access the following commands in the VSCode command pallet:
 |Command                    |Description                                                        |
