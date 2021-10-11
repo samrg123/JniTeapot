@@ -65,6 +65,30 @@
 
             // Set to true to output debugging logs for diagnostics.
             "trace": true
+        },
+
+        {
+            "type": "node",
+            "name": "Record Logcat",
+            "request": "launch",
+            "runtimeExecutable": "cmd.exe",
+            "runtimeArgs": [
+                "/C",
+                "adb logcat -c & adb logcat > ${workspaceFolder}/log.logcat"
+            ],
+        }
+
+    ],
+    "compounds": [
+        {
+            "stopAll": true,
+            "presentation": {
+                "hidden": false,
+                "group": "JniTeapot",
+                "order": 1
+            },
+            "name": "Debug with Logcat",
+            "configurations": ["Build and Run", "Record Logcat"],
         }
     ]
 }

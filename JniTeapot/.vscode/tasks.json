@@ -8,8 +8,23 @@
 	},
 
 	"tasks": [
+
+		// TODO: Have persistant open terminal task that is in same group as JniTeapot - Build
+
 		{
 			"label": "Build Debug APK",
+
+			"presentation": {
+				"group": "JniTeapot - Build",
+				"panel": "shared",
+				"reveal": "always",
+				"clear": true,
+				"echo": true,
+				"focus": true,
+				"showReuseMessage": true,
+				"close": false,
+			},
+
 			"type": "shell",
 			"command": "./gradlew.bat app:assembleDebug",
 
@@ -25,18 +40,21 @@
 				"isDefault": true
 			}
 		},
- 
-		{
-			"label": "Prepare Launch",
-			"dependsOn": ["Build Debug APK"],
-			
-			"type": "shell",
-			"command": "adb start-server",	
-		},
-
 
 		{
 			"label": "Build Release APK",
+
+			"presentation": {
+				"group": "JniTeapot - Build",
+				"panel": "shared",
+				"reveal": "always",
+				"clear": true,
+				"echo": true,
+				"focus": true,
+				"showReuseMessage": true,
+				"close": false,
+			},
+
 			"type": "shell",
 			"command": "./gradlew.bat app:assembleRelease",
 
@@ -52,12 +70,43 @@
 		
 		{
 			"label": "Clean Build",
+
+			"presentation": {
+				"group": "JniTeapot - Build",
+				"panel": "shared",
+				"reveal": "always",
+				"clear": true,
+				"echo": true,
+				"focus": true,
+				"showReuseMessage": true,
+				"close": false,
+			},
+
 			"type": "shell",
 			"command": "./gradlew.bat app:clean",
-			"problemMatcher": ["$gradle"],
+			"problemMatcher": [],
 
 			"group": "build",
 		},		
+
+		{
+			"label": "Prepare Launch",
+			"dependsOn": ["Build Debug APK"],
+
+			"presentation": {
+				"group": "JniTeapot - Launch",
+				"panel": "shared",
+				"reveal": "always",
+				"clear": false,
+				"echo": true,
+				"focus": false,
+				"showReuseMessage": true,
+				"close": true,
+			},
+			
+			"type": "shell",
+			"command": "adb start-server",
+		},
 
 	]
 }
