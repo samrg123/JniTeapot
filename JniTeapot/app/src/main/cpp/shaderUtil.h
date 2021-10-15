@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StringLiteral.h"
+#include "metaprogrammingUtil.h"
 #include "macros.h"
 
 #if OPTIMIZED_BUILD
@@ -95,6 +96,11 @@
 //Ex: ShaderBufferBlock(0) foo { readonly vec3[]; } binds buffer block 'foo' to layout binding point '0'
 #define ShaderBufferBlock(cValue)       ShaderValue(ShaderBufferBlockString(cValue))
 #define ShaderBufferBlockString(cValue) StringLiteral("layout(std140, binding=")+ToStringLiteral(static_cast<int>(cValue))+") buffer "
+
+//Macro to select the 'cValueN' shader from the shader parameters passed in
+//Ex: ShaderSelect(1, Shader(debugCode), Shader(releaseCode)) returns Shader(releaseCode)
+#define ShaderSelect(cValueN, ...)       ShaderValue(ShaderSelectString(cValueN, __VA_ARGS__))
+#define ShaderSelectString(cValueN, ...) NthParameter<cValueN>(__VA_ARGS__)
 
 //Shader Libraries are listed below. You can include them in source code using 'ShaderInclude'
 //Ex: constexpr auto foo = Shader( ShaderInclude(ShaderConstants); )
