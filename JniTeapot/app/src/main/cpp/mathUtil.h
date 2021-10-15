@@ -37,24 +37,26 @@ template <typename T> constexpr auto ToRadians(const T& v) { return v * (Pi()/18
 inline float FastCos(float r) { return __builtin_cosf(r); }
 inline float FastSin(float r) { return __builtin_sinf(r); }
 inline float FastTan(float r) { return __builtin_tanf(r); }
-inline float Infinity() { return __builtin_inff(); }
+
+constexpr float Infinity() { return __builtin_inff(); }
+inline bool IsInfinity(float n) { return __builtin_isinf(n); }
 
 //Note: These assume ArmV7 or newer with native floating point
-inline short ILog2(float n) { return ((int&)n >> 23) - 127; }
-inline short ILog2Safe(float n) { return n ? ILog2(n) : 0; }
+inline short    ILog2(float n) { return ((int&)n >> 23) - 127; }
+constexpr short ILog2Safe(float n) { return n ? ILog2(n) : 0; }
 
 inline unsigned int ISqrtPow2(unsigned int n) { return 1 << (ILog2(n)>>1); }
-inline unsigned int ISqrtPow2Safe(unsigned int n) { return n > 0 ? ISqrtPow2(n) : 0; }
+constexpr unsigned int ISqrtPow2Safe(unsigned int n) { return n > 0 ? ISqrtPow2(n) : 0; }
 
 // Note: arm doesn't have any built in sqrt
 // TODO: benchmark Sqrt against FastSqrt
-inline float Sqrt(float n)          { return __builtin_sqrtf(n); }
-inline float FastSqrt(float n)      { return (float&)( ((unsigned int&)n+= (127<<23))>>= 1 ); }
-inline float FastSqrtSafe(float n)  { return n ? FastSqrt(n) : 0; }
+inline float    Sqrt(float n)          { return __builtin_sqrtf(n); }
+inline float    FastSqrt(float n)      { return (float&)( ((unsigned int&)n+= (127<<23))>>= 1 ); }
+constexpr float FastSqrtSafe(float n)  { return n ? FastSqrt(n) : 0; }
 
 inline float FastAbs(float n) { return (float&)( (int&)n&= (~(1<<31)) ); }
-inline int   FastAbs(int n) { return __builtin_abs(n); }
-template<typename T> constexpr bool Approx(const T& a, const T& b, T epsilon = .00001f)  { return FastAbs(a-b) <= epsilon; }
+inline int   FastAbs(int n)   { return __builtin_abs(n); }
+template<typename T> inline bool Approx(const T& a, const T& b, T epsilon = .00001f)  { return FastAbs(a-b) <= epsilon; }
 
 inline float FastPow10(float n) {
     // Note this is: 10^n = 2^(log_2(10)*n)
@@ -104,10 +106,10 @@ template<typename T1, typename T2>
 constexpr auto CeilFraction(const T1& numerator, const T2& denominator) { return (numerator + denominator-1)/denominator; }
 
 template<typename T1, typename T2, typename T3>
-inline bool InRange(const T1& n, const T2& min, const T3& max) { return n >= min && n <= max; }
+constexpr bool InRange(const T1& n, const T2& min, const T3& max) { return n >= min && n <= max; }
 
 template<typename T>
-inline T Pow2RoundUp(T n) {
+constexpr T Pow2RoundUp(T n) {
     --n;
 
     #pragma clang diagnostic push
@@ -129,7 +131,7 @@ inline T Pow2RoundUp(T n) {
 }
 
 template<typename T>
-inline T Pow2RoundDown(T n) { return IsPow2(n) ? n : Pow2RoundUp(n)>>1; }
+constexpr T Pow2RoundDown(T n) { return IsPow2(n) ? n : Pow2RoundUp(n)>>1; }
 
 template<>
 inline float Pow2RoundDown<float>(float n) { return (float&)(((unsigned int&)n&= (0x1FF<<23))); }
