@@ -30,6 +30,15 @@ struct Constant<T[n]> {
     constexpr operator const T&() { return value; }
 };
 
+// Returns the 'nth' parameter
+template<int n, typename Parameter0T, typename... ParameterNT>
+constexpr auto NthParameter(Parameter0T p0, ParameterNT... pn) {
+
+    static_assert(n < sizeof...(pn)+1, "Parameter index 'n' is out of bounds!");
+
+    if constexpr(n > 0) return NthParameter<n-1>(pn...);
+    else return p0;
+}
 
 struct TrueType  { constexpr operator bool() { return true; } };
 struct FalseType { constexpr operator bool() { return false; } };
