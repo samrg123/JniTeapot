@@ -11,7 +11,7 @@ class GlTransform {
         
         
         inline Quaternion <float> GetRotation() const { return rotation; }
-        inline void SetRotation(const Quaternion<float>& r) {
+        inline GlTransform SetRotation(const Quaternion<float>& r) {
             
             //TODO: if quaternions are prone to decaying then we should just normalize them each time!
             RUNTIME_ASSERT(Approx(r.NormSquared(), 1.f, .01f),
@@ -19,10 +19,12 @@ class GlTransform {
                            r.x, r.y, r.z, r.w, r.Norm());
             
             rotation = r;
+
+            return *this;
         }
         
-        constexpr GlTransform(Vec3<float> position = Vec3<float>::zero,
-                              Vec3<float> scale = Vec3<float>::one,
+        constexpr GlTransform(Vec3<float> position       = Vec3<float>::zero,
+                              Vec3<float> scale          = Vec3<float>::one,
                               Quaternion<float> rotation = Quaternion<float>::identity): position(position),
                                                                                          scale(scale) {
             SetRotation(rotation);
@@ -90,7 +92,7 @@ class GlTransform {
             return result;
         }
         
-        inline GlTransform& Scale(const Vec3<float>& s)         { scale+= s; return *this; }
+        inline GlTransform& Scale(const Vec3<float>& s)         { scale*= s; return *this; }
         inline GlTransform& Rotate(const Vec3<float> theta)     { rotation.Rotate(theta); return *this; }
         inline GlTransform& Translate(const Vec3<float>& delta) { position+= delta; return *this; }
 };
