@@ -239,14 +239,14 @@ struct Mat4 {
     static
     inline Mat4 Orthogonal(const Vec2<float>& view, float nearPlane, float farPlane) {
         
-        //Note: this is right handed use '-iD, -oD for left handed'
-        float iD = 1.f/(nearPlane - farPlane),
-              oD = (farPlane + nearPlane)*iD;
+        //Note: this is right handed use '-negInvPlaneDelta, -zOffset for left handed'
+        float negInvPlaneDelta = 1.f/(nearPlane - farPlane);
+        float zOffset = (farPlane + nearPlane)*negInvPlaneDelta;
         
-        return Mat4({  2.f/view.x, 0,          0,    0,
-                       0,          2.f/view.y, 0,    0,
-                       0,          0,          2*iD, 0,
-                       0,          0,          oD,   1
+        return Mat4({  2.f/view.x, 0,          0,                  0,
+                       0,          2.f/view.y, 0,                  0,
+                       0,          0,          2*negInvPlaneDelta, 0,
+                       0,          0,          zOffset,            1
                     });
     }
     
@@ -255,15 +255,23 @@ struct Mat4 {
         
         float negTanX = -FastTan(.5f*fovX);
         
-        //Note: this is right handed
-        float iD = 1.f/(farPlane - nearPlane),
-              sD = negTanX*(farPlane + nearPlane)*iD,
-              oD = 2.f*negTanX*farPlane*nearPlane*iD;
-    
-        return Mat4({  1,     0,      0,   0,
-                       0,     aspect, 0,   0,
-                       0,     0,      sD,  negTanX,
-                       0,     0,      oD,  0
+        float zScaler, zOffset;
+        float planeDelta = farPlane - nearPlane;
+        
+        //TODO: Think of a way to handle this.. somhow have to clip z 
+        //      values that are not co-planer with near plane. Should 
+        //      we just use small epsilon for plane delta instead? 
+        RUNTIME_ASSERT(planeDelta != 0, "planeDelta is zero [nearPlane: %f, farPlane: %f]", nearPlane, farPlane);
+
+        float invPlaneDelta = 1.f/planeDelta;
+        zScaler = negTanX*farPlane*invPlaneDelta;
+        zOffset = nearPlane*zScaler;
+
+        //Note: this uses right handed coordinates
+        return Mat4({  1,     0,      0,        0,
+                       0,     aspect, 0,        0,
+                       0,     0,      zScaler,  negTanX,
+                       0,     0,      zOffset,  0
                     });
     }
     
