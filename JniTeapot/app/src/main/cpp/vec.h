@@ -72,7 +72,7 @@ struct Vec3 : Base {
     
     constexpr Vec3() = default;
     constexpr Vec3(const T& x, const T& y, const T& z): x(x), y(y), z(z) {}
-    template<typename T2> constexpr Vec3(const Vec2<T2>& v): x(v.x), y(v.y), z(0) {}
+    template<typename T2> explicit constexpr Vec3(const Vec2<T2>& v): x(v.x), y(v.y), z(0) {}
     
     static inline const Vec3 in    = Vec3( 0,  0,  1);
     static inline const Vec3 out   = Vec3( 0,  0, -1);
@@ -142,8 +142,8 @@ struct Vec4 : Base {
     
     constexpr Vec4() = default;
     constexpr Vec4(const T& x, const T& y, const T& z, const T& w): x(x), y(y), z(z), w(w) {}
-    template<typename T2> constexpr Vec4(const Vec2<T2>& v): x(v.x), y(v.y), z(0),   w(0) {}
-    template<typename T2> constexpr Vec4(const Vec3<T2>& v): x(v.x), y(v.y), z(v.z), w(0) {}
+    template<typename T2> explicit constexpr Vec4(const Vec2<T2>& v): x(v.x), y(v.y), z(0),   w(0) {}
+    template<typename T2> explicit constexpr Vec4(const Vec3<T2>& v): x(v.x), y(v.y), z(v.z), w(0) {}
     
     static inline const Vec4 in    = Vec4( 0,  0,  1, 0);
     static inline const Vec4 out   = Vec4( 0,  0, -1, 0);
