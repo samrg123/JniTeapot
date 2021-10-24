@@ -31,8 +31,11 @@ struct Vec2 : Base {
     static inline const Vec2 one   = Vec2(1, 1);
     static inline const Vec2 zero  = Vec2(0, 0);
     
-    constexpr T Area() const { return x*y; }
-    constexpr Vec2 Inverse() const { return Vec2(1/x, 1/y); }
+    constexpr T    Area()        const { return x*y; }
+    constexpr Vec2 Inverse()     const { return Vec2(1/x, 1/y); }
+    constexpr T    NormSquared() const { return x*x + y*y; }
+    constexpr T    Norm()        const { return Sqrt(NormSquared()); }; 
+
     
     constexpr Vec2 operator-() const { return Vec3(-x, -y); }
     template<typename T2> constexpr auto Dot(const Vec2<T2>& v) const { return v.x*x + v.y*y; }

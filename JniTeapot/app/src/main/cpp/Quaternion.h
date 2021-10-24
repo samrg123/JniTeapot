@@ -113,32 +113,71 @@ struct Quaternion: Base {
                         v1*y + v2*z + v3*w - v4*x,
                         v1*z - v2*y + v3*x + v4*w);
     }
+
+    template<typename T2>
+    inline static Quaternion RotateTo(Vec3<T2> source, Vec3<T2> destination) {
+
+        RUNTIME_ASSERT(Approx(source.NormSquared(), T2(1)), 
+                      "source is not normailzed [ source.NormSquared() = %f ]", 
+                      float(source.NormSquared()));
+
+        RUNTIME_ASSERT(Approx(destination.NormSquared(), T2(1)), 
+                      "destination is not normailzed [ destination.NormSquared() = %f ]", 
+                      float(destination.NormSquared()));
+
+        T2 cosTheta = source.Dot(destination);
     
-    //TODO: FIX THIS... bug when camera rotating around stationary object! --- IF THERE IS A BUG FIX IT IN ShaderUtil too!
-    inline static Quaternion RotateTo(Vec3<float> source, Vec3<float> destination) {
-        float cosTheta = source.Dot(destination);
-    
-        //check to see if we rotated 180 degrees
-        constexpr float epsilon = 0.001;
-        if(cosTheta < (-1. + epsilon)) {
+        //check to see if we rotated ~180 degrees
+        //Note: Even small epsilon (.0001f) yields visable error in rotation
+        //Todo: Make sure that setting epsilon == 0 doesn't introduce errors with nSinTheta
+        constexpr float epsilon = 0.f;
+        if(cosTheta <= (-1.f + epsilon)) {
+
+            //Try to using crossing destination with x-axis to get axis of rotation
+            Vec3 perpendicular = Vec3<T2>::right.Cross(destination);
             
-            Vec3 perpendicular = Vec3<float>::right.Cross(destination);
-    
-            if(perpendicular.Dot(Vec2(perpendicular.y, perpendicular.y)) < epsilon) {
-                perpendicular = Vec3<float>::up.Cross(destination);
-            }
-    
-            return Quaternion(perpendicular.Normalize(), .5*Pi());
+            //Note: x component will be zero after crossing x-axis with destination
+            T2 perpendicularNormSquared = Vec2<T2>(perpendicular.y, perpendicular.z).NormSquared();
+
+            //check if destination was co-planer with x axis.
+            //If it is use y-axis for rotation, otherwise use perpendicular axis for rotation
+            Vec3 rotationNormal = perpendicularNormSquared <= epsilon ?
+                                  Vec3<T2>::up :
+                                  perpendicular/Sqrt(perpendicularNormSquared);
+
+            //Build quaternion represention rotation
+            //Note: theta == Pi, cos(theta/2) = 0, sin(theta/2) = 1,
+            //      Q = <sin(theta/2)*n, cos(theta/2)>      | Where n is the axis of rotation
+            //      Q = <1*n, 0>
+            //      Q = <n, 0>
+            return Base(rotationNormal);
         }
     
-        //Note: using double angle trig identities
-        //      the resulting quaternion = <vec4(sin(theta/2)*normalize(cross(source, destination)), cos(theta/2))>
-    
-        //Note: quaternion = identity if source and destination are colinear
-    
-        Vec3 perpendicular = source.Cross(destination);
+        Vec3 nSinTheta = source.Cross(destination);
         
-        return (Quaternion&)Base(perpendicular.x, perpendicular.y, perpendicular.z, 1 + cosTheta).Normalize();
+        //Note: nSinTheta = sin(theta)*n            | Where n is the axis of rotation
+        //      Q  = <n*sin(theta/2), cos(theta/2)> | Where Q is the desired quaternion
+        //      Q2 = <n*sin(theta),   cos(theta)>   | Where Q2 represents the a quaternion rotation by 2*theta
+        //      Q  = normalize(lerp(Qi, Q2, .5))    | Where Qi is the identity quaternion  
+        //      Q  = normalize(.5*(Q2 - Qi) + Qi)
+        //      Q  = normalize(.5*Q2 + .5*Qi)
+        //      Q  = normalize(Q2 + Qi)
+        //      Q  = normalize(<n*sin(theta),  cos(theta)> + <0,0,0,1>)
+        //      Q  = normalize(<nSinTheta, cos(theta) + 1>)
+        //
+        //Note: If we don't need want to require source and destination to be normalized
+        //      nSinTheta = norm(source)*norm(destination)*sin(theta)*n, cosTheta = norm(source)*norm(destination)*cos(theta)
+        //      and the resulting quaternion simplifies to: 
+        //      Base(nSinTheta.x, nSinTheta.y, nSinTheta.z, cosTheta + Sqrt(source.NormSquared() + destination.NormSquared())).Normalize();
+        Vec4 q = Base(nSinTheta.x, nSinTheta.y, nSinTheta.z, cosTheta + 1).Normalize();
+        
+        //Note: Sanity check that q never diverges to nan or infinity
+        RUNTIME_ASSERT(Approx(q.NormSquared(), T2(1)), 
+                       "Q is not normalized [ q = (%f, %f, %f, %f) | q.NormSquared() = %f ]",
+                       float(q.x), float(q.y), float(q.z), float(q.w),  
+                       float(q.NormSquared()));
+        
+        return q;
     }
     
     inline static Quaternion LookAt(Vec3<float> origin, Vec3<float> target, Vec3<float> eyeDirection) {

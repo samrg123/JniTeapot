@@ -56,7 +56,7 @@ constexpr float FastSqrtSafe(float n)  { return n ? FastSqrt(n) : 0; }
 
 inline float FastAbs(float n) { return (float&)( (int&)n&= (~(1<<31)) ); }
 inline int   FastAbs(int n)   { return __builtin_abs(n); }
-template<typename T> inline bool Approx(const T& a, const T& b, T epsilon = .00001f)  { return FastAbs(a-b) <= epsilon; }
+template<typename T> inline bool Approx(T a, T b, T epsilon = T(.00001f))  { return FastAbs(a-b) <= epsilon; }
 
 inline float FastPow10(float n) {
     // Note this is: 10^n = 2^(log_2(10)*n)
