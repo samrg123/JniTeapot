@@ -236,8 +236,8 @@ struct Mat4 {
                                    1, 1, 1, 1,
                                    1, 1, 1, 1});
     
-    static
-    inline Mat4 Orthogonal(const Vec2<float>& view, float nearPlane, float farPlane) {
+    //Returns the transformation matrix for an orthogonal projection
+    static inline Mat4 OrthogonalProjection(const Vec2<float>& view, float nearPlane, float farPlane) {
         
         //Note: this is right handed use '-negInvPlaneDelta, -zOffset for left handed'
         float negInvPlaneDelta = 1.f/(nearPlane - farPlane);
@@ -250,8 +250,8 @@ struct Mat4 {
                     });
     }
     
-    static
-    inline Mat4 Perspective(float aspect, float fovX, float nearPlane, float farPlane) {
+    //Returns the transformation matrix for a perspective projection
+    static inline Mat4 PerspectiveProjection(float aspect, float fovX, float nearPlane, float farPlane) {
         
         float negTanX = -FastTan(.5f*fovX);
         
@@ -273,7 +273,7 @@ struct Mat4 {
                        0,     0,      zScaler,  negTanX,
                        0,     0,      zOffset,  0
                     });
-    }
+    } 
     
     //Note rotates matrix representing 3D transform in theta.z, theta.y, theta.x order
     inline Mat4& Rotate(const Vec3<float>& theta) {
