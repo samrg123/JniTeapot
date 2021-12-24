@@ -200,8 +200,9 @@ class Memory {
 					currentBlock = preallocatedBytes ? CreateBlock(preallocatedBytes, &emptyBlock) : &emptyBlock;
 				}
 	    		
+				//TODO: make this return a pointer wrapper type that can cast to any pointer type
 				//Increases the size of the arena to fit at least 'bytes' of memory
-				//Returns a pointer to the first free byte 
+				//Returns a pointer to the first free byte
 				void* PushBytes(size_t bytes, bool zeroMemory = false, uint8 alignment = 1) {
 					RUNTIME_ASSERT(IsPow2Safe(alignment), "Alignment must be a power of 2. { alignment: %d }", alignment);
 					RUNTIME_ASSERT(currentBlock, "Null arena block - should be initialized to emptyBlock! { arena: %p } ", this);
@@ -312,6 +313,8 @@ class Memory {
 				//Frees all blocks from the arena
 				inline void FreeAll() { FreeBaseRegion(kEmptyRegion); }
 
+				//TODO: add flatten function that can flatten a range spanning regions to a contigious buffer 
+
 				//Packs the current
 		        inline void Pack() {
 			        if(reservedBlock) {
@@ -418,13 +421,10 @@ class Memory {
 		template <typename RegionT>
 		static inline void CopyRegionsToBuffer(const Region& startRegion, const Region& stopRegion, uint32 numElements, void* buffer,
 											   uint32 regionStride=sizeof(RegionT), uint32 bufferStride=sizeof(RegionT)) {
-			
-			//TODO: Make sure that translate function compiles int '__builtin_memcpy'
-			// 		if not, consider invoking CopyMemory to instead (will prevent constructors from being called)
-			
+
 			TranslateRegionsToBuffer(startRegion, stopRegion,
-				                     numElements, buffer,
-				                     regionStride, bufferStride,
-									 [](void *src, void *dst) { *(RegionT*)dst = *(RegionT*)src; });
+									numElements, buffer,
+									regionStride, bufferStride,
+									[](void *src, void *dst) { CopyMemory(dst, src, sizeof(RegionT)); });
 		}
 };
