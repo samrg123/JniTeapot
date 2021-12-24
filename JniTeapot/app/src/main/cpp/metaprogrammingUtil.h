@@ -15,7 +15,7 @@ struct Constant {
     const T value;
     constexpr Constant(const T& value): value(value) {}
 
-    constexpr operator const T&() { return value; }
+    constexpr operator const T&() const { return value; }
 };
 
 // Specialization for Arrays
@@ -29,6 +29,13 @@ struct Constant<T[n]> {
 
     constexpr operator const T&() { return value; }
 };
+
+template<auto n, typename T = decltype(n)> 
+struct Literal {
+    const T value = n;
+    constexpr operator const T&() const { return value; } 
+};
+
 
 // Returns the 'nth' parameter
 template<int n, typename Parameter0T, typename... ParameterNT>
