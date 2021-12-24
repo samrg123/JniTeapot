@@ -16,7 +16,7 @@
 //Macro to assist writting OpenGl shaders
 /*Ex: 
     constexpr StringLiteral vertexShader = Shader(
-        ShaderVersion("310 es");
+        ShaderVersion("310 es")
 
         ShaderOut(0) vec3 pos;
 
@@ -51,8 +51,12 @@
 #define ShaderValue_(cValue)              ) + ToStringLiteral(cValue) + Shader_ OPEN_PAREN // Terminate current 'Shader' expansion, evaluate 'cValue' and start new expansion of 'Shader_'
 
 //Macro to include the source code to another shader
-//Ex: constexpr auto foo1 = Shader( void doStuff(){} );
-//    constexpr auto foo2 = Shader( ShaderInclude(foo1); void main() { doStuff(); } );
+/*Ex: constexpr auto foo1 = Shader( void doStuff(){} );
+    constexpr auto foo2 = Shader( 
+        ShaderInclude(foo1) 
+        void main() { doStuff(); } 
+    );
+*/    
 //Note: included shader must be constexpr
 #define ShaderInclude(x)                ShaderValue(x)
 
@@ -103,7 +107,7 @@
 #define ShaderSelectString(cValueN, ...) NthParameter<cValueN>(__VA_ARGS__)
 
 //Shader Libraries are listed below. You can include them in source code using 'ShaderInclude'
-//Ex: constexpr auto foo = Shader( ShaderInclude(ShaderConstants); )
+//Ex: constexpr auto foo = Shader( ShaderInclude(ShaderConstants) )
 // --------
 
 constexpr StringLiteral ShaderConstants = Shader(
@@ -112,7 +116,7 @@ constexpr StringLiteral ShaderConstants = Shader(
 
 constexpr StringLiteral ShaderQuaternion = Shader( 
     
-    ShaderInclude(ShaderConstants);
+    ShaderInclude(ShaderConstants)
 
     vec4 qIdentity() { return vec4(0, 0, 0, 1); }
     vec4 qConjugate(vec4 q) { return vec4(-q.xyz, q.w); }
