@@ -58,7 +58,7 @@ class GlText {
     
         static inline constexpr StringLiteral kVertexShaderSource = Shader(
             
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
 
             struct VertexGlyphData {
                 highp vec2 textureCoordinates;
@@ -131,7 +131,7 @@ class GlText {
 
         static constexpr StringLiteral kFragmentShaderSource = Shader(
 
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
 
             precision mediump float;
 

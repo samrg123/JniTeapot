@@ -14,7 +14,7 @@ class GlCamera {
 
         static inline constexpr StringLiteral kVertexShaderSourceDraw = Shader(
 
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
             
             ShaderUniform(U_ProjectionMatrix) mat4 projectionMatrix;
             ShaderOut(0) vec2 textureCord;
@@ -46,10 +46,10 @@ class GlCamera {
         
         static inline const StringLiteral kFragmentShaderSourceDraw = Shader(
             
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
 
-            ShaderExtension("GL_OES_EGL_image_external");
-            ShaderExtension("GL_OES_EGL_image_external_essl3");
+            ShaderExtension("GL_OES_EGL_image_external")
+            ShaderExtension("GL_OES_EGL_image_external_essl3")
 
             precision highp float;
 

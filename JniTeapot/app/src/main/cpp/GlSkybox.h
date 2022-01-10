@@ -37,9 +37,9 @@ class GlSkybox : public GlRenderable {
     
         static inline constexpr StringLiteral kVertexShaderSourceDraw = Shader(
 
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
 
-            ShaderInclude(kSkyBoxStr);
+            ShaderInclude(kSkyBoxStr)
 
             ShaderOut(0) vec3 cubeCoord;
             
@@ -67,7 +67,7 @@ class GlSkybox : public GlRenderable {
 
         static inline constexpr StringLiteral kFragmentShaderSourceDraw = Shader(
 
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
 
             precision highp float;
 
@@ -83,9 +83,9 @@ class GlSkybox : public GlRenderable {
         
         static inline constexpr StringLiteral kVertexShaderSourceWrite = Shader(
 
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
 
-            ShaderInclude(kSkyBoxStr);
+            ShaderInclude(kSkyBoxStr)
 
             ShaderOut(0) flat int textureFace;
             ShaderOut(1)  vec3 viewPos;
@@ -139,10 +139,10 @@ class GlSkybox : public GlRenderable {
 
         static inline constexpr StringLiteral kFragmentShaderSourceWrite = Shader(
 
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
 
-            ShaderExtension("GL_OES_EGL_image_external");
-            ShaderExtension("GL_OES_EGL_image_external_essl3");
+            ShaderExtension("GL_OES_EGL_image_external")
+            ShaderExtension("GL_OES_EGL_image_external_essl3")
 
             precision mediump float;
 

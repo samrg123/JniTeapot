@@ -22,7 +22,7 @@ class GlObject : public GlRenderable {
         static inline constexpr StringLiteral kShaderVersion = "310 es";
 
         static inline constexpr StringLiteral kVertexShaderSource = Shader(
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
 
             ShaderUniformBlock(UBLOCK_OBJECT) ObjectBlock {
                 mat4 mvpMatrix;
@@ -55,7 +55,7 @@ class GlObject : public GlRenderable {
     
         static inline constexpr StringLiteral kFragmentShaderSource = Shader(
 
-            ShaderVersion(kShaderVersion);
+            ShaderVersion(kShaderVersion)
 
             precision highp float;
 
