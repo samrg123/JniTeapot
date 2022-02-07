@@ -2,6 +2,7 @@
 
 #include "vec.h"
 #include "mathUtil.h"
+#include "Cuboid.h"
 
 template<typename T>
 struct Mat4 {
@@ -250,22 +251,42 @@ struct Mat4 {
                     });
     }
     
+    static inline Mat4 OrthogonalProjection(Cuboid<float> bounds) {
+        
+        Vec3<float> halfScale = Vec3<float>(bounds.right - bounds.left, 
+                                            bounds.top - bounds.bottom, 
+                                            bounds.near - bounds.far //Note: z axis negated for right handed coords
+                                           ).Inverse();
+        
+        Vec3<float> offset = halfScale * Vec3<float>(-(bounds.left + bounds.right), 
+                                                     -(bounds.top + bounds.bottom), 
+                                                     bounds.near + bounds.far //Note: z axis negated for right handed coords
+                                                    );
+        
+        Vec3<float> scale = halfScale * 2.f;
+
+        return Mat4({ scale.x,  0,        0,        0,
+                      0,        scale.y,  0,        0,
+                      0,        0,        scale.z,  0,
+                      offset.x, offset.y, offset.z, 1
+                    });
+    }
+
     //Returns the transformation matrix for a perspective projection
     static inline Mat4 PerspectiveProjection(float aspect, float fovX, float nearPlane, float farPlane) {
         
         float negTanX = -FastTan(.5f*fovX);
-        
-        float zScaler, zOffset;
+    
         float planeDelta = farPlane - nearPlane;
         
         //TODO: Think of a way to handle this.. somhow have to clip z 
         //      values that are not co-planer with near plane. Should 
         //      we just use small epsilon for plane delta instead? 
-        RUNTIME_ASSERT(planeDelta != 0, "planeDelta is zero [nearPlane: %f, farPlane: %f]", nearPlane, farPlane);
+        RUNTIME_ASSERT(planeDelta > 0, "Projection will be malformed - planeDelta <= 0  [nearPlane: %f, farPlane: %f]", nearPlane, farPlane);
 
-        float invPlaneDelta = 1.f/planeDelta;
-        zScaler = negTanX*farPlane*invPlaneDelta;
-        zOffset = nearPlane*zScaler;
+        float negTanXOverPlaneDelta = negTanX/planeDelta;
+        float zScaler = negTanXOverPlaneDelta * (farPlane + nearPlane);
+        float zOffset = negTanXOverPlaneDelta * 2 * farPlane * nearPlane;
 
         //Note: this uses right handed coordinates
         return Mat4({  1,     0,      0,        0,
