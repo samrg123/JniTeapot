@@ -36,7 +36,9 @@ class ARWrapper {
             ArConfig_setAugmentedImageDatabase(arSession, arConfig, nullptr);
             
             ArSession_configure(arSession, arConfig);
+
             ArConfig_destroy(arConfig);
+
         }
         
     public:
@@ -60,7 +62,29 @@ class ARWrapper {
         }
         inline void SetEglCameraTexture(GLuint eglTexture) {
             eglCameraTexture = eglTexture;
-            ArSession_setCameraTextureName(arSession, eglTexture);
+            ArSession_setCameraTextureName(arSession, eglTexture);        
+        }
+
+        struct EglTextureSize {
+            Vec2<int32> cpuTextureSize;
+            Vec2<int32> gpuTextureSize;
+        };
+
+        inline EglTextureSize GetEglTextureSize() {
+
+            EglTextureSize result;
+
+            ArCameraConfig* arCameraConfig;
+            ArCameraConfig_create(arSession, &arCameraConfig);
+
+            ArSession_getCameraConfig(arSession, arCameraConfig);
+                    
+            ArCameraConfig_getImageDimensions(arSession, arCameraConfig, &result.cpuTextureSize.x, &result.cpuTextureSize.y);            
+            ArCameraConfig_getTextureDimensions(arSession, arCameraConfig, &result.gpuTextureSize.x, &result.gpuTextureSize.y);
+
+            ArCameraConfig_destroy(arCameraConfig);
+
+            return result;
         }
         
         void UpdateScreenSize(int width_, int height_, int rotation = 1) {
@@ -93,33 +117,32 @@ class ARWrapper {
     
             RUNTIME_ASSERT(ArSession_create(jniEnv, jActivity, &arSession) == AR_SUCCESS, "Failed to create arSession");
             ConfigureSession();
-    
+
             ArFrame_create(arSession, &arFrame);
             ArPose_create(arSession, nullptr, &cameraPose);
             ArFrame_acquireCamera(arSession, arFrame, &arCamera);
 
             ArSession_resume(arSession);
     
-            Log("Successfully Initialized ArWrapper");
+            //TODO: Right now this is just here for logging. Should we move this somewhere else?
+            {
+                EglTextureSize textureSize = GetEglTextureSize();            
+             
+                Log("Successfully Initialized ArWrapper - Camera (CPU) image size '%d x %d' | Texture (GPU) Size '%d x %d'",
+                    textureSize.cpuTextureSize.x, textureSize.cpuTextureSize.y,
+                    textureSize.gpuTextureSize.x, textureSize.gpuTextureSize.y);
+            }
         }
-        
-        inline GlTransform UpdateFrame() {
+
+        struct UpdateFrameResult {
+            GlTransform frameTransform;
+            ArTrackingState trackingState;
+            ArTrackingFailureReason trackingFailureReason;
+        };
+    
+        inline UpdateFrameResult UpdateFrame() {
             RUNTIME_ASSERT(arSession, "arSession not Initialized");
             RUNTIME_ASSERT(eglCameraTexture, "eglCameraTexture not set");
-    
-            /*TODO: fix AR_ERROR_FATAL error when updating session of galaxy s9
-             *      ################### Stack Trace Begin ################
-                    ARCoreError: third_party/arcore/ar/core/session.cc:1627	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/session.cc?g=0&l=1627
-                    ARCoreError: third_party/arcore/ar/core/c_api/session_lite_c_api.cc:75	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/c_api/session_lite_c_api.cc?g=0&l=75
-                    ################### Stack Trace End #################
-                    
-                    ################### Undecorated Trace Begin  #################
-                    UNKNOWN:
-                    ARCoreError: third_party/arcore/ar/core/session.cc:1627
-                    ACameraCaptureSession_setRepeatingRequest ACAMERA_ERROR_UNKNOWN
-                    ################### Undecorated Trace End  #################
-             *
-             */
             RUNTIME_ASSERT(ArSession_update(arSession, arFrame) == AR_SUCCESS, "Failed to update arFrame: status: %d");
 
             union RawPose {
@@ -133,9 +156,21 @@ class ARWrapper {
             //ArCamera_getPose(arSession, arCamera, cameraPose);
             ArCamera_getDisplayOrientedPose(arSession, arCamera, cameraPose);
             ArPose_getPoseRaw(arSession, cameraPose, rawPose.vals);
-            
-            return GlTransform(rawPose.position,
-                               Vec3<float>::one, //scale
-                               rawPose.rotation);
+
+
+            UpdateFrameResult frameResult;
+            frameResult.frameTransform = GlTransform(rawPose.position,
+                                                     Vec3<float>::one, //scale
+                                                     rawPose.rotation);
+
+            ArCamera_getTrackingState(arSession, arCamera, &frameResult.trackingState);
+
+            if(frameResult.trackingState != AR_TRACKING_STATE_TRACKING) {
+                ArCamera_getTrackingFailureReason(arSession, arCamera, &frameResult.trackingFailureReason);
+            } else {
+                frameResult.trackingFailureReason = AR_TRACKING_FAILURE_REASON_NONE;
+            }
+
+            return frameResult;
         }
 };

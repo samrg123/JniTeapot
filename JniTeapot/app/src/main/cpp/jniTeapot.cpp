@@ -135,6 +135,72 @@ void DrawStrings(GlText* glText, float renderTime, float frameTime,
     glText->Clear();
 }
 
+inline
+void UpdateFrameCamera(GlCamera& camera) {
+    ARWrapper::UpdateFrameResult frameResult = ARWrapper::Instance()->UpdateFrame();
+    
+    //TODO: output this to the screen can use green/yellow/red letters for tracking state
+
+    switch(frameResult.trackingState) {
+
+        case AR_TRACKING_STATE_TRACKING: {
+
+            camera.SetTransform(frameResult.frameTransform);
+
+        } break;
+    
+        case AR_TRACKING_STATE_PAUSED: {
+
+            Warn("Skipping camera transform update - Tracking paused");
+
+        } break;
+
+        default: {
+
+            //TODO: turn this into some crazy metaprogramming enum reflection thing that can
+            //      do a quick hash map lookup to map enum value to enum name... ideally the
+            //      map would be generated with something like GenerateEnumNameMap<ArTrackingFailureReason>();
+
+            const char* failureString;
+            switch(frameResult.trackingFailureReason) {
+                
+                case AR_TRACKING_FAILURE_REASON_BAD_STATE: {
+                    failureString = "AR_TRACKING_FAILURE_REASON_BAD_STATE";
+                } break;
+                
+                case AR_TRACKING_FAILURE_REASON_CAMERA_UNAVAILABLE: {
+                    failureString = "AR_TRACKING_FAILURE_REASON_CAMERA_UNAVAILABLE";
+                } break;
+                
+                case AR_TRACKING_FAILURE_REASON_EXCESSIVE_MOTION: {
+                    failureString = "AR_TRACKING_FAILURE_REASON_EXCESSIVE_MOTION";
+                } break;
+                
+                case AR_TRACKING_FAILURE_REASON_INSUFFICIENT_FEATURES: {
+                    failureString = "AR_TRACKING_FAILURE_REASON_INSUFFICIENT_FEATURES";
+                } break;
+                
+                case AR_TRACKING_FAILURE_REASON_INSUFFICIENT_LIGHT: {
+                    failureString = "AR_TRACKING_FAILURE_REASON_INSUFFICIENT_LIGHT";
+                } break;
+                
+                case AR_TRACKING_FAILURE_REASON_NONE: {
+                    failureString = "AR_TRACKING_FAILURE_REASON_NONE";
+                } break;
+
+                default: {
+                    failureString = "FAILED_TO_PARSE";
+                }
+            }
+
+            Warn("Bad tracking state %d - trackingFailureReason %d [%s]", 
+                 frameResult.trackingState,
+                 frameResult.trackingFailureReason, failureString);
+            
+        } break;
+    }
+}
+
 [[noreturn]] void* activityLoop(void* params_) {
 
     RenderThreadParams* params = (RenderThreadParams*) params_;
@@ -164,7 +230,7 @@ void DrawStrings(GlText* glText, float renderTime, float frameTime,
     //      We must call SetEglCameraTexture before we update the frame
     //      we also only want to query the ArWrapper ProjectionMatrix after the frame is updated
     ARWrapper::Instance()->SetEglCameraTexture(backCamera.EglTexture());
-    backCamera.SetTransform(ARWrapper::Instance()->UpdateFrame());
+    UpdateFrameCamera(backCamera);
     backCamera.SetProjectionMatrix(ARWrapper::Instance()->ProjectionMatrix(.01f, 1000.f));
     
     // TODO: Get Camera working with front/back camera and let ARWrapper switch between them so we can update both sides of 
@@ -237,7 +303,7 @@ void DrawStrings(GlText* glText, float renderTime, float frameTime,
         // TODO: POLL ANDROID MESSAGE LOOP FOR KEY EVENTS
 
         //Update camera to match current ArCore position
-        backCamera.SetTransform(ARWrapper::Instance()->UpdateFrame());
+        UpdateFrameCamera(backCamera);
         
         //clear last frame color and depth buffer
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
