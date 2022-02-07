@@ -5,6 +5,6 @@
 template<typename T>
 struct Cuboid {
     T left, right, 
-      top, bottom, 
+      bottom, top, 
       near, far;
 };
