@@ -12,7 +12,7 @@ class GlContext {
         static constexpr GLuint kGlesMajorVersion = 3,
                                 kGlesMinorVersion = 1;
 
-        static constexpr EGLint kRGBAChanelBitDepth = 4;
+        static constexpr EGLint kRGBAChanelBitDepth = 8; // TODO: Was this being set to 4 causing the shadow bug? Test Varrun Branch code with PCF Shadows
         static constexpr EGLint kZBufferBitDepth = 24;
         static constexpr EGLint kStencilBitDepth = 0;
         static constexpr EGLint kMsaaSamples = 0;
@@ -297,6 +297,9 @@ class GlContext {
                 eglContext = CreateAndBindEglContext(eglDisplay, eglConfig, eglSurface);
                 
                 Log("Finished Initializing GLES version: %s", (const char*)glGetString(GL_VERSION));
+
+                Log("Supported EGL Extensions: [%s]", eglQueryString(eglDisplay, EGL_EXTENSIONS));
+                Log("Supported OpenGL Extensions: [%s]", glGetString(GL_EXTENSIONS));
             }
     
             inline
