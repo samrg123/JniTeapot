@@ -7,8 +7,8 @@
 class GlCamera {
     private:
         
-        enum TextureUnits  { TU_EGLTexture = 0 };
-        enum Uniforms      { U_ProjectionMatrix = 0 };
+        enum TextureUnits  { TU_EGLTexture };
+        enum Uniforms      { U_Scale };
         
         static inline constexpr StringLiteral kShaderVersion = "310 es"; 
 
@@ -16,34 +16,31 @@ class GlCamera {
 
             ShaderVersion(kShaderVersion)
             
-            ShaderUniform(U_ProjectionMatrix) mat4 projectionMatrix;
-            ShaderOut(0) vec2 textureCord;
+            ShaderUniform(U_Scale) vec2 scale;
+            
+            ShaderOut(0) vec2 textureCoord;
 
             void main() {
+
                 const vec2[4] vertices = vec2[] (
                     vec2(-1., -1.),
                     vec2(-1.,  1.),
                     vec2( 1., -1.),
                     vec2( 1.,  1.)
                 );
-
+            
                 vec2 vert = vertices[gl_VertexID];
-                
+
                 //Note: opengl is left handed so we set depth to 1 (farthest away)
                 gl_Position = vec4(vert, 1., 1.);
 
-                float tx = (gl_VertexID&2) == 0 ? 1. : 0.;
-                float ty = (gl_VertexID&1) == 0 ? 1. : 0.;
-                
-                //TODO: FIX THIS... Camera should use projection matrix? Probably just pass through vect2 of aspect ratio!
-                textureCord = vec2(tx, ty) + .0001*projectionMatrix[0][0];
-                
-                //mat2 newProjMat = mat2(projectionMatrix[0][0], projectionMatrix[0][1],
-                //                       projectionMatrix[1][0], projectionMatrix[1][1]);
-                //textureCord = newProjMat * vec2(tx, ty);
+                vec2 screenProjection = vert * scale;                
+                textureCoord = (screenProjection + vec2(1., -1.)) * vec2(.5, -.5);
             }
         );
-        
+
+        static inline const StringLiteral kTest = Shader(( vec2(0., 0.) ));
+
         static inline const StringLiteral kFragmentShaderSourceDraw = Shader(
             
             ShaderVersion(kShaderVersion)
@@ -60,7 +57,20 @@ class GlCamera {
             ShaderOut(0) vec4 fragColor;
             
             void main() {
-                fragColor = texture(sampler, textureCord);
+                
+                ShaderSelect(0,
+                    
+                    // TODO: Get JniTeapot to handle nested shaders and then push metaProg, shaderUtil and vscode as
+                    //       update ShaderSelect
+                    Shader(
+                        fragColor = texture(sampler, textureCord);
+                        fragColor.a = 1.;
+                    ),
+                    
+                    Shader(
+                        fragColor = vec4(textureCord, 1., 1.);
+                    )
+                );
             }
         );
         
@@ -72,20 +82,56 @@ class GlCamera {
                     viewMatrix;
 
         uint32 flags, matrixId;
-        
+
         GLuint glProgramDraw;
-        GLuint eglTexture;
         GLuint sampler;
-        
-    public:
-        inline ~GlCamera() {
-            glDeleteSamplers(1, &sampler);
-            glDeleteProgram(glProgramDraw);
+
+        //TODO: pull EGLTexture out into a sperate class so we can construct one and return it
+        //      directly from ARWrapper!        
+        GLuint eglTexture;
+        int32  eglTextureWidth;
+        int32  eglTextureHeight;
+        uint32 eglTextureId;
+        uint32 drawEglTextureId;
+
+        //TODO: replace this with GlViewport once it's implemented and use this to restore framebuffer sizes
+        //      instead of passing GlContext parameter to GlSkybox etc.
+        int    viewportWidth;
+        int    viewportHeight;
+        uint32 viewportId;
+        uint32 drawViewportId;
+
+        void UpdateUniforms() {
+
+            if(drawViewportId != viewportId || drawEglTextureId != eglTextureId) {
+
+                //Note: scale from screen * scale from texture
+                float xMultiplier = viewportWidth  * eglTextureHeight;
+                float yMultiplier = viewportHeight * eglTextureWidth;
+
+                Vec2<float> scale = Vec2<float>(xMultiplier, yMultiplier) / Max(xMultiplier, yMultiplier);
+                
+                glUniform2f(U_Scale, scale.x, scale.y);
+                GlAssertNoError("Failed to upload U_Scale");
+            
+                drawViewportId = viewportId;
+                drawEglTextureId = eglTextureId;
+            }
         }
-        
+
+    public:
+
+
+        //TODO: Move EGL Texture out into its own type
         inline GLuint EglTexture()        const { return eglTexture; }
         inline GLuint EglTextureSampler() const { return sampler; }
         
+        void SetEglTextureSize(int32 width, int32 height) {
+            eglTextureWidth = width;
+            eglTextureHeight = height;
+            ++eglTextureId;
+        }
+
         inline GlTransform GetTransform()        const { return transform; }
         inline Mat4<float> GetProjectionMatrix() const { return projectionMatrix; }
         
@@ -97,15 +143,16 @@ class GlCamera {
             return viewMatrix;
         }
         
-        inline void SetTransform(const GlTransform& t)  { transform = t;         ++matrixId; flags|= FLAG_CAM_TRANSFORM_UPDATED; }
+        inline void SetTransform(const GlTransform& t)  { 
+            transform = t;         
+            ++matrixId; 
+            flags|= FLAG_CAM_TRANSFORM_UPDATED; 
+        }
+
         inline void SetProjectionMatrix(const Mat4<float>& pm) {
             projectionMatrix = pm;
             ++matrixId;
             flags|= FLAG_PROJECTION_MATRIX_UPDATED;
-
-            glUseProgram(glProgramDraw);
-            glUniformMatrix4fv(U_ProjectionMatrix, 1, GL_FALSE, projectionMatrix.values);
-            GlAssertNoError("Failed to set project matrix");
         }
 
         //Note: monotonic increasing number that refers to current Matrix uid (ids wrap every 2^32 matrices)
@@ -124,10 +171,24 @@ class GlCamera {
             return cameraMatrix;
         }
         
-        inline GlCamera(const Mat4<float>& projectionMatrix = Mat4<float>::identity, const GlTransform& transform = GlTransform()):
-            transform(transform),
-            flags(FLAG_PROJECTION_MATRIX_UPDATED|FLAG_CAM_TRANSFORM_UPDATED) {
+        //TODO: Pass in viewport object!
+        inline GlCamera(int viewportWidth, int viewportHeight, 
+                        const Mat4<float>& projectionMatrix = Mat4<float>::identity, 
+                        const GlTransform& transform = GlTransform())  
+                        
+            : transform(transform),
+              flags(FLAG_PROJECTION_MATRIX_UPDATED|FLAG_CAM_TRANSFORM_UPDATED),
+              viewportWidth(viewportWidth),
+              viewportHeight(viewportHeight) {
             
+            //TODO: have Id object Initialize these correctly 
+            drawViewportId = viewportId-1;
+            drawEglTextureId = eglTextureId-1;
+
+            //TODO: have EglTexture do this init
+            eglTextureHeight = 0;
+            eglTextureWidth = 0;
+
             glProgramDraw  = GlContext::CreateGlProgram(kVertexShaderSourceDraw, kFragmentShaderSourceDraw);
             
             glGenTextures(1, &eglTexture);
@@ -143,19 +204,32 @@ class GlCamera {
             SetProjectionMatrix(projectionMatrix);
         }
 
+        inline ~GlCamera() {
+            glDeleteSamplers(1, &sampler);
+            glDeleteProgram(glProgramDraw);
+        }        
+
         //TODO: add Render() that can render objects and project them on to the EGLTexture
         
-        void Draw() {
-    
+        void Draw() {    
+            
+            glEnable(GL_BLEND);
+            glDisable(GL_DEPTH_TEST);
+
             glBindSampler(TU_EGLTexture, sampler);
             glActiveTexture(GL_TEXTURE0 + TU_EGLTexture);
             glBindTexture(GL_TEXTURE_EXTERNAL_OES, eglTexture);
 
             glUseProgram(glProgramDraw);
     
+            //Note: must be called after glUseProgram
+            UpdateUniforms();
+
             //Note: vertices are computed in vertexShader
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         
             GlAssertNoError("Error drawing camera background texture");
+
+            glEnable(GL_DEPTH_TEST);
         }
 };

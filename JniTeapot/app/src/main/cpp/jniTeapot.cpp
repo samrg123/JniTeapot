@@ -223,8 +223,20 @@ void UpdateFrameCamera(GlCamera& camera) {
     //GlCamera backCamera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height())*.001f , 0, 2000));
     //GlCamera backCamera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000)); //TODO: see if we can replace scaling view with scaling camera so glSkymap draws properly
     //GlCamera backCamera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f), GlTransform(Vec3(0.f, 0.f, 1.f)));
-    GlCamera backCamera, frontCamera;
+    GlCamera backCamera(glContext.Width(), glContext.Height()), 
+             frontCamera(glContext.Width(), glContext.Height());
     
+    //TODO: Clean up this initialization when we pull EglTexture out into its own class ... maybe have ArWrapper return an instance of it for us?
+    {
+        ARWrapper::EglTextureSize eglTextureSize = ARWrapper::Instance()->GetEglTextureSize();
+
+        Log("Using ArCore EglTexture - cpu Size: '%d x %d' | gpu size '%d x %d'",
+            eglTextureSize.cpuTextureSize.x, eglTextureSize.cpuTextureSize.y,
+            eglTextureSize.gpuTextureSize.x, eglTextureSize.gpuTextureSize.y);
+
+        backCamera.SetEglTextureSize(eglTextureSize.gpuTextureSize.x, eglTextureSize.gpuTextureSize.y);
+    }
+
     //Note: Bind camera texture to ArCore
     //Warn: Order dependent.
     //      We must call SetEglCameraTexture before we update the frame
@@ -339,10 +351,10 @@ void UpdateFrameCamera(GlCamera& camera) {
             float cameraMs = cameraTimer.ElapsedMs();
             glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invocation)", cameraMs, cameraMs/cameraInvocations);
 
-            skybox.Draw();
+            // skybox.Draw();
         }
 
-        // backCamera.Draw();
+        backCamera.Draw();
         
         //Update object
         {
