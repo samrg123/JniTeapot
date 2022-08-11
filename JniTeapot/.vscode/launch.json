@@ -71,24 +71,40 @@
             "type": "node",
             "name": "Record Logcat",
             "request": "launch",
-            "runtimeExecutable": "cmd.exe",
+            "runtimeExecutable": "powershell.exe",
             "runtimeArgs": [
-                "/C",
-                "adb logcat -c & adb logcat > ${workspaceFolder}/log.logcat"
+                "-Command",
+                "adb logcat -c; if($?) { adb logcat > \"${workspaceFolder}/log.logcat\" }"
             ],
+        },
+    
+        {
+            "type": "cppdbg",
+            "name": "Remote LLVM",
+            "request": "launch",
+        
+            "preLaunchTask": "Forward lldb port",
+            
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceRoot}/app/build/intermediates/cmake/debug/obj/x86/libJniTeapot.so",
+            "additionalSOLibSearchPath": "${workspaceRoot}/app/build/intermediates/cmake/debug/obj/x86",
+            "miDebuggerServerAddress": "localhost:5039",
+            "miDebuggerPath": "${env:LOCALAPPDATA}/Android/Sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/windows-x86_64/bin/clang++.exe",
+            "setupCommands": []
         }
-
     ],
+
+
     "compounds": [
         {
+            "name": "Debug with Logcat",
+            "configurations": ["Build and Run", "Record Logcat"],
             "stopAll": true,
             "presentation": {
                 "hidden": false,
                 "group": "JniTeapot",
                 "order": 1
             },
-            "name": "Debug with Logcat",
-            "configurations": ["Build and Run", "Record Logcat"],
         }
     ]
 }

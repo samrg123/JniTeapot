@@ -99,9 +99,14 @@ struct Quaternion: Base {
             
             r.w = 0
         **/
-        
+ 
         using Tr = decltype(x*v.x);
-        
+
+        //Note: SANITY CHECK CODE FROM FROM STACK OVERFLOW!!
+        Vec3<float> u(x, y, z);
+        float s = w;
+        return (u * (2.0f * u.Dot(v))) + (v * (s*s - u.Dot(u))) + (u.Cross(v) * (2.0f * s));
+
         //TODO: make sure this simds
         //TODO: see if this can be optimized a little more
         Tr  v1 = x*v.x + y*v.y + z*v.z,

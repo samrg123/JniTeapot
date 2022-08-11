@@ -312,10 +312,51 @@ class Memory {
 			       
 				//Frees all blocks from the arena
 				inline void FreeAll() { FreeBaseRegion(kEmptyRegion); }
+				
+				// Returns true if `[baseRegion, baseRegion+bytes]` range is flat (AKA is a contigious buffer)
+				inline bool IsFlat(Region baseRegion, uint32 bytes) {
+					return baseRegion.block == currentBlock && bytes <= currentBlock->bytes;
+				}
 
-				//TODO: add flatten function that can flatten a range spanning regions to a contigious buffer 
+				// Flattens everything from in `[baseRegion, baseRegion+bytes]` range into a contigious buffer
+				// Note: Flatten frees all information on the arena after `baseRegion + bytes`
+				// Note: If [baseRegion, baseRegion+bytes] isn't already flat, Flatten invalidates and pointers and Regions after 'baseRegion'
+				// Returns: pointer to start of flat contiguous buffer
+				inline void* Flatten(const Region& baseRegion, uint32 bytes) {
 
-				//Packs the current
+					// TODO: Test this for memory leaks!
+
+					// Already flat, just return current buffer
+					if(IsFlat(baseRegion, bytes)) {
+						currentBlock->position = bytes;
+						return ByteOffset(baseRegion.block, sizeof(Block));
+					}
+
+					//Allocate new block
+					// TODO: See if we can use reserve block instead of creating new one? 
+					// 		 May not be worth it because we're most likely flattening a large region?
+					Block* newBlock = CreateBlock(bytes, baseRegion.block);
+					void* newBuffer = ByteOffset(newBlock, sizeof(Block));
+
+					// copy data to new block
+					CopyToBuffer<uint8>(bytes, newBuffer);
+					newBlock->position+= bytes;
+
+					//Free old data and 
+					FreeBaseRegion(baseRegion);
+					currentBlock = newBlock; 
+
+					return newBuffer;
+				}
+
+				// Flattens `bytes` worth of data from start of the arena
+				// Note: Flatten frees all information on the arena after `bytes`
+				// Note: If arena isn't already flat, Flatten invalidates and pointers and Regions
+				// Returns: pointer to start of flat contiguous buffer
+				inline void* Flatten(uint32 bytes) { return Flatten(kEmptyRegion, bytes); }
+
+				//Frees any reserved blocks for the area
+				// TODO: Rename this? 
 		        inline void Pack() {
 			        if(reservedBlock) {
 				

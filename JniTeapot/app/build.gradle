@@ -32,7 +32,8 @@ android {
         versionName "1.0"
 
         ndk {
-            abiFilters 'x86' //only build for the emulator so build goes faster 
+            // abiFilters 'x86' //only build for the emulator so build goes faster 
+            abiFilters 'x86', 'arm64-v8a' //build for the emulator and s9 phone 
         }
 
         ndkVersion "21.3.6528147"

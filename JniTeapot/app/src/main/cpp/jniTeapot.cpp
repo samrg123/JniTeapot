@@ -19,7 +19,7 @@
 
 //NOTE: NOT IN REPO YET
 // #include "ArPlanes.h"
-// #include "Camera.h"
+#include "Camera.h"
 
 #include <android/native_window_jni.h>
 
@@ -36,12 +36,7 @@ struct RenderThreadParams {
 };
 
 void InitGlesState() {
-    //glClearColor(1.f, 1.f, 0.f, 1.f); // yellow
-    glClearColor(0.f, 0.f, 0.f, 1.f); //black
-    glClearDepthf(1.f);
 
-    Log("Initialized GLES state");
-    
     //NOTE: just for text blending - this should be turned off otherwise
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -50,7 +45,12 @@ void InitGlesState() {
     glDepthFunc(GL_LEQUAL);
     glClearDepthf(1.f);
     
-    //glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+    //glClearColor(1.f, 1.f, 0.f, 1.f); // yellow
+    glClearColor(0.f, 0.f, 0.f, 1.f); //black
+    
+    // glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
+    Log("Initialized GLES state");
 }
 
 inline
@@ -67,7 +67,8 @@ Vec2<float> DrawMemoryStats(GlText* glText, Vec2<float> textBaseline, Vec2<float
 }
 
 Vec2<float> DrawFPS(GlText* glText, float renderTime, float frameTime,
-             Vec2<float> textBaseline, Vec2<float> lineAdvance) {
+                    Vec2<float> textBaseline, Vec2<float> lineAdvance) {
+
     constexpr uint32 kAverageFrames = CeilFraction(500, kTargetMsFrameTime); //target ~500 ms
     
     struct FrameInfo {
@@ -125,22 +126,64 @@ Vec2<float> DrawFPS(GlText* glText, float renderTime, float frameTime,
 }
 
 inline
-void DrawStrings(GlText* glText, float renderTime, float frameTime,
+Vec2<float> DrawTransform(GlText* glText, const GlTransform& transform,
+                   Vec2<float> textBaseline, Vec2<float> lineAdvance) {
+
+    glText->PushString(textBaseline,
+                       "Coordinates: (% 04.3f, % 04.3f, % 04.3f)",
+                       transform.position.x, transform.position.y, transform.position.z                       
+    );
+
+    textBaseline+= lineAdvance;
+
+    return textBaseline;
+}
+
+inline
+void DrawStrings(GlText* glText, float renderTime, float frameTime, const GlTransform& transform, 
                  Vec2<float> textBaseline, Vec2<float> lineAdvance) {
 
     textBaseline = DrawMemoryStats(glText, textBaseline, lineAdvance);
     textBaseline = DrawFPS(glText, renderTime, frameTime, textBaseline, lineAdvance);
+    textBaseline = DrawTransform(glText, transform, textBaseline, lineAdvance);
     
     glText->Draw();
     glText->Clear();
 }
 
-inline
-void UpdateFrameCamera(GlCamera& camera) {
-    ARWrapper::UpdateFrameResult frameResult = ARWrapper::Instance()->UpdateFrame();
-    
-    //TODO: output this to the screen can use green/yellow/red letters for tracking state
+enum ARInstance {
+    AR_INSTANCE_REAR_CAMERA,
+    AR_INSTANCE_FRONT_CAMERA,
+};
 
+void UpdateFrameCamera(ARInstance arInstance, GlCamera& camera) {
+    
+    ARWrapper* updateArWrapper;
+    ARWrapper* pauseArWrapper;
+    
+    if(arInstance == AR_INSTANCE_FRONT_CAMERA) {
+
+        updateArWrapper = ARWrapper::FrontInstance();
+        pauseArWrapper  = ARWrapper::Instance();
+
+    } else if(arInstance == AR_INSTANCE_REAR_CAMERA) {
+
+        updateArWrapper = ARWrapper::Instance();
+        pauseArWrapper  = ARWrapper::FrontInstance();
+
+    } else {
+        Panic("Invalid ArInstance [%d]", arInstance);
+    }
+
+    ArStatus status = pauseArWrapper->Pause();
+    if(status != AR_SUCCESS) {
+        Warn("Failed to pause back ARWrapper [%p]. Status [%d]", pauseArWrapper, status);
+    } 
+
+    updateArWrapper->Resume();
+    ARWrapper::UpdateFrameResult frameResult = updateArWrapper->UpdateFrame();
+
+    //TODO: output this to the screen can use green/yellow/red letters for tracking state
     switch(frameResult.trackingState) {
 
         case AR_TRACKING_STATE_TRACKING: {
@@ -215,14 +258,14 @@ void UpdateFrameCamera(GlCamera& camera) {
     GlText glText(&glContext, "fonts/xolonium_regular.ttf");
     glText.RenderTexture(GlText::RenderParams {
         .targetGlyphSize = 25,
-        .renderStringAttrib = { .rgba = RGBA(1.f, 0, 0) },
+        .renderStringAttrib = { .rgba = RGBAf(1.f, 0, 0) },
     });
     
     InitGlesState();
     
-    //GlCamera backCamera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height())*.001f , 0, 2000));
-    //GlCamera backCamera(Mat4<float>::Orthogonal(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000)); //TODO: see if we can replace scaling view with scaling camera so glSkymap draws properly
-    //GlCamera backCamera(Mat4<float>::Perspective((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f), GlTransform(Vec3(0.f, 0.f, 1.f)));
+    //GlCamera backCamera(Mat4<float>::OrthogonalProjection(Vec2<float>(glContext.Width(), glContext.Height())*.001f , 0, 2000));
+    //GlCamera backCamera(Mat4<float>::OrthogonalProjection(Vec2<float>(glContext.Width(), glContext.Height()), 0, 2000)); //TODO: see if we can replace scaling view with scaling camera so glSkymap draws properly
+    //GlCamera backCamera(Mat4<float>::PerspectiveProjection((float)glContext.Width()/glContext.Height(), ToRadians(85.f), 0.01f, 2000.f), GlTransform(Vec3(0.f, 0.f, 1.f)));
     GlCamera backCamera(glContext.Width(), glContext.Height()), 
              frontCamera(glContext.Width(), glContext.Height());
     
@@ -230,29 +273,49 @@ void UpdateFrameCamera(GlCamera& camera) {
     {
         ARWrapper::EglTextureSize eglTextureSize = ARWrapper::Instance()->GetEglTextureSize();
 
-        Log("Using ArCore EglTexture - cpu Size: '%d x %d' | gpu size '%d x %d'",
+        Log("Using ArCore::Instance EglTexture - cpu Size: '%d x %d' | gpu size '%d x %d'",
             eglTextureSize.cpuTextureSize.x, eglTextureSize.cpuTextureSize.y,
             eglTextureSize.gpuTextureSize.x, eglTextureSize.gpuTextureSize.y);
 
         backCamera.SetEglTextureSize(eglTextureSize.gpuTextureSize.x, eglTextureSize.gpuTextureSize.y);
     }
 
+    // {
+    //     ARWrapper::EglTextureSize eglTextureSize = ARWrapper::FrontInstance()->GetEglTextureSize();
+
+    //     Log("Using ArCore::FrontInstance EglTexture - cpu Size: '%d x %d' | gpu size '%d x %d'",
+    //         eglTextureSize.cpuTextureSize.x, eglTextureSize.cpuTextureSize.y,
+    //         eglTextureSize.gpuTextureSize.x, eglTextureSize.gpuTextureSize.y);
+
+    //     frontCamera.SetEglTextureSize(eglTextureSize.gpuTextureSize.x, eglTextureSize.gpuTextureSize.y);
+    // }
+
     //Note: Bind camera texture to ArCore
     //Warn: Order dependent.
     //      We must call SetEglCameraTexture before we update the frame
     //      we also only want to query the ArWrapper ProjectionMatrix after the frame is updated
     ARWrapper::Instance()->SetEglCameraTexture(backCamera.EglTexture());
-    UpdateFrameCamera(backCamera);
+    UpdateFrameCamera(AR_INSTANCE_REAR_CAMERA, backCamera);
     backCamera.SetProjectionMatrix(ARWrapper::Instance()->ProjectionMatrix(.01f, 1000.f));
+
+    Camera testCamera(Camera::FRONT_CAMERA);
+
+    // //Note: Bind camera texture to ArCore
+    // //Warn: Order dependent.
+    // //      We must call SetEglCameraTexture before we update the frame
+    // //      we also only want to query the ArWrapper ProjectionMatrix after the frame is updated
+    // ARWrapper::FrontInstance()->SetEglCameraTexture(backCamera.EglTexture());
+    // UpdateFrameCamera(AR_INSTANCE_FRONT_CAMERA, frontCamera);
+    // frontCamera.SetProjectionMatrix(ARWrapper::FrontInstance()->ProjectionMatrix(.01f, 1000.f));    
     
+    //TODO: place in ArWrapper... clean up ArWrapper singleton design
+    // ArPlanes arPlanes(ARWrapper::Instance()->ArSession());
+
     // TODO: Get Camera working with front/back camera and let ARWrapper switch between them so we can update both sides of 
     //      the cubemap in the same frame
     // {
     //     Camera camera(Camera::FRONT_CAMERA);
     // }
-       
-    const Vec3 omega = ToRadians(Vec3(0.f, 0.f, 0.f));
-    const float mirrorOmega = ToRadians( 180.f / 10.f);
 
     //Setup cubemap skybox    
     GlSkybox skybox(GlSkybox::SkyboxParams {
@@ -266,12 +329,47 @@ void UpdateFrameCamera(GlCamera& camera) {
             // .posZ = "textures/skymap/pz.png",
             // .negZ = "textures/skymap/nz.png",
 
-            .posX = "textures/uvGrid.png",
-            .negX = "textures/uvGrid.png",
-            .posY = "textures/uvGrid.png",
-            .negY = "textures/uvGrid.png",
-            .posZ = "textures/uvGrid.png",
-            .negZ = "textures/uvGrid.png",
+            .posX = "textures/roomCubemap/+X.png",
+            .negX = "textures/roomCubemap/-X.png",
+            .posY = "textures/roomCubemap/+Y.png",
+            .negY = "textures/roomCubemap/-Y.png",
+            .posZ = "textures/roomCubemap/+Z.png",
+            .negZ = "textures/roomCubemap/-Z.png",            
+
+            // .posX = "textures/uvGrid.png",
+            // .negX = "textures/uvGrid.png",
+            // .posY = "textures/uvGrid.png",
+            // .negY = "textures/uvGrid.png",
+            // .posZ = "textures/uvGrid.png",
+            // .negZ = "textures/uvGrid.png",
+
+            // .posX = "textures/pink.png",
+            // .negX = "textures/pink.png",
+            // .posY = "textures/pink.png",
+            // .negY = "textures/pink.png",
+            // .posZ = "textures/pink.png",
+            // .negZ = "textures/pink.png",
+
+            // .posX = "textures/green.png",
+            // .negX = "textures/red.png",
+            // .posY = "textures/white.png",
+            // .negY = "textures/white.png",
+            // .posZ = "textures/white.png",
+            // .negZ = "textures/white.png",
+
+            // .posX = "textures/white_4096.png",
+            // .negX = "textures/white_4096.png",
+            // .posY = "textures/white_4096.png",
+            // .negY = "textures/white_4096.png",
+            // .posZ = "textures/white_4096.png",
+            // .negZ = "textures/white_4096.png",
+
+            // .posX = "textures/black.png",
+            // .negX = "textures/black.png",
+            // .posY = "textures/black.png",
+            // .negY = "textures/black.png",
+            // .posZ = "textures/black.png",
+            // .negZ = "textures/black.png",
     
             // .posX = "textures/debugTexture.png",
             // .negX = "textures/debugTexture.png",
@@ -281,99 +379,145 @@ void UpdateFrameCamera(GlCamera& camera) {
             // .negZ = "textures/debugTexture.png",
         },
 
-        .camera = &backCamera,
+        // .camera = &backCamera,
+        .camera = &frontCamera,
         .generateMipmaps = true, //Note: used for object roughness parameter
     });
 
     //Setup object to render
-    // GlObject sphere("meshes/cow.obj",
-    //                 &backCamera,
-    //                 &skybox,
-    //                 GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.03f, .03f, .03f))
-    //                 );
 
-    GlObject sphere("meshes/sphere.obj",
-                   &backCamera,
-                   &skybox,
-                   GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
-                   //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
-                  );
+    GlObject objects[] = {
+        GlObject("meshes/cow.obj",
+                 &backCamera,
+                 &skybox,
+                 GlTransform(Vec3(0.f, -.1f, -1.f), Vec3(.03f, .03f, .03f))
+        ),
+
+        GlObject("meshes/blenderUmbrella.obj",
+                &backCamera,
+                &skybox,
+                GlTransform(
+                    Vec3(0.f, 0.f, -1.f),   //position
+                    Vec3(.01f, .01f, .01f), //scale
+                    Vec3<float>(ToRadians(-90.f), ToRadians(0.f), ToRadians(25.f)) //rotation
+                )
+        )
+    };
+
+    //TODO: computed normals are incorrect this.. need to add verticies when normals change direction!    
+    // GlObject obj("meshes/cube.obj",
+    //              &backCamera,
+    //              &skybox,
+    //              // GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.05f, .05f, .05f))
+    //              GlTransform(Vec3(0.f, 0.f, -1.f), Vec3(.25f, .25f, .25f))
+    //             );
+
+    // GlObject obj("meshes/sphere.obj",
+    //              &backCamera,
+    //              &skybox,
+    //              GlTransform(Vec3(0.f, 0.f, -.5f), Vec3(.1f, .1f, .1f))
+    //              //GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.1f, .1f, .1f))
+    //             );
     
-    //GlObject sphere("meshes/triangle.obj",
-    //                &backCamera,
-    //                &skybox,
-    //                GlTransform(Vec3(0.f, 0.f, 0.f), Vec3(.2f, .2f, .2f))
-    //               );
+    // GlObject obj("meshes/triangle.obj",
+    //              &backCamera,
+    //              &skybox,
+    //              GlTransform(
+    //                  Vec3<float>(0.f, 0.f, 0.f), 
+    //                  Vec3<float>(.2f, .2f, .2f), 
+    //                  Vec3<float>(ToRadians(45.f), ToRadians(45.f), 0.f)
+    //              )
+    //             );
+
     
-    Timer fpsTimer(true),
-          physicsTimer(true);
-    
+    Timer fpsTimer(true);
+    Timer physicsTimer(true);
+    Timer frontCameraTimer(true);
+
+    constexpr float kFrontCameraUpdateInterval = .5;
+
     for(Timer loopTimer(true) ;; loopTimer.SleepLapMs(kTargetMsFrameTime) ) {
 
         float secElapsed = physicsTimer.LapSec();
         
         // TODO: POLL ANDROID MESSAGE LOOP FOR KEY EVENTS
 
-        //Update camera to match current ArCore position
-        UpdateFrameCamera(backCamera);
-        
+        //Update cameras to match current ArCore position
+        UpdateFrameCamera(AR_INSTANCE_REAR_CAMERA, backCamera);
+        // UpdateFrameCamera(AR_INSTANCE_FRONT_CAMERA, frontCamera);
+
+        // // TODO: This is really slopply written and really just a hack to get things working
+        // //       update Timer to allow you to get ElapsedSec and then apply old-timeref so
+        // //       we skip time
+        // if(frontCameraTimer.ElapsedSec() >= kFrontCameraUpdateInterval) {
+        //     frontCameraTimer.LapNs();
+        //     UpdateFrameCamera(AR_INSTANCE_FRONT_CAMERA, frontCamera);
+        // }
+
+        //Update arPlanes
+        // arPlanes.UpdatePlanes();
+
         //clear last frame color and depth buffer
+
+        glClearDepthf(1.f);
+        // glClearColor(1.f, 1.f, 1.f, 0.f); //white
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
-        //update skybox
-        {
-            //rotate camera
-            if(false)
-            {
-                GlTransform transform = backCamera.GetTransform();
-                
-                static float totalTime = 0.f;
-                totalTime+= secElapsed;
-                float theta = ToRadians(10.f)*totalTime;
-                while(theta >= 2.*Pi()) theta-= 2.*Pi();
-                
-                transform.position = Vec3(FastCos(theta), 0.f, FastSin(theta)) * .3f;
-                
-                Quaternion<float> rotation = Quaternion<float>::LookAt(transform.position, sphere.GetTransform().position);
-                transform.SetRotation(rotation);
-                
-                backCamera.SetTransform(transform);
-            }
-            
+        // backCamera.SetProjectionMatrix(Mat4<float>::PerspectiveProjection(1.f, ToRadians(90.f), .01f, 1000.f));
 
+        backCamera.Draw();
+
+        glViewport(0, 0, 500, 500);
+        frontCamera.Draw();
+
+        glViewport(0, 0, glContext.Width(), glContext.Height());
+
+        //update skybox
+        //TODO: only update texture if camera updates 'ArFrame_getTimestamp'
+        {
             Timer cameraTimer(true);
             int cameraInvocations = 1; // TODO: set to 100 for benchmarking
             for(int i = 0; i < cameraInvocations; ++i) {
                 skybox.UpdateTexture(&glContext);
-                glFinish();
+                // glFinish();
             }
 
             float cameraMs = cameraTimer.ElapsedMs();
             glText.PushString(Vec3(10.f, 500.f, 0.f), "CameraMs: %f (%f ms per invocation)", cameraMs, cameraMs/cameraInvocations);
-
-            // skybox.Draw();
         }
-
-        backCamera.Draw();
         
-        //Update object
-        {
-            GlTransform transform = sphere.GetTransform();
+        // arPlanes.Draw();
+
+        skybox.ClearDepthTexture(&glContext);
+        for(int i = 0; i < ArrayCount(objects); ++i) {
+
+            GlObject& obj = objects[i];
+
+            // Rotate object
+            Vec3 omega = ToRadians(i ? Vec3<float>(0.f, 0.f, 10.f) : Vec3<float>::zero);
+            GlTransform transform = obj.GetTransform();
             transform.Rotate(omega*secElapsed);
-            sphere.SetTransform(transform);
-    
-            static float mirrorTheta = 0.f;
-            mirrorTheta+= mirrorOmega*secElapsed;
-    
-            //float r = .5f*(FastSin(mirrorTheta)+1.f);
-            float r = .5f;
+            obj.SetTransform(transform);
             
-            sphere.Draw(r);
+            obj.RenderToDepthTexture(&glContext);
         }
+
+        bool gaussianBlur = false;
+        skybox.AntiAlisDepthBuffer(&glContext, gaussianBlur);
+
+        for(int i = 0; i < ArrayCount(objects); ++i) {
+            GlObject& obj = objects[i];   
+            obj.Draw(0);
+        }
+
+        // Note: For Debugging
+        // skybox.DrawDepthTexture();
+        // skybox.Draw();
 
         DrawStrings(&glText,
                     loopTimer.ElapsedSec(),
                     fpsTimer.LapSec(),
+                    backCamera.GetTransform(),
                     Vec2(50.f, 50.f), //textBaseline
                     Vec2(0.f, 50.f)   //textAdvance
                 );
@@ -392,6 +536,7 @@ extern "C" {
         FileManager::Init(jniEnv, jAssetManager);
     
         ARWrapper::Instance()->InitializeARWrapper(jniEnv, jActivity);
+        ARWrapper::FrontInstance()->InitializeARWrapper(jniEnv, jActivity);
         
         ANativeWindow* androidNativeWindow = ANativeWindow_fromSurface(jniEnv, surface);
         

@@ -12,7 +12,7 @@ class ARWrapper {
         ArCamera* arCamera;
         ArFrame* arFrame;
         ArPose* cameraPose;
-        
+
         GLuint eglCameraTexture;
         int width, height;
         
@@ -40,18 +40,27 @@ class ARWrapper {
             ArConfig_destroy(arConfig);
 
         }
-        
+
     public:
-        
+
         static inline ARWrapper* Instance() {
             static ARWrapper instance;
             return &instance;
         }
-        
+
+        static inline ARWrapper* FrontInstance() {
+            static ARWrapper instance;
+            return &instance;
+        }
+
         inline const ArSession* ArSession() const  { 
             RUNTIME_ASSERT(arSession, "arSession not Initialized");
             return arSession; 
-        } 
+        }
+
+        inline ArStatus Resume() { return ArSession_resume(arSession); }
+
+        inline ArStatus Pause() { return ArSession_pause(arSession); }
 
         inline Mat4<float> ProjectionMatrix(float nearPlane, float farPlane) const {
             RUNTIME_ASSERT(arSession, "arSession not Initialized");
@@ -114,16 +123,26 @@ class ARWrapper {
         
                 RUNTIME_ASSERT(installStatus == AR_INSTALL_STATUS_INSTALLED, "Failed to install ArCore { installStatus: %d }", installStatus);
             }
-    
-            RUNTIME_ASSERT(ArSession_create(jniEnv, jActivity, &arSession) == AR_SUCCESS, "Failed to create arSession");
+            
+            
+            // TODO: This is depreciated in ArCore 1.23... we are still using 1.19 so this is our only option
+            //       upgrade version of ArCore and use the non-depreciated way via ArSession_setCameraConfig with 
+            //       the desired front facing camera config retrieved from ArSession_getSupportedCameraConfigsWithFilter.
+
+            ArSessionFeature arSessionFeatures[] = {
+                (this == FrontInstance() ? AR_SESSION_FEATURE_FRONT_CAMERA : AR_SESSION_FEATURE_END_OF_LIST),
+                AR_SESSION_FEATURE_END_OF_LIST
+            };
+
+            auto arSessionResult = ArSession_createWithFeatures(jniEnv, jActivity, arSessionFeatures, &arSession);
+            RUNTIME_ASSERT(arSessionResult == AR_SUCCESS, "Failed to create arSession");
+            
             ConfigureSession();
 
             ArFrame_create(arSession, &arFrame);
             ArPose_create(arSession, nullptr, &cameraPose);
             ArFrame_acquireCamera(arSession, arFrame, &arCamera);
 
-            ArSession_resume(arSession);
-    
             //TODO: Right now this is just here for logging. Should we move this somewhere else?
             {
                 EglTextureSize textureSize = GetEglTextureSize();            

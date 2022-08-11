@@ -105,7 +105,27 @@
 			},
 			
 			"type": "shell",
-			"command": "adb start-server",
+			"command": "adb start-server; adb shell am force-stop com.eecs487.jniteapot",
+		},
+
+		{
+			"label": "Forward lldb port",
+
+			"presentation": {
+				"group": "JniTeapot - Launch",
+				"panel": "shared",
+				"reveal": "always",
+				"clear": false,
+				"echo": true,
+				"focus": false,
+				"showReuseMessage": true,
+				"close": true,
+			},
+			
+			"type": "shell",
+			"command": "adb forward tcp:5039 tcp:5039",
+
+			"problemMatcher": []
 		},
 
 	]
